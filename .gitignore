@@ -14,3 +14,16 @@ portal.db
 portal_files/
 pubs_extra.json
 apps_extra.json
+
+# 대용량 바이너리 파일 제외
+*.apk
+*.ipa
+*.exe
+*.dll
+*.so
+wardy*/
+Il2CppDumper*/
+gallery_data.json
+
+# Claude Code 설정 (로컬 전용)
+.claude/settings.local.json

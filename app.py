@@ -70,10 +70,6 @@ def save_extra_pubs(data):
 def init_db():
     os.makedirs(PORTAL_FILES_DIR, exist_ok=True)
     if _USE_SUPABASE:
-        # Seed default account if none exists
-        if not sb("GET", "accounts", params="?select=email&limit=1"):
-            _set_account(os.getenv("PORTAL_EMAIL","admin@example.com"),
-                         os.getenv("PORTAL_PASSWORD","changeme123"))
         return  # Tables managed in Supabase; skip local SQLite init
     with sqlite3.connect(DB_PATH) as conn:
         conn.executescript('''
@@ -418,8 +414,6 @@ def _sb_count(table, params=""):
         except Exception:
             return 0
 
-init_db()
-
 def _get_account(email):
     rows = sb("GET", "accounts", params=f"?email=eq.{email}&select=password")
     return rows[0]["password"] if rows else None
@@ -431,6 +425,16 @@ def _set_account(email, password, already_hashed=False):
 def _account_exists(email):
     rows = sb("GET", "accounts", params=f"?email=eq.{email}&select=email")
     return bool(rows)
+
+def _seed_supabase_account():
+    """Supabase 모드에서 계정이 없으면 기본 관리자 계정 생성."""
+    if _USE_SUPABASE:
+        if not sb("GET", "accounts", params="?select=email&limit=1"):
+            _set_account(os.getenv("PORTAL_EMAIL", "admin@example.com"),
+                         os.getenv("PORTAL_PASSWORD", "changeme123"))
+
+init_db()
+_seed_supabase_account()
 
 def login_required(f):
     @wraps(f)
@@ -1245,10 +1249,11 @@ def portal_project_upload(project_id):
             content = f.read().decode('utf-8-sig')
             reader = csv.DictReader(io.StringIO(content))
             rows = list(reader)
-        elif fname_lower.endswith(('.xlsx', '.xls')):
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as tmp:
-                tmppath = tmp.name
-                f.seek(0); f.save(tmppath)
+        elif fname_lower.endswith('.xlsx'):
+            # NamedTemporaryFile을 닫은 후 저장 (Windows 파일 잠금 방지)
+            tmp_fd, tmppath = tempfile.mkstemp(suffix='.xlsx')
+            os.close(tmp_fd)
+            f.seek(0); f.save(tmppath)
             wb = openpyxl.load_workbook(tmppath, read_only=True, data_only=True)
             ws = wb.active
             headers = [str(c.value or '').strip() for c in next(ws.iter_rows(max_row=1))]
@@ -1256,8 +1261,11 @@ def portal_project_upload(project_id):
                 if any(v is not None for v in row):
                     rows.append({headers[i]: (str(v).strip() if v is not None else '') for i, v in enumerate(row)})
             wb.close()
+        elif fname_lower.endswith('.xls'):
+            flash('.xls 형식은 지원하지 않아요. Excel에서 "다른 이름으로 저장 → .xlsx"로 변환 후 다시 업로드해주세요.')
+            return redirect(url_for('portal_project', project_id=project_id))
         else:
-            flash('CSV 또는 Excel 파일만 업로드 가능해요.')
+            flash('CSV 또는 Excel(.xlsx) 파일만 업로드 가능해요.')
             return redirect(url_for('portal_project', project_id=project_id))
     except Exception as e:
         flash(f'파일 읽기 오류: {e}')
