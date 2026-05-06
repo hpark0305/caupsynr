@@ -28,7 +28,13 @@
       "Bash(python -m py_compile app.py)",
       "Bash(python -c \"import app\")",
       "Bash(python -c \"import app; print\\('OK'\\)\")",
-      "Bash(python -m http.server 4321)"
+      "Bash(python -m http.server 4321)",
+      "Read(//c/Users/hpark/AppData/Roaming/Claude/local-agent-mode-sessions/skills-plugin/5e8822c4-8f34-43fa-b670-bc8a41f57833/e470b935-3f85-4ecb-965b-4a752ddd8e60/skills/xlsx/**)",
+      "Bash(python3)",
+      "Bash(python3 -c \"import openpyxl; print\\('openpyxl available'\\)\")",
+      "Bash(python3 -c \"import pandas; print\\('pandas available'\\)\")",
+      "PowerShell(python -m pip install openpyxl -q 2>&1)",
+      "PowerShell(tail -5)"
     ]
   },
   "hooks": {
