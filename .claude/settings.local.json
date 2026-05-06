@@ -34,7 +34,8 @@
       "Bash(python3 -c \"import openpyxl; print\\('openpyxl available'\\)\")",
       "Bash(python3 -c \"import pandas; print\\('pandas available'\\)\")",
       "PowerShell(python -m pip install openpyxl -q 2>&1)",
-      "PowerShell(tail -5)"
+      "PowerShell(tail -5)",
+      "mcp__Claude_in_Chrome__tabs_context_mcp"
     ]
   },
   "hooks": {
