@@ -248,6 +248,7 @@ _ALLOWED_TABLES = {
     'projects','project_participants','measurements','project_variables',
     'portal_files','accounts','news','research_topics_extra','contact_messages',
     'sessions','audit_log','project_collaborators','reset_tokens','project_protocols',
+    'wardy_events',
 }
 
 def _safe_col(col):
@@ -2058,6 +2059,93 @@ def api_receive_session():
         "data":           payload.get("data", {}),
     })
     return jsonify({"ok": True, "id": sid}), 201
+
+# ── Wardy 앱 이벤트 수신 API ──────────────────────────
+@app.route("/api/wardy/events", methods=["POST"])
+@csrf.exempt
+def api_wardy_events():
+    if request.headers.get("X-API-Key", "") != os.getenv("APP_API_KEY", "tsl-app-key-2025"):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    body = request.get_json(silent=True)
+    if not body:
+        return jsonify({"error": "No JSON body"}), 400
+
+    # 단건 또는 배치(리스트) 모두 허용
+    events = body if isinstance(body, list) else [body]
+    saved = 0
+    for ev in events:
+        if not ev.get("state") or not ev.get("user_name"):
+            continue
+        sb("POST", "wardy_events", data={
+            "project_id":  ev.get("project_id") or None,
+            "user_name":   str(ev.get("user_name", "")).strip(),
+            "seq":         ev.get("seq") or ev.get("order"),
+            "event_time":  ev.get("time") or ev.get("event_time"),
+            "state":       str(ev.get("state", "")).strip(),
+            "game_level":  ev.get("gameLevel") or ev.get("game_level"),
+            "data":        ev.get("data") or {},
+        })
+        saved += 1
+    return jsonify({"ok": True, "saved": saved}), 201
+
+# ── Wardy 이벤트 뷰어 ─────────────────────────────────
+@app.route("/portal/wardy")
+@login_required
+def portal_wardy():
+    project_id = request.args.get("project_id", "")
+    user_name  = request.args.get("user_name", "").strip()
+    state      = request.args.get("state", "").strip()
+    page       = max(1, int(request.args.get("page", 1)))
+    per_page   = 100
+
+    params = "?order=received_at.desc"
+    if project_id: params += f"&project_id=eq.{project_id}"
+    if user_name:  params += f"&user_name=ilike.{user_name}%25"
+    if state:      params += f"&state=eq.{state}"
+
+    total  = _sb_count("wardy_events", params)
+    offset = (page - 1) * per_page
+    params += f"&limit={per_page}&offset={offset}"
+    events = sb("GET", "wardy_events", params=params) or []
+
+    projects = sb("GET", "projects", params=f"?researcher_email=eq.{session['researcher']}&select=id,name") or []
+    total_pages = max(1, -(-total // per_page))
+
+    return render_template("portal_wardy.html",
+        researcher=session["researcher"],
+        events=events, projects=projects,
+        project_id=project_id, user_name=user_name, state=state,
+        page=page, total_pages=total_pages, total=total,
+        api_key=os.getenv("APP_API_KEY","tsl-app-key-2025"))
+
+@app.route("/portal/wardy/export")
+@login_required
+def portal_wardy_export():
+    project_id = request.args.get("project_id", "")
+    user_name  = request.args.get("user_name", "").strip()
+    state      = request.args.get("state", "").strip()
+
+    params = "?order=received_at.asc"
+    if project_id: params += f"&project_id=eq.{project_id}"
+    if user_name:  params += f"&user_name=ilike.{user_name}%25"
+    if state:      params += f"&state=eq.{state}"
+
+    events = sb("GET", "wardy_events", params=params) or []
+
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["id","project_id","user_name","seq","event_time","state","game_level","data","received_at"])
+    for ev in events:
+        w.writerow([
+            ev.get("id",""), ev.get("project_id",""), ev.get("user_name",""),
+            ev.get("seq",""), ev.get("event_time",""), ev.get("state",""),
+            ev.get("game_level",""), json.dumps(ev.get("data") or {}, ensure_ascii=False),
+            ev.get("received_at",""),
+        ])
+    buf.seek(0)
+    return Response(buf.read(), mimetype="text/csv",
+        headers={"Content-Disposition": "attachment;filename=wardy_events.csv"})
 
 # ── Project meta edit ────────────────────────────────
 @app.route("/portal/projects/<project_id>/edit", methods=["POST"])

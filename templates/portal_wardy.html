@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% block title %}Wardy 이벤트 · 연구자 포털{% endblock %}
+{% block head %}
+<style>
+.portal-wrap{min-height:calc(100vh - var(--nav-h));background:var(--bg);}
+.portal-header{background:var(--dark);padding:28px 0;border-bottom:1px solid rgba(255,255,255,.08);}
+.portal-header-inner{display:flex;justify-content:space-between;align-items:center;}
+.data-table{width:100%;border-collapse:collapse;font-size:.84rem;}
+.data-table th{padding:10px 14px;text-align:left;font-weight:600;color:var(--muted);font-size:.73rem;text-transform:uppercase;letter-spacing:.06em;background:var(--bg);}
+.data-table td{padding:10px 14px;border-top:1px solid var(--border-light);vertical-align:top;}
+.state-badge{font-size:.72rem;padding:2px 8px;border-radius:100px;font-weight:600;white-space:nowrap;}
+.state-login{background:#dbeafe;color:#1e40af;}
+.state-game_start{background:#d1fae5;color:#065f46;}
+.state-game_complete{background:#bbf7d0;color:#14532d;}
+.state-give_up,.state-time_over{background:#fee2e2;color:#991b1b;}
+.state-default{background:var(--accent-light);color:var(--accent);}
+.filter-bar{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:20px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;}
+.filter-bar label{font-size:.8rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;}
+.filter-bar select,.filter-bar input{padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:.84rem;background:var(--bg);}
+.data-json{font-size:.75rem;color:var(--muted);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pagination{display:flex;gap:6px;margin-top:20px;justify-content:center;}
+.pag-btn{padding:6px 12px;border:1px solid var(--border);border-radius:6px;font-size:.82rem;text-decoration:none;color:var(--dark);}
+.pag-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.pag-btn.disabled{color:var(--muted);pointer-events:none;}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="portal-wrap">
+  <div class="portal-header">
+    <div class="container portal-header-inner">
+      <div>
+        <span class="label" style="color:var(--accent-mid);display:block;margin-bottom:4px;">Researcher Portal</span>
+        <h1 style="color:#fff;font-size:1.6rem;margin:0;">Wardy 이벤트 로그</h1>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <a href="{{ url_for('portal_wardy_export', project_id=project_id, user_name=user_name, state=state) }}"
+           class="btn btn-outline" style="color:#fff;border-color:rgba(255,255,255,.3);">CSV 내보내기</a>
+        <a href="{{ url_for('portal') }}" class="btn btn-outline" style="color:#fff;border-color:rgba(255,255,255,.3);">← 포털</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="container" style="padding-top:28px;padding-bottom:40px;">
+
+    <!-- 필터 -->
+    <form method="get" class="filter-bar">
+      <div>
+        <label>프로젝트</label>
+        <select name="project_id">
+          <option value="">전체</option>
+          {% for p in projects %}
+          <option value="{{ p.id }}" {% if project_id == p.id %}selected{% endif %}>{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>참여자명</label>
+        <input type="text" name="user_name" value="{{ user_name }}" placeholder="이름 검색">
+      </div>
+      <div>
+        <label>이벤트 타입</label>
+        <select name="state">
+          <option value="">전체</option>
+          {% for s in ['login','module_select','level_select','game_start','give_up','time_over','game_complete','app_switch','app_return','app_exit'] %}
+          <option value="{{ s }}" {% if state == s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary" style="padding:7px 18px;">필터 적용</button>
+      <a href="{{ url_for('portal_wardy') }}" class="btn btn-outline" style="padding:7px 14px;">초기화</a>
+    </form>
+
+    <!-- 요약 -->
+    <div style="margin-bottom:14px;font-size:.85rem;color:var(--muted);">
+      총 <strong style="color:var(--dark);">{{ total }}</strong>건
+      ({{ page }}/{{ total_pages }} 페이지)
+    </div>
+
+    <!-- 테이블 -->
+    {% if events %}
+    <div style="overflow-x:auto;background:var(--surface);border:1px solid var(--border);border-radius:10px;">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>참여자</th>
+            <th>이벤트</th>
+            <th>레벨</th>
+            <th>앱 시각</th>
+            <th>수신 시각</th>
+            <th>데이터</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ev in events %}
+          {% set st = ev.get('state','') %}
+          <tr>
+            <td style="color:var(--muted);font-size:.78rem;">{{ ev.get('seq','') }}</td>
+            <td><strong>{{ ev.get('user_name','') }}</strong></td>
+            <td>
+              <span class="state-badge
+                {% if st == 'login' %}state-login
+                {% elif st == 'game_start' %}state-game_start
+                {% elif st == 'game_complete' %}state-game_complete
+                {% elif st in ['give_up','time_over'] %}state-give_up
+                {% else %}state-default{% endif %}">
+                {{ st }}
+              </span>
+            </td>
+            <td style="font-size:.82rem;">{{ ev.get('game_level','') }}</td>
+            <td style="font-size:.78rem;color:var(--muted);">{{ (ev.get('event_time','') or '')[:19] }}</td>
+            <td style="font-size:.78rem;color:var(--muted);">{{ (ev.get('received_at','') or '')[:19] }}</td>
+            <td>
+              {% set d = ev.get('data') %}
+              {% if d %}
+              <span class="data-json" title="{{ d | tojson }}">{{ d | tojson }}</span>
+              {% else %}<span style="color:var(--muted);">—</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 페이지네이션 -->
+    {% if total_pages > 1 %}
+    <div class="pagination">
+      {% if page > 1 %}
+      <a class="pag-btn" href="?project_id={{ project_id }}&user_name={{ user_name }}&state={{ state }}&page={{ page-1 }}">←</a>
+      {% endif %}
+      {% for p in range([1, page-2]|max, [total_pages+1, page+3]|min) %}
+      <a class="pag-btn {% if p == page %}active{% endif %}"
+         href="?project_id={{ project_id }}&user_name={{ user_name }}&state={{ state }}&page={{ p }}">{{ p }}</a>
+      {% endfor %}
+      {% if page < total_pages %}
+      <a class="pag-btn" href="?project_id={{ project_id }}&user_name={{ user_name }}&state={{ state }}&page={{ page+1 }}">→</a>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div style="text-align:center;padding:60px 20px;color:var(--muted);">
+      <div style="font-size:2.5rem;margin-bottom:12px;">📭</div>
+      <div>이벤트 데이터가 없습니다.</div>
+      <div style="font-size:.83rem;margin-top:6px;">앱에서 <code>POST /api/wardy/events</code>로 전송하면 여기에 표시됩니다.</div>
+    </div>
+    {% endif %}
+
+    <!-- API 안내 -->
+    <div style="margin-top:32px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px 24px;">
+      <h3 style="margin:0 0 12px;font-size:1rem;">Unity 연동 엔드포인트</h3>
+      <code style="display:block;background:var(--bg);padding:12px;border-radius:6px;font-size:.82rem;">
+        POST https://caupsynr.onrender.com/api/wardy/events<br>
+        X-API-Key: {{ api_key }}<br>
+        Content-Type: application/json
+      </code>
+      <div style="margin-top:12px;font-size:.82rem;color:var(--muted);">
+        단건 또는 배열(배치) 전송 모두 지원. 필드: user_name, state, seq, time, gameLevel, data
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
