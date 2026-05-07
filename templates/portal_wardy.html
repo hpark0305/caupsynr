@@ -18,6 +18,9 @@
 .filter-bar label{font-size:.8rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;}
 .filter-bar select,.filter-bar input{padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:.84rem;background:var(--bg);}
 .data-json{font-size:.75rem;color:var(--muted);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.delete-bar{display:none;background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:10px 16px;margin-bottom:12px;align-items:center;gap:12px;}
+.delete-bar.show{display:flex;}
+input[type=checkbox]{cursor:pointer;width:15px;height:15px;}
 .pagination{display:flex;gap:6px;margin-top:20px;justify-content:center;}
 .pag-btn{padding:6px 12px;border:1px solid var(--border);border-radius:6px;font-size:.82rem;text-decoration:none;color:var(--dark);}
 .pag-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
@@ -79,49 +82,81 @@
 
     <!-- 테이블 -->
     {% if events %}
-    <div style="overflow-x:auto;background:var(--surface);border:1px solid var(--border);border-radius:10px;">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>참여자</th>
-            <th>이벤트</th>
-            <th>레벨</th>
-            <th>앱 시각</th>
-            <th>수신 시각</th>
-            <th>데이터</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for ev in events %}
-          {% set st = ev.get('state','') %}
-          <tr>
-            <td style="color:var(--muted);font-size:.78rem;">{{ ev.get('seq','') }}</td>
-            <td><strong>{{ ev.get('user_name','') }}</strong></td>
-            <td>
-              <span class="state-badge
-                {% if st == 'login' %}state-login
-                {% elif st == 'game_start' %}state-game_start
-                {% elif st == 'game_complete' %}state-game_complete
-                {% elif st in ['give_up','time_over'] %}state-give_up
-                {% else %}state-default{% endif %}">
-                {{ st }}
-              </span>
-            </td>
-            <td style="font-size:.82rem;">{{ ev.get('game_level','') }}</td>
-            <td style="font-size:.78rem;color:var(--muted);">{{ (ev.get('event_time','') or '')[:19] }}</td>
-            <td style="font-size:.78rem;color:var(--muted);">{{ (ev.get('received_at','') or '')[:19] }}</td>
-            <td>
-              {% set d = ev.get('data') %}
-              {% if d %}
-              <span class="data-json" title="{{ d | tojson }}">{{ d | tojson }}</span>
-              {% else %}<span style="color:var(--muted);">—</span>{% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+    <form method="post" action="{{ url_for('portal_wardy_delete') }}" id="deleteForm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <!-- 삭제 액션 바 -->
+      <div class="delete-bar" id="deleteBar">
+        <span id="selectedCount" style="font-size:.85rem;font-weight:600;color:#991b1b;">0건 선택됨</span>
+        <button type="submit" class="btn" style="background:#dc2626;color:#fff;padding:6px 16px;font-size:.82rem;"
+          onclick="return confirm('선택한 항목을 삭제할까요?')">삭제</button>
+        <button type="button" class="btn btn-outline" style="padding:6px 14px;font-size:.82rem;"
+          onclick="clearSelection()">취소</button>
+      </div>
+
+      <div style="overflow-x:auto;background:var(--surface);border:1px solid var(--border);border-radius:10px;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th><input type="checkbox" id="checkAll" onchange="toggleAll(this)"></th>
+              <th>#</th>
+              <th>참여자</th>
+              <th>이벤트</th>
+              <th>레벨</th>
+              <th>앱 시각</th>
+              <th>수신 시각</th>
+              <th>데이터</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for ev in events %}
+            {% set st = ev.get('state','') %}
+            <tr>
+              <td><input type="checkbox" name="ids" value="{{ ev.get('id','') }}" class="row-check" onchange="updateBar()"></td>
+              <td style="color:var(--muted);font-size:.78rem;">{{ ev.get('seq','') }}</td>
+              <td><strong>{{ ev.get('user_name','') }}</strong></td>
+              <td>
+                <span class="state-badge
+                  {% if st == 'login' %}state-login
+                  {% elif st == 'game_start' %}state-game_start
+                  {% elif st == 'game_complete' %}state-game_complete
+                  {% elif st in ['give_up','time_over'] %}state-give_up
+                  {% else %}state-default{% endif %}">
+                  {{ st }}
+                </span>
+              </td>
+              <td style="font-size:.82rem;">{{ ev.get('game_level','') }}</td>
+              <td style="font-size:.78rem;color:var(--muted);">{{ (ev.get('event_time','') or '')[:19] }}</td>
+              <td style="font-size:.78rem;color:var(--muted);">{{ (ev.get('received_at','') or '')[:19] }}</td>
+              <td>
+                {% set d = ev.get('data') %}
+                {% if d %}
+                <span class="data-json" title="{{ d | tojson }}">{{ d | tojson }}</span>
+                {% else %}<span style="color:var(--muted);">—</span>{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </form>
+
+    <script>
+    function toggleAll(cb) {
+      document.querySelectorAll('.row-check').forEach(c => c.checked = cb.checked);
+      updateBar();
+    }
+    function updateBar() {
+      var checked = document.querySelectorAll('.row-check:checked').length;
+      var bar = document.getElementById('deleteBar');
+      document.getElementById('selectedCount').textContent = checked + '건 선택됨';
+      bar.classList.toggle('show', checked > 0);
+    }
+    function clearSelection() {
+      document.querySelectorAll('.row-check, #checkAll').forEach(c => c.checked = false);
+      updateBar();
+    }
+    </script>
 
     <!-- 페이지네이션 -->
     {% if total_pages > 1 %}

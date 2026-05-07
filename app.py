@@ -2119,6 +2119,18 @@ def portal_wardy():
         page=page, total_pages=total_pages, total=total,
         api_key=os.getenv("APP_API_KEY","tsl-app-key-2025"))
 
+@app.route("/portal/wardy/delete", methods=["POST"])
+@login_required
+def portal_wardy_delete():
+    ids = request.form.getlist("ids")
+    if not ids:
+        flash("삭제할 항목을 선택해주세요.")
+        return redirect(url_for("portal_wardy"))
+    for eid in ids:
+        sb("DELETE", "wardy_events", params=f"?id=eq.{eid}")
+    flash(f"{len(ids)}건 삭제됐습니다.")
+    return redirect(url_for("portal_wardy"))
+
 @app.route("/portal/wardy/export")
 @login_required
 def portal_wardy_export():
