@@ -35,7 +35,13 @@
       "Bash(python3 -c \"import pandas; print\\('pandas available'\\)\")",
       "PowerShell(python -m pip install openpyxl -q 2>&1)",
       "PowerShell(tail -5)",
-      "mcp__Claude_in_Chrome__tabs_context_mcp"
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "Bash(python)",
+      "Bash(ls -la \"C:\\\\Users\\\\hpark\\\\Downloads\\\\\" | grep -i xlsx)",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\hpark\\\\Downloads\\\\\" | Where-Object { $_.Extension -eq '.xlsx' })",
+      "Bash(cat)",
+      "Bash(python /tmp/analyze_excel.py)",
+      "Bash(python *)"
     ]
   },
   "hooks": {
