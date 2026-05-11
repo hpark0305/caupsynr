@@ -1228,6 +1228,27 @@ def portal_project_export_range(project_id):
     return Response(output.getvalue(), mimetype="text/csv;charset=utf-8-sig",
         headers={"Content-Disposition":f"attachment;filename={safe}_range_{datetime.now().strftime('%Y%m%d')}.csv"})
 
+# ── Excel 시트 목록 미리보기 (AJAX) ──────────────────
+@app.route('/portal/projects/<project_id>/upload/sheets', methods=['POST'])
+@login_required
+def portal_project_upload_sheets(project_id):
+    import tempfile, openpyxl
+    f = request.files.get('file')
+    if not f or not f.filename.lower().endswith('.xlsx'):
+        return jsonify({"sheets": []})
+    tmp_fd, tmppath = tempfile.mkstemp(suffix='.xlsx')
+    os.close(tmp_fd)
+    try:
+        f.save(tmppath)
+        wb = openpyxl.load_workbook(tmppath, read_only=True)
+        sheets = wb.sheetnames
+        wb.close()
+        return jsonify({"sheets": sheets})
+    except:
+        return jsonify({"sheets": []})
+    finally:
+        if os.path.exists(tmppath): os.unlink(tmppath)
+
 @app.route('/portal/projects/<project_id>/upload', methods=['POST'])
 @login_required
 def portal_project_upload(project_id):
@@ -1240,6 +1261,7 @@ def portal_project_upload(project_id):
 
     original_name = f.filename
     fname_lower = original_name.lower()
+    sheet_name = request.form.get('sheet_name', '').strip()
     rows = []
     tmppath = None
 
@@ -1251,16 +1273,21 @@ def portal_project_upload(project_id):
             reader = csv.DictReader(io.StringIO(content))
             rows = list(reader)
         elif fname_lower.endswith('.xlsx'):
-            # NamedTemporaryFile을 닫은 후 저장 (Windows 파일 잠금 방지)
             tmp_fd, tmppath = tempfile.mkstemp(suffix='.xlsx')
             os.close(tmp_fd)
             f.seek(0); f.save(tmppath)
             wb = openpyxl.load_workbook(tmppath, read_only=True, data_only=True)
-            ws = wb.active
+            # 시트 선택: 지정된 시트명 → 없으면 첫 번째 시트
+            if sheet_name and sheet_name in wb.sheetnames:
+                ws = wb[sheet_name]
+            else:
+                ws = wb.active
             headers = [str(c.value or '').strip() for c in next(ws.iter_rows(max_row=1))]
+            # 빈 헤더 제거
+            headers = [h if h else f'col_{i}' for i, h in enumerate(headers)]
             for row in ws.iter_rows(min_row=2, values_only=True):
                 if any(v is not None for v in row):
-                    rows.append({headers[i]: (str(v).strip() if v is not None else '') for i, v in enumerate(row)})
+                    rows.append({headers[i]: (str(v).strip() if v is not None else '') for i, v in enumerate(row) if i < len(headers)})
             wb.close()
         elif fname_lower.endswith('.xls'):
             flash('.xls 형식은 지원하지 않아요. Excel에서 "다른 이름으로 저장 → .xlsx"로 변환 후 다시 업로드해주세요.')

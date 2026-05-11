@@ -85,12 +85,44 @@
         <div style="display:flex;justify-content:flex-end;margin-bottom:14px;"><form action="{{ url_for('portal_project_delete', project_id=project.id) }}" method="POST" onsubmit="return confirm('프로젝트를 삭제할까요? 모든 데이터가 함께 삭제됩니다.')"><button type="submit" style="font-size:.8rem;color:#c0392b;background:none;border:1px solid #c0392b;padding:6px 12px;border-radius:8px;cursor:pointer;">프로젝트 삭제</button></form></div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;margin-bottom:14px;">
       <p style="font-size:.85rem;font-weight:600;margin-bottom:10px;">Excel/CSV 일괄 업로드</p>
-      <form action="{{ url_for('portal_project_upload', project_id=project.id) }}" method="POST" enctype="multipart/form-data" style="display:flex;gap:10px;align-items:center;">
+      <form action="{{ url_for('portal_project_upload', project_id=project.id) }}" method="POST" enctype="multipart/form-data" id="uploadForm">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-         <input type="file" name="file" accept=".csv,.xlsx,.xls" style="font-size:.83rem;flex:1;">
-        <button type="submit" class="btn btn-outline" style="font-size:.83rem;white-space:nowrap;">업로드</button>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <input type="file" name="file" accept=".csv,.xlsx,.xls" id="uploadFileInput" style="font-size:.83rem;flex:1;min-width:180px;" onchange="onUploadFileChange(this)">
+          <div id="sheetSelectorWrap" style="display:none;align-items:center;gap:6px;">
+            <label style="font-size:.8rem;color:var(--muted);white-space:nowrap;">시트 선택:</label>
+            <select name="sheet_name" id="sheetSelector" style="font-size:.82rem;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);"></select>
+          </div>
+          <button type="submit" class="btn btn-outline" style="font-size:.83rem;white-space:nowrap;">업로드</button>
+        </div>
       </form>
-      <p style="font-size:.75rem;color:var(--muted);margin-top:8px;">컬럼: code, gender, age, group, phase, notes + 변수명들</p>
+      <p style="font-size:.75rem;color:var(--muted);margin-top:8px;">컬럼: code, gender, age, group, phase, notes + 변수명들 | xlsx 파일은 시트를 선택할 수 있습니다.</p>
+      <script>
+      function onUploadFileChange(input) {
+        var wrap = document.getElementById('sheetSelectorWrap');
+        var sel = document.getElementById('sheetSelector');
+        sel.innerHTML = '';
+        wrap.style.display = 'none';
+        if (!input.files || !input.files[0]) return;
+        var fname = input.files[0].name.toLowerCase();
+        if (!fname.endsWith('.xlsx')) return;
+        var fd = new FormData();
+        fd.append('file', input.files[0]);
+        fd.append('csrf_token', document.querySelector('[name=csrf_token]').value);
+        fetch('{{ url_for("portal_project_upload_sheets", project_id=project.id) }}', {method:'POST', body:fd})
+          .then(function(r){return r.json();})
+          .then(function(d){
+            if (d.sheets && d.sheets.length > 1) {
+              d.sheets.forEach(function(s){
+                var opt = document.createElement('option');
+                opt.value = s; opt.textContent = s;
+                sel.appendChild(opt);
+              });
+              wrap.style.display = 'flex';
+            }
+          }).catch(function(){});
+      }
+      </script>
       </div>
       💡 참여자 탭에서 참여자를 추가하고, 측정 데이터 탭에서 데이터를 입력하세요. 변수 설정 탭에서 측정 항목을 먼저 정의하면 더 체계적으로 관리할 수 있어요.
       </div>
