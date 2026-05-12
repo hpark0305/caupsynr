@@ -2163,11 +2163,16 @@ def portal_wardy():
     projects = sb("GET", "projects", params=f"?researcher_email=eq.{session['researcher']}&select=id,name") or []
     total_pages = max(1, -(-total // per_page))
 
+    # DB에 실제 존재하는 state 값으로 드롭다운 생성 (최대 2000건 샘플링)
+    state_rows = sb("GET", "wardy_events", params="?select=state&limit=2000&order=received_at.desc") or []
+    distinct_states = sorted(set(r.get("state", "") for r in state_rows if r.get("state")))
+
     return render_template("portal_wardy.html",
         researcher=session["researcher"],
         events=events, projects=projects,
         project_id=project_id, user_name=user_name, state=state,
         page=page, total_pages=total_pages, total=total,
+        distinct_states=distinct_states,
         api_key=os.getenv("APP_API_KEY","tsl-app-key-2025"))
 
 @app.route("/portal/wardy/delete", methods=["POST"])

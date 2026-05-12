@@ -65,9 +65,15 @@ input[type=checkbox]{cursor:pointer;width:15px;height:15px;}
         <label>이벤트 타입</label>
         <select name="state">
           <option value="">전체</option>
-          {% for s in ['login','module_select','level_select','game_start','give_up','time_over','game_complete','app_switch','app_return','app_exit'] %}
-          <option value="{{ s }}" {% if state == s %}selected{% endif %}>{{ s }}</option>
-          {% endfor %}
+          {% if distinct_states %}
+            {% for s in distinct_states %}
+            <option value="{{ s }}" {% if state == s %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+          {% else %}
+            {% for s in ['login','module_select','level_select','game_start','give_up','time_over','game_complete','app_switch','app_return','app_exit'] %}
+            <option value="{{ s }}" {% if state == s %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+          {% endif %}
         </select>
       </div>
       <button type="submit" class="btn btn-primary" style="padding:7px 18px;">필터 적용</button>
