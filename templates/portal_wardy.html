@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Wardy 이벤트 · 연구자 포털{% endblock %}
+{% block title %}App 이벤트 · 연구자 포털{% endblock %}
 {% block head %}
 <style>
 .portal-wrap{min-height:calc(100vh - var(--nav-h));background:var(--bg);}
@@ -34,7 +34,7 @@ input[type=checkbox]{cursor:pointer;width:15px;height:15px;}
     <div class="container portal-header-inner">
       <div>
         <span class="label" style="color:var(--accent-mid);display:block;margin-bottom:4px;">Researcher Portal</span>
-        <h1 style="color:#fff;font-size:1.6rem;margin:0;">Wardy 이벤트 로그</h1>
+        <h1 style="color:#fff;font-size:1.6rem;margin:0;">App 이벤트 로그</h1>
       </div>
       <div style="display:flex;gap:10px;align-items:center;">
         <a href="{{ url_for('portal_wardy_export', project_id=project_id, user_name=user_name, state=state) }}"
