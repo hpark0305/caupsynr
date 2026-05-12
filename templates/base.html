@@ -4,16 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Trauma Stress Lab · CAU{% endblock %}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Nunito+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <!-- Three.js for hero neural network -->
+  <script src="https://unpkg.com/three@0.160.0/build/three.min.js" defer></script>
+  <script src="{{ url_for('static', filename='js/neural.js') }}" defer></script>
   {% block head %}{% endblock %}
 </head>
 <body>
 <script>
   (function(){
-    var t = localStorage.getItem('theme') || 'light';
+    var t = localStorage.getItem('theme') || 'dark';
     document.documentElement.setAttribute('data-theme', t);
   })();
 </script>
@@ -38,7 +38,7 @@
       <a href="{{ url_for('contact') }}"      {% if request.endpoint=='contact' %}class="active"{% endif %}>Contact</a>
       <a href="{{ url_for('login') }}"        class="nav-cta {% if request.endpoint=='login' %}active{% endif %}">🔒 Researcher Portal</a>
     </nav>
-    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode">☀</button>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">☀</button>
     <button class="menu-btn" id="menu-btn" aria-label="Menu">☰</button>
   </div>
 </header>
@@ -47,7 +47,7 @@
 {% if messages %}
 <div style="max-width:960px;margin:.75rem auto;padding:0 1rem">
   {% for msg in messages %}
-  <div style="background:#d1fae5;border:1px solid #6ee7b7;border-radius:8px;padding:10px 16px;margin-bottom:8px;color:#065f46;font-size:.9rem;">{{ msg }}</div>
+  <div style="background:rgba(94,230,168,0.12);border:1px solid rgba(94,230,168,0.35);border-radius:10px;padding:10px 16px;margin-bottom:8px;color:#5ee6a8;font-size:.88rem;">{{ msg }}</div>
   {% endfor %}
 </div>
 {% endif %}
@@ -99,18 +99,17 @@
     btn.textContent = nav.classList.contains('open') ? '✕' : '☰';
   });
 
-  // Dark mode toggle
+  // Theme toggle — dark default, light = white/violet mode
   const themeToggle = document.getElementById('theme-toggle');
   function applyTheme(t) {
     document.documentElement.setAttribute('data-theme', t);
-    themeToggle.textContent = t === 'dark' ? '☀' : '🌙';
+    themeToggle.textContent = t === 'light' ? '🌙' : '☀';
     localStorage.setItem('theme', t);
   }
-  // Set correct icon on load
-  applyTheme(document.documentElement.getAttribute('data-theme') || 'light');
+  applyTheme(document.documentElement.getAttribute('data-theme') || 'dark');
   themeToggle.addEventListener('click', () => {
     const current = document.documentElement.getAttribute('data-theme');
-    applyTheme(current === 'dark' ? 'light' : 'dark');
+    applyTheme(current === 'light' ? 'dark' : 'light');
   });
 
   // Auto-inject CSRF token into all POST forms
