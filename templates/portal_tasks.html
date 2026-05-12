@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+{% block title %}일정 관리 · 연구자 포털{% endblock %}
+{% block head %}
+<style>
+.portal-wrap{min-height:calc(100vh - var(--nav-h));background:var(--bg);}
+.portal-header{background:var(--dark);padding:24px 0;border-bottom:1px solid rgba(255,255,255,.08);}
+.portal-header-inner{display:flex;justify-content:space-between;align-items:center;}
+
+/* 칸반 보드 */
+.board{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start;}
+@media(max-width:768px){.board{grid-template-columns:1fr;}}
+.col-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.col-header{padding:12px 16px;font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;justify-content:space-between;}
+.col-todo  .col-header{background:#f3f4f6;color:#6b7280;}
+.col-doing .col-header{background:#eff6ff;color:#1d4ed8;}
+.col-done  .col-header{background:#f0fdf4;color:#15803d;}
+.col-body{padding:10px;min-height:80px;display:flex;flex-direction:column;gap:8px;}
+.task-card{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;cursor:pointer;transition:box-shadow .15s;}
+.task-card:hover{box-shadow:0 2px 12px rgba(0,0,0,.08);}
+.task-title{font-size:.86rem;font-weight:600;color:var(--dark);margin-bottom:6px;line-height:1.4;}
+.task-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+.task-badge{font-size:.7rem;padding:2px 7px;border-radius:100px;font-weight:600;}
+.pri-high  {background:#fee2e2;color:#991b1b;}
+.pri-normal{background:#dbeafe;color:#1e40af;}
+.pri-low   {background:#f3f4f6;color:#6b7280;}
+.task-proj {font-size:.7rem;color:var(--muted);}
+.task-due  {font-size:.7rem;color:var(--muted);}
+.task-due.overdue{color:#dc2626;font-weight:600;}
+.task-assignee{font-size:.7rem;color:var(--accent);}
+
+/* 새 태스크 버튼 */
+.add-task-btn{display:flex;align-items:center;gap:6px;font-size:.8rem;color:var(--muted);padding:8px 10px;border-radius:6px;cursor:pointer;margin:4px;}
+.add-task-btn:hover{background:var(--bg);color:var(--accent);}
+
+/* 모달 */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal-box{background:var(--surface);border-radius:var(--radius-lg);padding:28px;width:100%;max-width:520px;margin:20px;max-height:90vh;overflow-y:auto;}
+.modal-box h3{font-family:'Nunito',sans-serif;font-size:1.1rem;font-weight:700;margin-bottom:20px;}
+
+/* 필터 바 */
+.filter-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:20px;}
+.filter-row select,.filter-row input{padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:.82rem;background:var(--bg);}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="portal-wrap">
+  <div class="portal-header">
+    <div class="container portal-header-inner">
+      <div>
+        <a href="{{ url_for('portal') }}" style="color:rgba(255,255,255,.4);font-size:.78rem;text-decoration:none;">← 포털</a>
+        <h1 style="color:#fff;font-size:1.5rem;margin:6px 0 2px;">📅 일정 관리</h1>
+        <span style="color:rgba(255,255,255,.4);font-size:.8rem;">프로젝트별 태스크 & 마일스톤</span>
+      </div>
+      <button onclick="openNew()" class="btn btn-primary" style="font-size:.82rem;padding:8px 18px;">+ 태스크 추가</button>
+    </div>
+  </div>
+
+  <div class="container" style="padding-top:24px;padding-bottom:60px;">
+
+    <!-- 필터 -->
+    <div class="filter-row">
+      <select id="f-project" onchange="applyFilter()">
+        <option value="">전체 프로젝트</option>
+        {% for p in projects %}
+        <option value="{{ p.id }}">{{ p.name }}</option>
+        {% endfor %}
+      </select>
+      <select id="f-assignee" onchange="applyFilter()">
+        <option value="">전체 담당자</option>
+        {% for m in members %}
+        <option value="{{ m }}">{{ m }}</option>
+        {% endfor %}
+      </select>
+      <input type="text" id="f-search" placeholder="태스크 검색…" oninput="applyFilter()" style="min-width:160px;">
+    </div>
+
+    <!-- 칸반 보드 -->
+    <div class="board" id="board">
+      {% for col_id, col_label in [('todo','할 일'),('doing','진행 중'),('done','완료')] %}
+      <div class="col-wrap col-{{ col_id }}" id="col-{{ col_id }}">
+        <div class="col-header">
+          <span>{{ col_label }}</span>
+          <span class="col-count" id="cnt-{{ col_id }}">0</span>
+        </div>
+        <div class="col-body" id="body-{{ col_id }}">
+          {% for t in tasks if t.get('status','todo') == col_id %}
+          {% set today = namespace(v='') %}
+          <div class="task-card" onclick="openEdit({{ t | tojson }})"
+               data-id="{{ t.id }}" data-status="{{ t.status }}"
+               data-project="{{ t.project_id or '' }}" data-assignee="{{ t.assigned_to or '' }}"
+               data-title="{{ t.title }}">
+            <div class="task-title">{{ t.title }}</div>
+            <div class="task-meta">
+              <span class="task-badge pri-{{ t.priority or 'normal' }}">
+                {% if t.priority == 'high' %}🔴 긴급{% elif t.priority == 'low' %}🔵 낮음{% else %}🟡 보통{% endif %}
+              </span>
+              {% if t.project_name %}<span class="task-proj">📁 {{ t.project_name }}</span>{% endif %}
+              {% if t.due_date %}<span class="task-due {% if t.due_date < now_date %}overdue{% endif %}">📅 {{ t.due_date }}</span>{% endif %}
+              {% if t.assigned_to %}<span class="task-assignee">👤 {{ t.assigned_to.split('@')[0] }}</span>{% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="add-task-btn" onclick="openNew('{{ col_id }}')">+ 추가</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- 빈 상태 -->
+    {% if not tasks %}
+    <div id="empty-state" style="text-align:center;padding:60px 20px;color:var(--muted);">
+      <div style="font-size:2.5rem;margin-bottom:12px;">📋</div>
+      <div style="font-weight:600;margin-bottom:6px;">등록된 태스크가 없어요</div>
+      <div style="font-size:.83rem;">오른쪽 위 "태스크 추가" 버튼으로 첫 태스크를 만들어보세요.</div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+<!-- ── 태스크 추가 모달 ── -->
+<div class="modal-overlay" id="new-modal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal-box">
+    <h3>새 태스크</h3>
+    <form action="{{ url_for('portal_task_new') }}" method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="status" id="new-status" value="todo">
+      <div class="form-group">
+        <label>제목 *</label>
+        <input type="text" name="title" placeholder="태스크 제목…" required>
+      </div>
+      <div class="form-group">
+        <label>프로젝트</label>
+        <select name="project_id" style="width:100%">
+          <option value="">없음</option>
+          {% for p in projects %}
+          <option value="{{ p.id }}">{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-group">
+          <label>담당자</label>
+          <select name="assigned_to" style="width:100%">
+            <option value="">없음</option>
+            {% for m in members %}
+            <option value="{{ m }}">{{ m }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>마감일</label>
+          <input type="date" name="due_date" style="width:100%">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-group">
+          <label>우선순위</label>
+          <select name="priority" style="width:100%">
+            <option value="normal">🟡 보통</option>
+            <option value="high">🔴 긴급</option>
+            <option value="low">🔵 낮음</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>상태</label>
+          <select name="status" id="new-status-sel" style="width:100%">
+            <option value="todo">할 일</option>
+            <option value="doing">진행 중</option>
+            <option value="done">완료</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>설명</label>
+        <textarea name="description" placeholder="세부 내용…" style="min-height:70px;"></textarea>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px;">
+        <button type="button" class="btn btn-outline" onclick="document.getElementById('new-modal').classList.remove('open')">취소</button>
+        <button type="submit" class="btn btn-primary">추가</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── 태스크 편집 모달 ── -->
+<div class="modal-overlay" id="edit-modal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+      <h3 style="margin:0;">태스크 편집</h3>
+      <form id="delete-form" method="POST" onsubmit="return confirm('삭제할까요?')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" style="font-size:.8rem;color:#dc2626;background:none;border:1px solid #dc2626;padding:5px 12px;border-radius:6px;cursor:pointer;">삭제</button>
+      </form>
+    </div>
+    <form id="edit-form" method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-group">
+        <label>제목 *</label>
+        <input type="text" name="title" id="edit-title" required>
+      </div>
+      <div class="form-group">
+        <label>프로젝트</label>
+        <select name="project_id" id="edit-project" style="width:100%">
+          <option value="">없음</option>
+          {% for p in projects %}
+          <option value="{{ p.id }}">{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-group">
+          <label>담당자</label>
+          <select name="assigned_to" id="edit-assignee" style="width:100%">
+            <option value="">없음</option>
+            {% for m in members %}
+            <option value="{{ m }}">{{ m }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>마감일</label>
+          <input type="date" name="due_date" id="edit-due">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-group">
+          <label>우선순위</label>
+          <select name="priority" id="edit-priority" style="width:100%">
+            <option value="normal">🟡 보통</option>
+            <option value="high">🔴 긴급</option>
+            <option value="low">🔵 낮음</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>상태</label>
+          <select name="status" id="edit-status" style="width:100%">
+            <option value="todo">할 일</option>
+            <option value="doing">진행 중</option>
+            <option value="done">완료</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>설명</label>
+        <textarea name="description" id="edit-desc" style="min-height:70px;"></textarea>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px;">
+        <button type="button" class="btn btn-outline" onclick="document.getElementById('edit-modal').classList.remove('open')">취소</button>
+        <button type="submit" class="btn btn-primary">저장</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+var NOW_DATE = "{{ now_date }}";
+
+function openNew(status) {
+  document.getElementById('new-status-sel').value = status || 'todo';
+  document.getElementById('new-modal').classList.add('open');
+}
+
+function openEdit(task) {
+  var editUrl = '/portal/tasks/' + task.id + '/edit';
+  var delUrl  = '/portal/tasks/' + task.id + '/delete';
+  document.getElementById('edit-form').action = editUrl;
+  document.getElementById('delete-form').action = delUrl;
+  document.getElementById('edit-title').value    = task.title || '';
+  document.getElementById('edit-desc').value     = task.description || '';
+  document.getElementById('edit-due').value      = task.due_date || '';
+  document.getElementById('edit-priority').value = task.priority || 'normal';
+  document.getElementById('edit-status').value   = task.status || 'todo';
+  // project
+  var ps = document.getElementById('edit-project');
+  for (var i=0;i<ps.options.length;i++) if(ps.options[i].value==(task.project_id||'')) ps.selectedIndex=i;
+  // assignee
+  var as = document.getElementById('edit-assignee');
+  for (var i=0;i<as.options.length;i++) if(as.options[i].value==(task.assigned_to||'')) as.selectedIndex=i;
+  document.getElementById('edit-modal').classList.add('open');
+}
+
+function applyFilter() {
+  var proj = document.getElementById('f-project').value;
+  var asgn = document.getElementById('f-assignee').value;
+  var srch = document.getElementById('f-search').value.toLowerCase();
+  var cards = document.querySelectorAll('.task-card');
+  var counts = {todo:0,doing:0,done:0};
+  cards.forEach(function(c){
+    var ok = true;
+    if (proj && c.dataset.project !== proj) ok = false;
+    if (asgn && c.dataset.assignee !== asgn) ok = false;
+    if (srch && c.dataset.title.toLowerCase().indexOf(srch) < 0) ok = false;
+    c.style.display = ok ? '' : 'none';
+    if (ok) counts[c.dataset.status]++;
+  });
+  ['todo','doing','done'].forEach(function(s){
+    var el = document.getElementById('cnt-' + s);
+    if (el) el.textContent = counts[s];
+  });
+}
+
+// 초기 카운트
+document.addEventListener('DOMContentLoaded', function(){ applyFilter(); });
+
+// Esc 닫기
+document.addEventListener('keydown', function(e){
+  if (e.key==='Escape') document.querySelectorAll('.modal-overlay').forEach(function(m){m.classList.remove('open');});
+});
+</script>
+{% endblock %}

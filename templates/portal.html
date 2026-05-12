@@ -4,26 +4,45 @@
 {% block head %}
 <style>
 .portal-wrap{min-height:calc(100vh - var(--nav-h));background:var(--bg);}
-.portal-header{background:var(--dark);padding:28px 0;border-bottom:1px solid rgba(255,255,255,.08);}
+.portal-header{background:var(--dark);padding:24px 0;border-bottom:1px solid rgba(255,255,255,.08);}
 .portal-header-inner{display:flex;justify-content:space-between;align-items:center;}
-.portal-nav{background:var(--surface);border-bottom:1px solid var(--border);}
-.portal-nav-inner{display:flex;align-items:center;gap:2px;padding:0 28px;}
-.pnav-btn{font-size:.82rem;font-weight:500;padding:12px 16px;color:var(--muted);border-bottom:2px solid transparent;transition:all .15s;text-decoration:none;display:block;}
+
+/* ── 포털 네비게이션 ── */
+.portal-nav{background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:var(--nav-h,60px);z-index:50;}
+.portal-nav-inner{display:flex;align-items:stretch;gap:0;padding:0 20px;overflow-x:auto;scrollbar-width:none;}
+.portal-nav-inner::-webkit-scrollbar{display:none;}
+.pnav-btn{font-size:.82rem;font-weight:500;padding:10px 14px;color:var(--muted);border-bottom:2px solid transparent;transition:color .15s,border-color .15s;text-decoration:none;display:flex;align-items:center;gap:5px;white-space:nowrap;}
 .pnav-btn:hover{color:var(--dark);}
 .pnav-btn.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600;}
-.project-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin-top:28px;}
-.project-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;cursor:pointer;transition:all .2s;text-decoration:none;display:block;}
+/* 드롭다운 */
+.pnav-drop{position:relative;display:flex;align-items:stretch;}
+.pnav-drop-btn{cursor:pointer;background:none;border:none;font-family:inherit;font-size:.82rem;font-weight:500;padding:10px 14px;color:var(--muted);border-bottom:2px solid transparent;transition:color .15s;white-space:nowrap;display:flex;align-items:center;gap:5px;}
+.pnav-drop-btn:hover{color:var(--dark);}
+.pnav-drop-btn .arrow{font-size:.65rem;transition:transform .2s;}
+.pnav-drop:hover .arrow{transform:rotate(180deg);}
+.pnav-drop-menu{display:none;position:absolute;top:100%;left:0;background:var(--surface);border:1px solid var(--border);border-radius:0 0 10px 10px;min-width:170px;box-shadow:0 8px 24px rgba(0,0,0,.10);z-index:100;}
+.pnav-drop:hover .pnav-drop-menu{display:block;}
+.pnav-drop-menu a{display:block;padding:9px 16px;font-size:.81rem;color:var(--muted);text-decoration:none;border-bottom:1px solid var(--border-light);white-space:nowrap;}
+.pnav-drop-menu a:last-child{border-bottom:none;}
+.pnav-drop-menu a:hover{background:var(--bg);color:var(--accent);}
+
+/* ── 프로젝트 그리드 ── */
+.project-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin-top:24px;}
+.project-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:22px;cursor:pointer;transition:all .2s;text-decoration:none;display:block;}
 .project-card:hover{box-shadow:0 4px 20px rgba(0,0,0,.08);transform:translateY(-2px);border-color:var(--accent);}
-.project-card-new{border:1.5px dashed var(--border);background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:160px;gap:10px;color:var(--muted);}
+.project-card-new{border:1.5px dashed var(--border);background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:150px;gap:10px;color:var(--muted);}
 .project-card-new:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-light);}
-.project-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin-bottom:12px;}
-.project-name{font-family:'Nunito',sans-serif;font-size:1rem;font-weight:700;color:var(--dark);margin-bottom:4px;}
-.project-desc{font-size:.8rem;color:var(--muted);margin-bottom:12px;line-height:1.5;}
-.project-meta{display:flex;gap:12px;font-size:.75rem;color:var(--muted);}
+.project-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;margin-bottom:10px;}
+.project-name{font-family:'Nunito',sans-serif;font-size:.95rem;font-weight:700;color:var(--dark);margin-bottom:4px;}
+.project-desc{font-size:.79rem;color:var(--muted);margin-bottom:10px;line-height:1.5;}
+.project-meta{display:flex;gap:10px;font-size:.74rem;color:var(--muted);flex-wrap:wrap;}
+.app-badge{display:inline-block;font-size:.7rem;font-weight:600;padding:2px 8px;border-radius:100px;background:var(--accent-light);color:var(--accent);margin-bottom:8px;}
+
+/* ── 모달 ── */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center;}
 .modal-overlay.open{display:flex;}
 .modal-box{background:var(--surface);border-radius:var(--radius-lg);padding:32px;width:100%;max-width:480px;margin:20px;}
-.modal-box h3{font-family:'Nunito',sans-serif;font-size:1.2rem;font-weight:700;margin-bottom:20px;}
+.modal-box h3{font-family:'Nunito',sans-serif;font-size:1.15rem;font-weight:700;margin-bottom:20px;}
 </style>
 {% endblock %}
 
@@ -33,42 +52,65 @@
     <div class="container portal-header-inner">
       <div>
         <span class="label" style="color:var(--accent-mid);display:block;margin-bottom:4px;">Researcher Portal</span>
-        <h1 style="color:#fff;font-size:1.6rem;margin:0;">내 프로젝트</h1>
+        <h1 style="color:#fff;font-size:1.5rem;margin:0;">내 프로젝트</h1>
       </div>
       <div style="display:flex;align-items:center;gap:14px;">
-        <span style="color:rgba(255,255,255,.45);font-size:.83rem;">{{ researcher }}</span>
-        <a href="{{ url_for('logout') }}" class="btn btn-outline" style="font-size:.8rem;padding:7px 14px;color:rgba(255,255,255,.7);border-color:rgba(255,255,255,.2);">로그아웃</a>
+        <span style="color:rgba(255,255,255,.45);font-size:.82rem;">{{ researcher }}</span>
+        <a href="{{ url_for('logout') }}" class="btn btn-outline" style="font-size:.78rem;padding:6px 12px;color:rgba(255,255,255,.7);border-color:rgba(255,255,255,.2);">로그아웃</a>
       </div>
     </div>
   </div>
 
+  <!-- ── 포털 네비게이션 ── -->
   <div class="portal-nav">
     <div class="container portal-nav-inner">
-      <a href="{{ url_for('portal') }}" class="pnav-btn active">프로젝트</a>
-      <a href="{{ url_for('portal_all_participants') }}" class="pnav-btn">전체 참여자</a>
-      <a href="{{ url_for('portal_all_sessions') }}" class="pnav-btn">전체 세션</a>
-      <a href="{{ url_for('portal_merge') }}" class="pnav-btn">프로젝트 병합</a>
-      <a href="{{ url_for('portal_files') }}" class="pnav-btn">📁 파일 관리</a>
-      <a href="{{ url_for('portal_settings') }}" class="pnav-btn">설정</a>
-      <a href="{{ url_for('portal_news') }}" class="pnav-btn">📣 공지 관리</a>
-      <a href="{{ url_for('portal_contacts') }}" class="pnav-btn">✉ 문의 수신함</a>
-      <a href="{{ url_for('portal_wardy') }}" class="pnav-btn">🎮 Wardy 로그</a>
-      <a href="{{ url_for('api_docs') }}" class="pnav-btn">📖 API 문서</a>
-      <a href="{{ url_for('portal_audit') }}" class="pnav-btn">🗒 감사 로그</a>
+
+      <!-- 1. 프로젝트 (현재 페이지) -->
+      <a href="{{ url_for('portal') }}" class="pnav-btn active">🗂 프로젝트</a>
+
+      <!-- 2. 데이터 드롭다운 -->
+      <div class="pnav-drop">
+        <button class="pnav-drop-btn">📊 데이터 <span class="arrow">▾</span></button>
+        <div class="pnav-drop-menu">
+          <a href="{{ url_for('portal_all_participants') }}">전체 참여자</a>
+          <a href="{{ url_for('portal_all_sessions') }}">전체 세션</a>
+          <a href="{{ url_for('portal_merge') }}">프로젝트 병합</a>
+          <a href="{{ url_for('portal_files') }}">📁 파일 관리</a>
+        </div>
+      </div>
+
+      <!-- 3. 일정(태스크) -->
+      <a href="{{ url_for('portal_tasks') }}" class="pnav-btn">📅 일정</a>
+
+      <!-- 4. Wardy 로그 -->
+      <a href="{{ url_for('portal_wardy') }}" class="pnav-btn">🎮 Wardy</a>
+
+      <!-- 5. 관리 드롭다운 -->
+      <div class="pnav-drop">
+        <button class="pnav-drop-btn">⚙️ 관리 <span class="arrow">▾</span></button>
+        <div class="pnav-drop-menu">
+          <a href="{{ url_for('portal_news') }}">📣 공지 관리</a>
+          <a href="{{ url_for('portal_contacts') }}">✉ 문의 수신함</a>
+          <a href="{{ url_for('portal_settings') }}">설정</a>
+          <a href="{{ url_for('portal_audit') }}">🗒 감사 로그</a>
+          <a href="{{ url_for('api_docs') }}">📖 API 문서</a>
+        </div>
+      </div>
+
     </div>
   </div>
 
-  <div class="container" style="padding-top:8px;padding-bottom:60px;">
-    <div style="display:flex;gap:24px;padding:20px 0;border-bottom:1px solid var(--border-light);margin-bottom:4px;">
-      <div style="font-size:.85rem;color:var(--muted);">프로젝트 <strong style="color:var(--dark);">{{ projects|length }}</strong>개</div>
-      <div style="font-size:.85rem;color:var(--muted);">총 참여자 <strong style="color:var(--dark);">{{ total_participants }}</strong>명</div>
-      <div style="font-size:.85rem;color:var(--muted);">총 측정 <strong style="color:var(--dark);">{{ total_measurements }}</strong>건</div>
+  <div class="container" style="padding-top:12px;padding-bottom:60px;">
+    <div style="display:flex;gap:24px;padding:16px 0;border-bottom:1px solid var(--border-light);margin-bottom:4px;flex-wrap:wrap;">
+      <div style="font-size:.84rem;color:var(--muted);">프로젝트 <strong style="color:var(--dark);">{{ projects|length }}</strong>개</div>
+      <div style="font-size:.84rem;color:var(--muted);">총 참여자 <strong style="color:var(--dark);">{{ total_participants }}</strong>명</div>
+      <div style="font-size:.84rem;color:var(--muted);">총 측정 <strong style="color:var(--dark);">{{ total_measurements }}</strong>건</div>
     </div>
 
     <div class="project-grid">
       <div class="project-card project-card-new" onclick="document.getElementById('new-project-modal').classList.add('open')">
         <div style="width:40px;height:40px;border-radius:50%;border:2px dashed currentColor;display:flex;align-items:center;justify-content:center;font-size:1.4rem;">+</div>
-        <span style="font-size:.88rem;font-weight:600;">새 프로젝트</span>
+        <span style="font-size:.86rem;font-weight:600;">새 프로젝트</span>
       </div>
 
       {% set proj_colors = ['#0F6B6B','#1a237e','#4a148c','#1b5e20','#e65100','#880e4f','#006064'] %}
@@ -76,8 +118,9 @@
       {% set color = proj_colors[loop.index0 % proj_colors|length] %}
       <a href="{{ url_for('portal_project', project_id=p.id) }}" class="project-card">
         <div class="project-icon" style="background:{{ color }}22;">
-          <span style="font-size:1.3rem;">🗂</span>
+          <span style="font-size:1.2rem;">🗂</span>
         </div>
+        {% if p.app_type %}<span class="app-badge">{{ p.app_type }}</span>{% endif %}
         <div class="project-name">{{ p.name }}</div>
         <div class="project-desc">{{ (p.description or '설명 없음')[:60] }}{% if p.description and p.description|length > 60 %}…{% endif %}</div>
         <div class="project-meta">
@@ -91,10 +134,12 @@
   </div>
 </div>
 
+<!-- ── 새 프로젝트 모달 ── -->
 <div class="modal-overlay" id="new-project-modal" onclick="if(event.target===this)this.classList.remove('open')">
   <div class="modal-box">
     <h3>새 프로젝트 만들기</h3>
     <form action="{{ url_for('portal_project_new') }}" method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-group">
         <label>프로젝트 이름 *</label>
         <input type="text" name="name" placeholder="예: PLS 효과성 연구 2026" required>
@@ -111,6 +156,7 @@
           <option value="Mobile TLS">Mobile TLS</option>
           <option value="Mind Therapy">Mind Therapy</option>
           <option value="NeuroBreezy">NeuroBreezy</option>
+          <option value="Wardy">Wardy</option>
           <option value="기타">기타</option>
         </select>
       </div>

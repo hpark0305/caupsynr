@@ -183,6 +183,30 @@ def init_db():
                 due_offset_days INTEGER DEFAULT 0,
                 sort_order INTEGER DEFAULT 0
             );
+            CREATE TABLE IF NOT EXISTS tasks (
+                id TEXT PRIMARY KEY,
+                project_id TEXT,
+                title TEXT NOT NULL,
+                description TEXT,
+                assigned_to TEXT,
+                due_date TEXT,
+                status TEXT DEFAULT 'todo',
+                priority TEXT DEFAULT 'normal',
+                created_by TEXT,
+                created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now','localtime')),
+                updated_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now','localtime'))
+            );
+            CREATE TABLE IF NOT EXISTS wardy_events (
+                id TEXT PRIMARY KEY,
+                project_id TEXT,
+                user_name TEXT NOT NULL,
+                seq INTEGER,
+                event_time TEXT,
+                state TEXT NOT NULL,
+                game_level TEXT,
+                data TEXT DEFAULT '{}',
+                received_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now','localtime'))
+            );
         ''')
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA synchronous=NORMAL")
@@ -248,7 +272,7 @@ _ALLOWED_TABLES = {
     'projects','project_participants','measurements','project_variables',
     'portal_files','accounts','news','research_topics_extra','contact_messages',
     'sessions','audit_log','project_collaborators','reset_tokens','project_protocols',
-    'wardy_events',
+    'wardy_events','tasks',
 }
 
 def _safe_col(col):
@@ -2109,7 +2133,7 @@ def api_wardy_events():
             "user_name":   str(ev.get("user_name", "")).strip(),
             "seq":         ev.get("seq") or ev.get("order"),
             "event_time":  ev.get("time") or ev.get("event_time"),
-            "state":       str(ev.get("state", "")).strip(),
+            "state":       str(ev.get("state", "")).lower().strip(),
             "game_level":  ev.get("gameLevel") or ev.get("game_level"),
             "data":        ev.get("data") or {},
         })
@@ -2126,10 +2150,10 @@ def portal_wardy():
     page       = max(1, int(request.args.get("page", 1)))
     per_page   = 100
 
-    params = "?order=received_at.desc"
+    params = "?select=*&order=received_at.desc"
     if project_id: params += f"&project_id=eq.{project_id}"
     if user_name:  params += f"&user_name=ilike.{user_name}%25"
-    if state:      params += f"&state=eq.{state}"
+    if state:      params += f"&state=ilike.{state}"
 
     total  = _sb_count("wardy_events", params)
     offset = (page - 1) * per_page
@@ -2165,10 +2189,10 @@ def portal_wardy_export():
     user_name  = request.args.get("user_name", "").strip()
     state      = request.args.get("state", "").strip()
 
-    params = "?order=received_at.asc"
+    params = "?select=*&order=received_at.asc"
     if project_id: params += f"&project_id=eq.{project_id}"
     if user_name:  params += f"&user_name=ilike.{user_name}%25"
-    if state:      params += f"&state=eq.{state}"
+    if state:      params += f"&state=ilike.{state}"
 
     events = sb("GET", "wardy_events", params=params) or []
 
@@ -2392,6 +2416,90 @@ def portal_research_edit(key):
 def portal_contacts():
     msgs = sb("GET", "contact_messages", params="?order=created_at.desc") or []
     return render_template("portal_contacts.html", messages=msgs, researcher=session["researcher"])
+
+# ── 태스크(일정) 관리 ─────────────────────────────────────
+@app.route("/portal/tasks")
+@login_required
+def portal_tasks():
+    me = session["researcher"]
+    # 내 프로젝트 + 협력자 프로젝트
+    my_projects = sb("GET", "projects", params=f"?researcher_email=eq.{me}&select=id,name") or []
+    collab_rows = sb("GET", "project_collaborators", params=f"?researcher_email=eq.{me}&select=project_id") or []
+    collab_pids = [r["project_id"] for r in collab_rows]
+    if collab_pids:
+        for pid in collab_pids:
+            row = sb("GET", "projects", params=f"?id=eq.{pid}&select=id,name")
+            if row: my_projects += row
+    proj_map = {p["id"]: p["name"] for p in my_projects}
+    pids = list(proj_map.keys())
+
+    all_tasks = []
+    for pid in pids:
+        rows = sb("GET", "tasks", params=f"?project_id=eq.{pid}&order=due_date.asc") or []
+        for r in rows:
+            r["project_name"] = proj_map.get(pid, "")
+        all_tasks += rows
+
+    accounts = sb("GET", "accounts", params="?select=email") or []
+    members = [a["email"] for a in accounts]
+    now_date = datetime.utcnow().strftime("%Y-%m-%d")
+    return render_template("portal_tasks.html",
+        researcher=me, tasks=all_tasks,
+        projects=my_projects, members=members,
+        now_date=now_date)
+
+@app.route("/portal/tasks/new", methods=["POST"])
+@login_required
+def portal_task_new():
+    me = session["researcher"]
+    data = {
+        "title":       request.form.get("title", "").strip(),
+        "project_id":  request.form.get("project_id") or None,
+        "description": request.form.get("description", "").strip(),
+        "assigned_to": request.form.get("assigned_to", "").strip() or None,
+        "due_date":    request.form.get("due_date", "").strip() or None,
+        "status":      request.form.get("status", "todo"),
+        "priority":    request.form.get("priority", "normal"),
+        "created_by":  me,
+    }
+    if not data["title"]:
+        flash("태스크 제목을 입력하세요.")
+        return redirect(url_for("portal_tasks"))
+    sb("POST", "tasks", data=data)
+    flash("태스크를 추가했습니다.")
+    return redirect(url_for("portal_tasks"))
+
+@app.route("/portal/tasks/<task_id>/status", methods=["POST"])
+@login_required
+@csrf.exempt
+def portal_task_status(task_id):
+    new_status = request.get_json(silent=True) or {}
+    status = new_status.get("status", "todo")
+    sb("PATCH", "tasks", data={"status": status, "updated_at": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")},
+       params=f"?id=eq.{task_id}")
+    return jsonify({"ok": True})
+
+@app.route("/portal/tasks/<task_id>/edit", methods=["POST"])
+@login_required
+def portal_task_edit(task_id):
+    sb("PATCH", "tasks", data={
+        "title":       request.form.get("title", "").strip(),
+        "description": request.form.get("description", "").strip(),
+        "assigned_to": request.form.get("assigned_to", "").strip() or None,
+        "due_date":    request.form.get("due_date", "").strip() or None,
+        "priority":    request.form.get("priority", "normal"),
+        "status":      request.form.get("status", "todo"),
+        "updated_at":  datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"),
+    }, params=f"?id=eq.{task_id}")
+    flash("태스크가 수정됐습니다.")
+    return redirect(url_for("portal_tasks"))
+
+@app.route("/portal/tasks/<task_id>/delete", methods=["POST"])
+@login_required
+def portal_task_delete(task_id):
+    sb("DELETE", "tasks", params=f"?id=eq.{task_id}")
+    flash("태스크를 삭제했습니다.")
+    return redirect(url_for("portal_tasks"))
 
 @app.route("/portal/audit")
 @login_required
