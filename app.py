@@ -2396,6 +2396,15 @@ def portal_news_delete(news_id):
     flash("공지가 삭제됐어요.")
     return redirect(url_for("portal_news"))
 
+# ── Analytics Dashboard ───────────────────────────────
+@app.route("/portal/analytics")
+@login_required
+def portal_analytics():
+    email = session["researcher"]
+    projects = sb("GET", "projects", params=f"?researcher_email=eq.{email}&order=created_at.desc") or []
+    return render_template("portal_analytics.html", researcher=email,
+        projects=projects if isinstance(projects, list) else [])
+
 # ── API documentation ─────────────────────────────────
 @app.route("/api/docs")
 @login_required
