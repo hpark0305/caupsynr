@@ -3,156 +3,828 @@
 
 {% block head %}
 <style>
-.portal-wrap{min-height:calc(100vh - var(--nav-h));background:var(--bg);}
-/* Portal header */
-.portal-header{background:#09090f;padding:22px 0;border-bottom:1px solid rgba(255,255,255,.07);}
-.portal-header-inner{display:flex;justify-content:space-between;align-items:center;}
+/* ── Linear-style 3-panel layout ── */
+.lin-wrap {
+  display: flex;
+  height: calc(100vh - var(--nav-h, 72px));
+  overflow: hidden;
+  background: var(--bg);
+  position: relative;
+}
 
-/* Portal nav — Notion/iOS style */
-.portal-nav{background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:var(--nav-h,72px);z-index:50;}
-.portal-nav-inner{display:flex;align-items:stretch;gap:0;padding:0 20px;overflow-x:auto;scrollbar-width:none;}
-.portal-nav-inner::-webkit-scrollbar{display:none;}
-.pnav-btn{font-family:var(--font-body);font-size:.82rem;font-weight:500;padding:11px 14px;color:var(--fg-3);border-bottom:2px solid transparent;transition:color .15s,border-color .15s;text-decoration:none;display:flex;align-items:center;gap:5px;white-space:nowrap;}
-.pnav-btn:hover{color:var(--fg-1);}
-.pnav-btn.active{color:var(--violet-soft);border-bottom-color:var(--violet);font-weight:600;}
-/* 드롭다운 */
-.pnav-drop{position:relative;display:flex;align-items:stretch;}
-.pnav-drop-btn{cursor:pointer;background:none;border:none;font-family:var(--font-body);font-size:.82rem;font-weight:500;padding:11px 14px;color:var(--fg-3);border-bottom:2px solid transparent;transition:color .15s;white-space:nowrap;display:flex;align-items:center;gap:5px;}
-.pnav-drop-btn:hover,.pnav-drop.open .pnav-drop-btn{color:var(--fg-1);}
-.pnav-drop-btn .arrow{font-size:.65rem;transition:transform .2s;}
-.pnav-drop:hover .arrow,.pnav-drop.open .arrow{transform:rotate(180deg);}
-.pnav-drop-menu{display:none;position:absolute;top:100%;left:0;background:var(--surface2);border:1px solid var(--line-strong);border-radius:0 0 12px 12px;min-width:190px;box-shadow:0 12px 40px rgba(0,0,0,.5);backdrop-filter:blur(16px);z-index:200;}
-.pnav-drop:hover .pnav-drop-menu,.pnav-drop.open .pnav-drop-menu{display:block;}
-.pnav-drop-menu a{display:flex;align-items:center;gap:8px;padding:11px 16px;font-size:.82rem;font-family:var(--font-body);color:var(--fg-2);text-decoration:none;border-bottom:1px solid var(--border);white-space:nowrap;transition:color .1s,background .1s;}
-.pnav-drop-menu a:last-child{border-bottom:none;}
-.pnav-drop-menu a:hover{background:rgba(124,111,224,.12);color:var(--violet-soft);}
+/* ── Sidebar ── */
+.lin-sidebar {
+  width: 232px;
+  min-width: 232px;
+  height: 100%;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.lin-sidebar-top {
+  padding: 14px 10px 10px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.lin-workspace {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  border-radius: 9px;
+  cursor: default;
+}
+.lin-workspace-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--violet, #7c6fe0), #4fc3f7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .9rem;
+  color: #fff;
+  font-weight: 900;
+  flex-shrink: 0;
+  letter-spacing: -.02em;
+}
+.lin-workspace-name {
+  font-size: .84rem;
+  font-weight: 700;
+  color: var(--fg-1, #fff);
+  letter-spacing: -.01em;
+  line-height: 1.2;
+}
+.lin-workspace-user {
+  font-size: .7rem;
+  color: var(--fg-4, rgba(255,255,255,.35));
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 150px;
+}
 
-/* Project grid */
-.project-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin-top:24px;}
-.project-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:22px;cursor:pointer;transition:border-color .2s,transform .15s,box-shadow .2s;text-decoration:none;display:block;}
-.project-card:hover{box-shadow:0 8px 32px rgba(124,111,224,.18);transform:translateY(-3px);border-color:var(--violet);}
-.project-card-new{border:1.5px dashed var(--border);background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:150px;gap:10px;color:var(--fg-4);}
-.project-card-new:hover{border-color:var(--violet);color:var(--violet-soft);background:rgba(124,111,224,.06);}
-.project-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;margin-bottom:10px;}
-.project-name{font-family:var(--font-body);font-size:.95rem;font-weight:700;color:var(--fg-1);margin-bottom:5px;letter-spacing:-0.01em;}
-.project-desc{font-size:.79rem;color:var(--fg-3);margin-bottom:12px;line-height:1.55;}
-.project-meta{display:flex;gap:10px;font-size:.73rem;color:var(--fg-4);flex-wrap:wrap;}
-.app-badge{display:inline-block;font-size:.7rem;font-weight:600;padding:3px 10px;border-radius:100px;background:rgba(124,111,224,.16);color:var(--violet-soft);margin-bottom:8px;}
+.lin-sidebar-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border, rgba(255,255,255,.08)) transparent;
+}
+.lin-sidebar-bottom {
+  padding: 8px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
 
-/* Modal */
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(8px);z-index:200;align-items:center;justify-content:center;}
-.modal-overlay.open{display:flex;}
-.modal-box{background:var(--surface2);border:1px solid var(--line-strong);border-radius:var(--radius-lg);padding:32px;width:100%;max-width:480px;margin:20px;box-shadow:0 24px 80px rgba(0,0,0,.6);}
-.modal-box h3{font-family:var(--font-body);font-size:1.1rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:22px;color:var(--fg-1);}
+/* Nav items */
+.lin-nav-section { margin-bottom: 4px; }
+.lin-nav-label {
+  font-size: .66rem;
+  font-weight: 700;
+  color: var(--fg-4, rgba(255,255,255,.35));
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 8px 14px 3px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.lin-nav-label-btn {
+  background: none;
+  border: none;
+  color: var(--fg-4, rgba(255,255,255,.35));
+  cursor: pointer;
+  font-size: .9rem;
+  line-height: 1;
+  padding: 1px 4px;
+  border-radius: 4px;
+  transition: color .1s, background .1s;
+}
+.lin-nav-label-btn:hover { color: var(--fg-1); background: rgba(124,111,224,.12); }
+
+.lin-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  font-size: .81rem;
+  color: var(--fg-3, rgba(255,255,255,.6));
+  text-decoration: none;
+  border-radius: 8px;
+  margin: 1px 6px;
+  cursor: pointer;
+  transition: background .12s, color .12s;
+  user-select: none;
+}
+.lin-nav-item:hover { background: rgba(124,111,224,.09); color: var(--fg-1); }
+.lin-nav-item.active {
+  background: rgba(124,111,224,.16);
+  color: var(--violet-soft, #a89af0);
+  font-weight: 600;
+}
+.lin-nav-icon { font-size: .82rem; width: 18px; text-align: center; flex-shrink: 0; }
+.lin-nav-arrow {
+  margin-left: auto;
+  font-size: .58rem;
+  color: var(--fg-4);
+  transition: transform .2s;
+}
+.lin-nav-item.expanded .lin-nav-arrow { transform: rotate(90deg); }
+
+.lin-sub-group { display: none; }
+.lin-sub-group.open { display: block; }
+.lin-nav-sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px 5px 36px;
+  font-size: .78rem;
+  color: var(--fg-3);
+  text-decoration: none;
+  border-radius: 7px;
+  margin: 1px 6px;
+  cursor: pointer;
+  transition: background .12s, color .12s;
+}
+.lin-nav-sub:hover { background: rgba(124,111,224,.08); color: var(--fg-1); }
+
+/* Project list in sidebar */
+.lin-proj-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.lin-proj-sidebar {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 5px 10px 5px 14px;
+  font-size: .78rem;
+  color: var(--fg-3);
+  border-radius: 7px;
+  margin: 1px 6px;
+  cursor: pointer;
+  transition: background .12s, color .12s;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.lin-proj-sidebar:hover { background: rgba(124,111,224,.09); color: var(--fg-1); }
+.lin-proj-sidebar.selected {
+  background: rgba(124,111,224,.16);
+  color: var(--violet-soft, #a89af0);
+  font-weight: 600;
+}
+.lin-proj-sidebar .sb-name { overflow: hidden; text-overflow: ellipsis; flex: 1; }
+
+/* ── Center list panel ── */
+.lin-list {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+  border-right: 1px solid var(--border);
+}
+.lin-list-header {
+  padding: 14px 20px 11px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.lin-list-title {
+  font-size: .92rem;
+  font-weight: 700;
+  color: var(--fg-1);
+  letter-spacing: -.02em;
+}
+.lin-count-badge {
+  font-size: .7rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 100px;
+  background: var(--border);
+  color: var(--fg-3);
+}
+.lin-list-actions { margin-left: auto; display: flex; gap: 6px; }
+.lin-btn-sm {
+  background: none;
+  border: 1.5px solid var(--border);
+  color: var(--fg-3);
+  border-radius: 8px;
+  padding: 5px 11px;
+  font-size: .77rem;
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: all .15s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  text-decoration: none;
+}
+.lin-btn-sm:hover { border-color: var(--violet); color: var(--violet-soft); }
+.lin-btn-sm.primary {
+  background: var(--violet, #7c6fe0);
+  border-color: var(--violet, #7c6fe0);
+  color: #fff;
+  font-weight: 600;
+}
+.lin-btn-sm.primary:hover { background: #6b5fd0; border-color: #6b5fd0; }
+
+.lin-list-scroll { flex: 1; overflow-y: auto; }
+
+/* Stats strip */
+.lin-stats-strip {
+  display: flex;
+  gap: 0;
+  padding: 10px 20px 6px;
+  border-bottom: 1px solid var(--border);
+}
+.lin-stat {
+  padding: 4px 18px 4px 0;
+  font-size: .78rem;
+  color: var(--fg-4);
+}
+.lin-stat strong { color: var(--fg-1); font-weight: 700; }
+
+/* Group label */
+.lin-group-label {
+  font-size: .68rem;
+  font-weight: 700;
+  color: var(--fg-4);
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  padding: 10px 20px 4px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.lin-group-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* Project rows */
+.lin-proj-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 20px;
+  cursor: pointer;
+  transition: background .1s;
+  position: relative;
+  border-bottom: 1px solid var(--border-light, rgba(255,255,255,.03));
+}
+.lin-proj-row:hover { background: rgba(124,111,224,.06); }
+.lin-proj-row.selected { background: rgba(124,111,224,.1); }
+.lin-proj-row.selected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  background: var(--violet, #7c6fe0);
+  border-radius: 0 3px 3px 0;
+}
+
+.lin-row-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .88rem;
+  flex-shrink: 0;
+}
+.lin-row-name {
+  font-size: .84rem;
+  font-weight: 600;
+  color: var(--fg-1);
+  letter-spacing: -.01em;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lin-row-app {
+  font-size: .68rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 100px;
+  background: rgba(124,111,224,.15);
+  color: var(--violet-soft, #a89af0);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.lin-row-meta {
+  display: flex;
+  gap: 14px;
+  font-size: .72rem;
+  color: var(--fg-4);
+  flex-shrink: 0;
+}
+.lin-row-meta span { display: flex; align-items: center; gap: 3px; }
+
+/* Empty state */
+.lin-empty {
+  padding: 64px 24px;
+  text-align: center;
+  color: var(--fg-4);
+}
+.lin-empty-icon { font-size: 2.4rem; margin-bottom: 14px; }
+.lin-empty-title { font-size: .9rem; font-weight: 600; color: var(--fg-2); margin-bottom: 6px; }
+.lin-empty-sub { font-size: .8rem; margin-bottom: 20px; }
+
+/* ── Right detail panel ── */
+.lin-detail {
+  width: 0;
+  min-width: 0;
+  height: 100%;
+  background: var(--surface);
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: width .22s cubic-bezier(.4,0,.2,1);
+}
+.lin-detail.open { width: 300px; }
+.lin-detail-inner {
+  width: 300px;
+  height: 100%;
+  overflow-y: auto;
+  padding: 20px 18px 40px;
+}
+
+.lin-detail-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+.lin-detail-close {
+  background: none;
+  border: none;
+  color: var(--fg-4);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: color .1s, background .1s;
+  line-height: 1;
+}
+.lin-detail-close:hover { color: var(--fg-1); background: var(--border); }
+.lin-open-btn {
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--violet-soft);
+  background: rgba(124,111,224,.12);
+  border: none;
+  border-radius: 7px;
+  padding: 4px 10px;
+  cursor: pointer;
+  text-decoration: none;
+  font-family: var(--font-body);
+  transition: background .12s;
+}
+.lin-open-btn:hover { background: rgba(124,111,224,.22); }
+
+.lin-detail-proj-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  margin-bottom: 10px;
+}
+.lin-detail-proj-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--fg-1);
+  letter-spacing: -.02em;
+  line-height: 1.3;
+  margin-bottom: 6px;
+}
+.lin-detail-proj-desc {
+  font-size: .78rem;
+  color: var(--fg-3);
+  line-height: 1.65;
+  margin-bottom: 16px;
+}
+
+.lin-stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  margin-bottom: 16px;
+}
+.lin-stat-chip {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.lin-stat-chip-val {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--fg-1);
+  letter-spacing: -.04em;
+  line-height: 1;
+}
+.lin-stat-chip-label {
+  font-size: .67rem;
+  color: var(--fg-4);
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+.lin-fields { margin-bottom: 16px; }
+.lin-field {
+  display: flex;
+  align-items: center;
+  padding: 7px 0;
+  gap: 10px;
+  font-size: .79rem;
+  border-bottom: 1px solid var(--border-light, rgba(255,255,255,.04));
+}
+.lin-field:last-child { border-bottom: none; }
+.lin-field-label { color: var(--fg-4); min-width: 70px; font-size: .74rem; }
+.lin-field-val { color: var(--fg-1); font-weight: 500; }
+
+.lin-divider { height: 1px; background: var(--border); margin: 14px 0; }
+
+.lin-actions { display: flex; flex-direction: column; gap: 6px; }
+.lin-action {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 13px;
+  border-radius: 9px;
+  font-size: .81rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background .12s, color .12s, border-color .12s;
+  border: 1.5px solid var(--border);
+  color: var(--fg-2);
+  background: none;
+  width: 100%;
+  text-align: left;
+  font-family: var(--font-body);
+}
+.lin-action:hover { border-color: var(--violet); color: var(--violet-soft); background: rgba(124,111,224,.06); }
+.lin-action.primary {
+  background: var(--violet, #7c6fe0);
+  border-color: var(--violet, #7c6fe0);
+  color: #fff;
+}
+.lin-action.primary:hover { background: #6b5fd0; border-color: #6b5fd0; }
+
+/* ── Modal ── */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.52);
+  backdrop-filter: blur(14px);
+  z-index: 500;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal-box {
+  background: rgba(255,255,255,0.97);
+  border-radius: 22px;
+  padding: 28px 26px 22px;
+  width: 100%;
+  max-width: 460px;
+  margin: 20px;
+  box-shadow: 0 32px 80px rgba(0,0,0,.25);
+  color: #1a1a2e;
+}
+.modal-box h3 {
+  font-family: var(--font-body);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  margin-bottom: 20px;
+  color: #1a1a2e;
+}
+.modal-box label {
+  display: block;
+  font-size: .77rem;
+  font-weight: 600;
+  color: #5a5a7a;
+  margin-bottom: 6px;
+}
+.modal-box input,
+.modal-box textarea,
+.modal-box select {
+  width: 100%;
+  padding: 10px 13px;
+  border: 1.5px solid rgba(0,0,0,.1);
+  border-radius: 11px;
+  font-size: .88rem;
+  background: rgba(118,118,128,.07);
+  color: #1a1a2e;
+  font-family: var(--font-body);
+  outline: none;
+  transition: border-color .15s;
+  box-sizing: border-box;
+}
+.modal-box input:focus,
+.modal-box textarea:focus,
+.modal-box select:focus { border-color: var(--violet, #7c6fe0); }
+.modal-form-group { margin-bottom: 14px; }
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .lin-sidebar { width: 200px; min-width: 200px; }
+  .lin-detail.open { width: 260px; }
+  .lin-detail-inner { width: 260px; }
+}
+@media (max-width: 640px) {
+  .lin-sidebar { display: none; }
+  .lin-row-meta { display: none; }
+  .lin-detail.open {
+    width: 100%;
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 20;
+  }
+  .lin-detail-inner { width: 100%; }
+}
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="portal-wrap">
-  <div class="portal-header">
-    <div class="container portal-header-inner">
-      <div>
-        <span class="label" style="color:var(--accent-mid);display:block;margin-bottom:4px;">Researcher Portal</span>
-        <h1 style="color:#fff;font-size:1.5rem;margin:0;">내 프로젝트</h1>
-      </div>
-      <div style="display:flex;align-items:center;gap:14px;">
-        <span style="color:rgba(255,255,255,.45);font-size:.82rem;">{{ researcher }}</span>
-        <a href="{{ url_for('logout') }}" class="btn btn-outline" style="font-size:.78rem;padding:6px 12px;color:rgba(255,255,255,.7);border-color:rgba(255,255,255,.2);">로그아웃</a>
+<div class="lin-wrap">
+
+  <!-- ══════════════════════════════
+       LEFT SIDEBAR
+  ══════════════════════════════ -->
+  <aside class="lin-sidebar">
+
+    <!-- Workspace header -->
+    <div class="lin-sidebar-top">
+      <div class="lin-workspace">
+        <div class="lin-workspace-icon">T</div>
+        <div style="min-width:0;">
+          <div class="lin-workspace-name">TSL Portal</div>
+          <div class="lin-workspace-user">{{ researcher }}</div>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- ── 포털 네비게이션 ── -->
-  <div class="portal-nav">
-    <div class="container portal-nav-inner">
+    <div class="lin-sidebar-scroll">
 
-      <!-- 1. 프로젝트 (현재 페이지) -->
-      <a href="{{ url_for('portal') }}" class="pnav-btn active">🗂 프로젝트</a>
+      <!-- ── Main navigation ── -->
+      <div class="lin-nav-section" style="padding-top:4px;">
 
-      <!-- 2. 데이터 드롭다운 -->
-      <div class="pnav-drop">
-        <button class="pnav-drop-btn">📊 데이터 <span class="arrow">▾</span></button>
-        <div class="pnav-drop-menu">
-          <a href="{{ url_for('portal_all_participants') }}">전체 참여자</a>
-          <a href="{{ url_for('portal_all_sessions') }}">전체 세션</a>
-          <a href="{{ url_for('portal_merge') }}">프로젝트 병합</a>
-          <a href="{{ url_for('portal_files') }}">📁 파일 관리</a>
+        <a href="{{ url_for('portal') }}" class="lin-nav-item active">
+          <span class="lin-nav-icon">🗂</span>
+          <span>프로젝트</span>
+        </a>
+
+        <!-- 데이터 expandable -->
+        <div class="lin-nav-item" id="nav-data" onclick="toggleNav('data')">
+          <span class="lin-nav-icon">📊</span>
+          <span>데이터</span>
+          <span class="lin-nav-arrow">▶</span>
+        </div>
+        <div class="lin-sub-group" id="sub-data">
+          <a href="{{ url_for('portal_all_participants') }}" class="lin-nav-sub">전체 참여자</a>
+          <a href="{{ url_for('portal_all_sessions') }}" class="lin-nav-sub">전체 세션</a>
+          <a href="{{ url_for('portal_merge') }}" class="lin-nav-sub">프로젝트 병합</a>
+          <a href="{{ url_for('portal_files') }}" class="lin-nav-sub">📁 파일 관리</a>
+        </div>
+
+        <a href="{{ url_for('portal_tasks') }}" class="lin-nav-item">
+          <span class="lin-nav-icon">📅</span>
+          <span>일정</span>
+        </a>
+        <a href="{{ url_for('portal_wardy') }}" class="lin-nav-item">
+          <span class="lin-nav-icon">📱</span>
+          <span>App 로그</span>
+        </a>
+        <a href="{{ url_for('portal_analytics') }}" class="lin-nav-item">
+          <span class="lin-nav-icon">📈</span>
+          <span>분석</span>
+        </a>
+
+        <!-- 관리 expandable -->
+        <div class="lin-nav-item" id="nav-admin" onclick="toggleNav('admin')">
+          <span class="lin-nav-icon">⚙️</span>
+          <span>관리</span>
+          <span class="lin-nav-arrow">▶</span>
+        </div>
+        <div class="lin-sub-group" id="sub-admin">
+          <a href="{{ url_for('portal_news') }}" class="lin-nav-sub">📣 공지 관리</a>
+          <a href="{{ url_for('portal_contacts') }}" class="lin-nav-sub">✉ 문의 수신함</a>
+          <a href="{{ url_for('portal_settings') }}" class="lin-nav-sub">설정</a>
+          <a href="{{ url_for('portal_audit') }}" class="lin-nav-sub">🗒 감사 로그</a>
+          <a href="{{ url_for('api_docs') }}" class="lin-nav-sub">📖 API 문서</a>
         </div>
       </div>
 
-      <!-- 3. 일정(태스크) -->
-      <a href="{{ url_for('portal_tasks') }}" class="pnav-btn">📅 일정</a>
+      <!-- ── Project list in sidebar ── -->
+      <div class="lin-nav-section" style="margin-top:14px;">
+        <div class="lin-nav-label">
+          <span>프로젝트</span>
+          <button class="lin-nav-label-btn" onclick="document.getElementById('new-project-modal').classList.add('open')" title="새 프로젝트">＋</button>
+        </div>
 
-      <!-- 4. Wardy 로그 -->
-      <a href="{{ url_for('portal_wardy') }}" class="pnav-btn">📱 App</a>
-      <a href="{{ url_for('portal_analytics') }}" class="pnav-btn">📈 분석</a>
+        {% set proj_colors = ['#7c6fe0','#4fc3f7','#f97316','#22c55e','#ec4899','#f59e0b','#06b6d4'] %}
+        {% for p in projects %}
+        {% set color = proj_colors[loop.index0 % proj_colors|length] %}
+        <div class="lin-proj-sidebar"
+             id="sb-{{ p.id }}"
+             data-pid="{{ p.id }}"
+             onclick="selectByEl(this)">
+          <span class="lin-proj-dot" style="background:{{ color }};"></span>
+          <span class="sb-name">{{ p.name }}</span>
+        </div>
+        {% endfor %}
 
-      <!-- 5. 관리 드롭다운 -->
-      <div class="pnav-drop">
-        <button class="pnav-drop-btn">⚙️ 관리 <span class="arrow">▾</span></button>
-        <div class="pnav-drop-menu">
-          <a href="{{ url_for('portal_news') }}">📣 공지 관리</a>
-          <a href="{{ url_for('portal_contacts') }}">✉ 문의 수신함</a>
-          <a href="{{ url_for('portal_settings') }}">설정</a>
-          <a href="{{ url_for('portal_audit') }}">🗒 감사 로그</a>
-          <a href="{{ url_for('api_docs') }}">📖 API 문서</a>
+        <div class="lin-proj-sidebar" style="opacity:.55;"
+             onclick="document.getElementById('new-project-modal').classList.add('open')">
+          <span style="font-size:.75rem;width:8px;text-align:center;line-height:1;">+</span>
+          <span>새 프로젝트</span>
         </div>
       </div>
 
-    </div>
-  </div>
+    </div><!-- /sidebar-scroll -->
 
-  <div class="container" style="padding-top:12px;padding-bottom:60px;">
-    <div style="display:flex;gap:24px;padding:16px 0;border-bottom:1px solid var(--border-light);margin-bottom:4px;flex-wrap:wrap;">
-      <div style="font-size:.84rem;color:var(--muted);">프로젝트 <strong style="color:var(--dark);">{{ projects|length }}</strong>개</div>
-      <div style="font-size:.84rem;color:var(--muted);">총 참여자 <strong style="color:var(--dark);">{{ total_participants }}</strong>명</div>
-      <div style="font-size:.84rem;color:var(--muted);">총 측정 <strong style="color:var(--dark);">{{ total_measurements }}</strong>건</div>
+    <!-- Bottom: logout -->
+    <div class="lin-sidebar-bottom">
+      <a href="{{ url_for('logout') }}" class="lin-nav-item" style="margin:0;">
+        <span class="lin-nav-icon" style="font-size:.8rem;">↩</span>
+        <span style="font-size:.79rem;">로그아웃</span>
+      </a>
     </div>
 
-    <div class="project-grid">
-      <div class="project-card project-card-new" onclick="document.getElementById('new-project-modal').classList.add('open')">
-        <div style="width:40px;height:40px;border-radius:50%;border:2px dashed currentColor;display:flex;align-items:center;justify-content:center;font-size:1.4rem;">+</div>
-        <span style="font-size:.86rem;font-weight:600;">새 프로젝트</span>
+  </aside><!-- /sidebar -->
+
+
+  <!-- ══════════════════════════════
+       CENTER LIST
+  ══════════════════════════════ -->
+  <div class="lin-list">
+
+    <div class="lin-list-header">
+      <span class="lin-list-title">내 프로젝트</span>
+      <span class="lin-count-badge">{{ projects|length }}</span>
+      <div class="lin-list-actions">
+        <button class="lin-btn-sm primary"
+                onclick="document.getElementById('new-project-modal').classList.add('open')">
+          ＋ 새 프로젝트
+        </button>
+      </div>
+    </div>
+
+    <div class="lin-list-scroll">
+
+      <!-- Stats strip -->
+      <div class="lin-stats-strip">
+        <div class="lin-stat">프로젝트 <strong>{{ projects|length }}</strong></div>
+        <div class="lin-stat">총 참여자 <strong>{{ total_participants }}명</strong></div>
+        <div class="lin-stat">총 측정 <strong>{{ total_measurements }}건</strong></div>
       </div>
 
-      {% set proj_colors = ['#0F6B6B','#1a237e','#4a148c','#1b5e20','#e65100','#880e4f','#006064'] %}
+      <div class="lin-group-label">전체</div>
+
+      {% set proj_colors = ['#7c6fe0','#4fc3f7','#f97316','#22c55e','#ec4899','#f59e0b','#06b6d4'] %}
       {% for p in projects %}
       {% set color = proj_colors[loop.index0 % proj_colors|length] %}
-      <a href="{{ url_for('portal_project', project_id=p.id) }}" class="project-card">
-        <div class="project-icon" style="background:{{ color }}22;">
-          <span style="font-size:1.2rem;">🗂</span>
+      <div class="lin-proj-row"
+           id="row-{{ p.id }}"
+           data-pid="{{ p.id }}"
+           data-name="{{ p.name|e }}"
+           data-desc="{{ (p.description or '')|e }}"
+           data-app="{{ (p.app_type or '')|e }}"
+           data-participants="{{ p.participant_count }}"
+           data-measurements="{{ p.measurement_count }}"
+           data-date="{{ p.created_at[:10] }}"
+           data-color="{{ color }}"
+           onclick="selectByEl(this)">
+        <div class="lin-row-icon" style="background:{{ color }}22;">🗂</div>
+        <div class="lin-row-name">{{ p.name }}</div>
+        {% if p.app_type %}<span class="lin-row-app">{{ p.app_type }}</span>{% endif %}
+        <div class="lin-row-meta">
+          <span>👥 {{ p.participant_count }}</span>
+          <span>📊 {{ p.measurement_count }}</span>
+          <span>{{ p.created_at[:10] }}</span>
         </div>
-        {% if p.app_type %}<span class="app-badge">{{ p.app_type }}</span>{% endif %}
-        <div class="project-name">{{ p.name }}</div>
-        <div class="project-desc">{{ (p.description or '설명 없음')[:60] }}{% if p.description and p.description|length > 60 %}…{% endif %}</div>
-        <div class="project-meta">
-          <span>👥 {{ p.participant_count }}명</span>
-          <span>📊 {{ p.measurement_count }}건</span>
-          <span>📅 {{ p.created_at[:10] }}</span>
-        </div>
-      </a>
+      </div>
       {% endfor %}
-    </div>
-  </div>
-</div>
 
-<!-- ── 새 프로젝트 모달 ── -->
-<div class="modal-overlay" id="new-project-modal" onclick="if(event.target===this)this.classList.remove('open')">
+      {% if not projects %}
+      <div class="lin-empty">
+        <div class="lin-empty-icon">🗂</div>
+        <div class="lin-empty-title">프로젝트가 없어요</div>
+        <div class="lin-empty-sub">새 프로젝트를 만들어 연구를 시작해 보세요.</div>
+        <button class="lin-btn-sm primary" style="margin: 0 auto;"
+                onclick="document.getElementById('new-project-modal').classList.add('open')">
+          ＋ 새 프로젝트
+        </button>
+      </div>
+      {% endif %}
+
+    </div><!-- /list-scroll -->
+  </div><!-- /lin-list -->
+
+
+  <!-- ══════════════════════════════
+       RIGHT DETAIL PANEL
+  ══════════════════════════════ -->
+  <div class="lin-detail" id="detail-panel">
+    <div class="lin-detail-inner">
+
+      <div class="lin-detail-topbar">
+        <a class="lin-open-btn" id="detail-open-link" href="#">↗ 열기</a>
+        <button class="lin-detail-close" onclick="closeDetail()">✕</button>
+      </div>
+
+      <div class="lin-detail-proj-icon" id="detail-icon">🗂</div>
+      <div class="lin-detail-proj-name" id="detail-name">—</div>
+      <div class="lin-detail-proj-desc" id="detail-desc"></div>
+
+      <div class="lin-stat-grid">
+        <div class="lin-stat-chip">
+          <div class="lin-stat-chip-val" id="detail-participants">—</div>
+          <div class="lin-stat-chip-label">참여자</div>
+        </div>
+        <div class="lin-stat-chip">
+          <div class="lin-stat-chip-val" id="detail-measurements">—</div>
+          <div class="lin-stat-chip-label">측정 건수</div>
+        </div>
+      </div>
+
+      <div class="lin-divider"></div>
+
+      <div class="lin-fields">
+        <div class="lin-field">
+          <span class="lin-field-label">앱</span>
+          <span class="lin-field-val" id="detail-app">—</span>
+        </div>
+        <div class="lin-field">
+          <span class="lin-field-label">생성일</span>
+          <span class="lin-field-val" id="detail-date">—</span>
+        </div>
+        <div class="lin-field">
+          <span class="lin-field-label">상태</span>
+          <span class="lin-field-val" style="display:flex;align-items:center;gap:6px;">
+            <span style="width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block;flex-shrink:0;"></span>진행 중
+          </span>
+        </div>
+      </div>
+
+      <div class="lin-divider"></div>
+
+      <div class="lin-actions" id="detail-actions">
+        <!-- filled by JS -->
+      </div>
+
+    </div>
+  </div><!-- /detail -->
+
+</div><!-- /lin-wrap -->
+
+
+<!-- ══════════════════════════════
+     새 프로젝트 모달
+══════════════════════════════ -->
+<div class="modal-overlay" id="new-project-modal"
+     onclick="if(event.target===this)this.classList.remove('open')">
   <div class="modal-box">
     <h3>새 프로젝트 만들기</h3>
     <form action="{{ url_for('portal_project_new') }}" method="POST">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <div class="form-group">
+      <div class="modal-form-group">
         <label>프로젝트 이름 *</label>
         <input type="text" name="name" placeholder="예: PLS 효과성 연구 2026" required>
       </div>
-      <div class="form-group">
+      <div class="modal-form-group">
         <label>설명</label>
-        <textarea name="description" placeholder="연구 목적, 대상 등 간략히 입력…" style="min-height:80px;"></textarea>
+        <textarea name="description" rows="3"
+                  placeholder="연구 목적, 대상 등 간략히 입력…"
+                  style="resize:vertical;"></textarea>
       </div>
-      <div class="form-group">
+      <div class="modal-form-group">
         <label>관련 앱</label>
-        <select name="app_type" style="width:100%;padding:11px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;font-family:var(--font-body);font-size:.9rem;color:var(--text);outline:none;">
+        <select name="app_type">
           <option value="">선택 안 함</option>
           <option value="Mobile PLS">Mobile PLS</option>
           <option value="Mobile TLS">Mobile TLS</option>
@@ -162,28 +834,97 @@
           <option value="기타">기타</option>
         </select>
       </div>
-      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
-        <button type="button" class="btn btn-outline" onclick="document.getElementById('new-project-modal').classList.remove('open')">취소</button>
-        <button type="submit" class="btn btn-primary">만들기</button>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px;">
+        <button type="button" class="btn btn-outline"
+                onclick="document.getElementById('new-project-modal').classList.remove('open')"
+                style="font-size:.83rem;padding:8px 16px;">취소</button>
+        <button type="submit" class="btn btn-primary"
+                style="font-size:.83rem;padding:8px 20px;">만들기</button>
       </div>
     </form>
   </div>
 </div>
 {% endblock %}
+
 {% block scripts %}
 <script>
-// Modal Escape key
-document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open'));});
-// Portal nav dropdown — click toggle
-document.querySelectorAll('.pnav-drop-btn').forEach(btn=>{
-  btn.addEventListener('click',e=>{
-    e.stopPropagation();
-    const drop=btn.closest('.pnav-drop');
-    const wasOpen=drop.classList.contains('open');
-    document.querySelectorAll('.pnav-drop').forEach(d=>d.classList.remove('open'));
-    if(!wasOpen)drop.classList.add('open');
-  });
+// ── Project data store (from server-rendered rows) ──
+const projData = {};
+document.querySelectorAll('.lin-proj-row').forEach(el => {
+  projData[el.dataset.pid] = {
+    id:           el.dataset.pid,
+    name:         el.dataset.name,
+    desc:         el.dataset.desc,
+    app:          el.dataset.app,
+    participants: el.dataset.participants,
+    measurements: el.dataset.measurements,
+    date:         el.dataset.date,
+    color:        el.dataset.color,
+  };
 });
-document.addEventListener('click',()=>document.querySelectorAll('.pnav-drop').forEach(d=>d.classList.remove('open')));
+
+let selectedId = null;
+
+function selectByEl(el) {
+  const pid = el.dataset.pid;
+  if (pid && projData[pid]) selectProject(projData[pid]);
+}
+
+function selectProject(p) {
+  selectedId = p.id;
+
+  // Highlight sidebar items
+  document.querySelectorAll('.lin-proj-sidebar').forEach(el => el.classList.remove('selected'));
+  document.querySelectorAll('.lin-proj-row').forEach(el => el.classList.remove('selected'));
+  const sbEl = document.getElementById('sb-' + p.id);
+  const rowEl = document.getElementById('row-' + p.id);
+  if (sbEl)  sbEl.classList.add('selected');
+  if (rowEl) rowEl.classList.add('selected');
+
+  // Fill detail panel
+  const icon = document.getElementById('detail-icon');
+  icon.style.background = p.color + '28';
+  document.getElementById('detail-name').textContent         = p.name;
+  document.getElementById('detail-desc').textContent         = p.desc || '설명 없음';
+  document.getElementById('detail-participants').textContent  = p.participants;
+  document.getElementById('detail-measurements').textContent  = p.measurements;
+  document.getElementById('detail-app').textContent           = p.app  || '—';
+  document.getElementById('detail-date').textContent          = p.date;
+
+  const openUrl = '/portal/project/' + p.id;
+  document.getElementById('detail-open-link').href = openUrl;
+
+  document.getElementById('detail-actions').innerHTML = `
+    <a href="${openUrl}" class="lin-action primary">🔍 프로젝트 열기</a>
+    <a href="${openUrl}/participants" class="lin-action">👥 참여자 보기</a>
+    <a href="${openUrl}/stats" class="lin-action">📊 통계 보기</a>
+    <a href="${openUrl}/tests" class="lin-action">🧪 검사 항목</a>
+  `;
+
+  document.getElementById('detail-panel').classList.add('open');
+}
+
+function closeDetail() {
+  document.getElementById('detail-panel').classList.remove('open');
+  selectedId = null;
+  document.querySelectorAll('.lin-proj-sidebar').forEach(el => el.classList.remove('selected'));
+  document.querySelectorAll('.lin-proj-row').forEach(el => el.classList.remove('selected'));
+}
+
+// Expandable nav groups
+function toggleNav(key) {
+  const btn   = document.getElementById('nav-' + key);
+  const group = document.getElementById('sub-' + key);
+  group.classList.toggle('open');
+  btn.classList.toggle('expanded');
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
+    closeDetail();
+  }
+});
 </script>
 {% endblock %}
