@@ -2454,8 +2454,8 @@ def portal_tasks():
             r["project_name"] = proj_map.get(pid, "")
         all_tasks += rows
 
-    accounts = sb("GET", "accounts", params="?select=email") or []
-    members = [a["email"] for a in accounts]
+    # 고정 멤버 목록 (연구실 구성원)
+    members = ["최윤정", "남궁혜인", "연지영", "이채영"]
     now_date = datetime.utcnow().strftime("%Y-%m-%d")
     return render_template("portal_tasks.html",
         researcher=me, tasks=all_tasks,
