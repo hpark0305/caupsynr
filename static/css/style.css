@@ -1,5 +1,5 @@
 /* ── Trauma Stress Lab · Dark Neural Design System ── */
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
 
 /* ─── Reset ─── */
@@ -59,10 +59,10 @@ ul { list-style: none; }
   --glow-violet:  0 0 24px rgba(124,111,224,0.55), 0 8px 32px rgba(124,111,224,0.30);
   --glow-cyan:    0 0 24px rgba(79,195,247,0.55),  0 8px 32px rgba(79,195,247,0.30);
 
-  /* ── Font families ── */
-  --font-display: "Instrument Serif", "Times New Roman", serif;
-  --font-body:    "Inter", "Pretendard", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
-  --font-kr:      "Pretendard", "Inter", -apple-system, sans-serif;
+  /* ── Font families (iOS / SF Pro style) ── */
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Pretendard", sans-serif;
+  --font-body:    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Pretendard", sans-serif;
+  --font-kr:      "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
   --font-mono:    ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
   /* ── Type scale ── */
@@ -206,26 +206,27 @@ body {
 
 h1, h2, h3, h4 {
   font-family: var(--font-display);
-  font-weight: 400;
-  line-height: 1.15;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
   color: var(--dark);
 }
-h1 { font-size: clamp(2.2rem, 5vw, 3.6rem); }
-h2 { font-size: clamp(1.7rem, 3.2vw, 2.6rem); }
-h3 { font-size: 1.4rem; }
-h4 { font-size: 1.1rem; font-weight: 500; }
+h1 { font-size: clamp(2rem, 5vw, 3.4rem); }
+h2 { font-size: clamp(1.6rem, 3vw, 2.4rem); }
+h3 { font-size: 1.3rem; font-weight: 600; }
+h4 { font-size: 1.05rem; font-weight: 600; }
 p  { color: var(--text); }
 
 .label {
   font-family: var(--font-body);
-  font-size: .73rem;
+  font-size: .68rem;
   font-weight: 600;
-  letter-spacing: .16em;
+  letter-spacing: .14em;
   text-transform: uppercase;
   color: var(--cyan);
 }
 
-em, i { font-family: var(--font-display); font-style: italic; color: var(--violet-soft); }
+em, i { font-style: italic; color: var(--violet-soft); }
 
 code { font-family: var(--font-mono); font-size: .9em; color: var(--cyan-soft); }
 
@@ -564,12 +565,12 @@ body::before {
 .hero-content .label { color: var(--cyan-soft); margin-bottom: 22px; display: block; }
 .hero-content h1 {
   font-family: var(--font-display);
-  font-size: var(--t-h1);
-  font-weight: 400;
+  font-size: clamp(2.4rem, 5.5vw, 4rem);
+  font-weight: 800;
   color: var(--fg-1);
   margin-bottom: 24px;
   line-height: 1.05;
-  letter-spacing: -.01em;
+  letter-spacing: -0.03em;
 }
 .hero-content p {
   font-size: 1.1rem;
@@ -686,10 +687,11 @@ body::before {
 .ri-card-body .label { margin-bottom: 8px; display: block; }
 .ri-card-body h3 {
   font-family: var(--font-display);
-  font-size: 1.3rem;
-  font-weight: 400;
+  font-size: 1.15rem;
+  font-weight: 700;
   color: var(--fg-1);
   margin-bottom: 10px;
+  letter-spacing: -0.02em;
 }
 .ri-card-desc {
   font-size: .88rem;
@@ -770,24 +772,36 @@ body::before {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   PAGE HERO (inner pages)
+   PAGE HERO (inner pages) — always dark bg, always white text
    ═══════════════════════════════════════════════════════════════ */
 .page-hero {
   background: linear-gradient(135deg, #0c0a1e 0%, #0d1228 100%);
-  color: var(--fg-1);
-  padding: 76px 0 64px;
+  padding: 72px 0 60px;
   position: relative;
   overflow: hidden;
 }
 .page-hero::before {
   content: '';
   position: absolute; inset: 0;
-  background: radial-gradient(ellipse at 70% 50%, rgba(124,111,224,0.28) 0%, transparent 60%);
+  background: radial-gradient(ellipse at 70% 50%, rgba(124,111,224,0.30) 0%, transparent 60%);
   pointer-events: none;
 }
-.page-hero .label { color: var(--cyan-soft); margin-bottom: 16px; display: block; }
-.page-hero h1 { color: var(--fg-1); margin-bottom: 16px; font-family: var(--font-display); font-weight: 400; }
-.page-hero p { color: var(--fg-3); font-size: 1.05rem; max-width: 560px; }
+/* Force white text regardless of light/dark theme */
+.page-hero .label,
+.gallery-hero .label,
+.event-hero .label { color: #7ed5fa !important; margin-bottom: 14px; display: block; position: relative; }
+
+.page-hero h1,
+.page-hero h2,
+.gallery-hero h1,
+.event-hero h1 {
+  color: #ffffff !important;
+  margin-bottom: 14px;
+  font-weight: 700;
+  position: relative;
+}
+
+.page-hero p { color: rgba(255,255,255,0.65) !important; font-size: 1.05rem; max-width: 560px; position: relative; }
 
 /* ═══════════════════════════════════════════════════════════════
    RESEARCH PAGE
@@ -1019,8 +1033,9 @@ body::before {
 .app-card-body { padding: 28px; }
 .app-name {
   font-family: var(--font-display);
-  font-size: 1.5rem; font-weight: 400;
+  font-size: 1.35rem; font-weight: 700;
   color: var(--fg-1); margin-bottom: 4px;
+  letter-spacing: -0.02em;
 }
 .app-full-name { font-size: .8rem; color: var(--fg-3); font-weight: 500; margin-bottom: 14px; }
 .app-desc { font-size: .9rem; color: var(--fg-3); line-height: 1.65; margin-bottom: 20px; }
