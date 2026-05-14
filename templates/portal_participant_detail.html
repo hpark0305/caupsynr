@@ -35,7 +35,7 @@
     <!-- 사전-사후 변화량 (전체 요약) -->
     {% if changes %}
     <div style="margin-bottom:28px;">
-      <h3 style="font-family:'Nunito',sans-serif;font-size:.85rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;">전체 변화량 요약 (첫 측정 → 마지막 측정)</h3>
+      <h3 style="font-family:var(--font-body);font-size:.85rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;">전체 변화량 요약 (첫 측정 → 마지막 측정)</h3>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px;">
         {% for vname, c in changes.items() %}
         <div class="change-card">
@@ -58,7 +58,7 @@
     <!-- 단계별 변화량 (Δ 표) -->
     {% if phase_deltas and variables %}
     <div style="margin-bottom:28px;">
-      <h3 style="font-family:'Nunito',sans-serif;font-size:.85rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;">단계별 변화량 (Δ)</h3>
+      <h3 style="font-family:var(--font-body);font-size:.85rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;">단계별 변화량 (Δ)</h3>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow-x:auto;">
         <table class="data-table">
           <thead><tr>
@@ -90,7 +90,7 @@
 
     <!-- 전체 측정 이력 -->
     <div style="margin-bottom:20px;">
-      <h3 style="font-family:'Nunito',sans-serif;font-size:.85rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;">전체 측정 이력</h3>
+      <h3 style="font-family:var(--font-body);font-size:.85rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;">전체 측정 이력</h3>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;">
         {% if measurements %}
         <table class="data-table">
@@ -128,7 +128,7 @@
     <!-- 시각화 -->
     {% if measurements|length > 1 and variables %}
     <div>
-      <h3 style="font-family:'Nunito',sans-serif;font-size:.85rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;">변화 추이</h3>
+      <h3 style="font-family:var(--font-body);font-size:.85rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;">변화 추이</h3>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;">
         <div style="display:flex;gap:10px;margin-bottom:16px;align-items:center;">
           <select id="detail-var" onchange="drawChart()" style="padding:7px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--bg);font-size:.83rem;">

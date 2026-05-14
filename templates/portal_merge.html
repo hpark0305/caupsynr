@@ -5,11 +5,29 @@
 .portal-wrap{min-height:calc(100vh - var(--nav-h));background:var(--bg);}
 .portal-header{background:var(--dark);padding:24px 0;border-bottom:1px solid rgba(255,255,255,.08);}
 .merge-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px;margin-bottom:20px;}
-.merge-card h3{font-family:'Nunito',sans-serif;font-size:1rem;font-weight:700;margin-bottom:18px;}
+.merge-card h3{font-family:var(--font-body);font-size:1rem;font-weight:700;margin-bottom:18px;}
 .code-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
 .code-pill{font-size:.78rem;padding:3px 10px;border-radius:100px;}
 .pill-common{background:#dcfce7;color:#166534;}
 .pill-only{background:#f1f5f9;color:#475569;}
+/* Portal nav */
+.portal-nav{background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:var(--nav-h,72px);z-index:50;}
+.portal-nav-inner{display:flex;align-items:stretch;gap:0;padding:0 20px;overflow-x:auto;scrollbar-width:none;}
+.portal-nav-inner::-webkit-scrollbar{display:none;}
+.pnav-btn{font-family:var(--font-body);font-size:.82rem;font-weight:500;padding:11px 14px;color:var(--fg-3);border-bottom:2px solid transparent;transition:color .15s,border-color .15s;text-decoration:none;display:flex;align-items:center;gap:5px;white-space:nowrap;}
+.pnav-btn:hover{color:var(--fg-1);}
+.pnav-btn.active{color:var(--violet-soft);border-bottom-color:var(--violet);font-weight:600;}
+.pnav-drop{position:relative;display:flex;align-items:stretch;}
+.pnav-drop-btn{cursor:pointer;background:none;border:none;font-family:var(--font-body);font-size:.82rem;font-weight:500;padding:11px 14px;color:var(--fg-3);border-bottom:2px solid transparent;transition:color .15s;white-space:nowrap;display:flex;align-items:center;gap:5px;}
+.pnav-drop-btn:hover,.pnav-drop.open .pnav-drop-btn{color:var(--fg-1);}
+.pnav-drop-btn .arrow{font-size:.65rem;transition:transform .2s;}
+.pnav-drop:hover .arrow,.pnav-drop.open .arrow{transform:rotate(180deg);}
+.pnav-drop.active-section .pnav-drop-btn{color:var(--violet-soft);border-bottom:2px solid var(--violet);}
+.pnav-drop-menu{display:none;position:absolute;top:100%;left:0;background:var(--surface2);border:1px solid var(--line-strong);border-radius:0 0 12px 12px;min-width:190px;box-shadow:0 12px 40px rgba(0,0,0,.5);backdrop-filter:blur(16px);z-index:200;}
+.pnav-drop:hover .pnav-drop-menu,.pnav-drop.open .pnav-drop-menu{display:block;}
+.pnav-drop-menu a{display:flex;align-items:center;gap:8px;padding:11px 16px;font-size:.82rem;font-family:var(--font-body);color:var(--fg-2);text-decoration:none;border-bottom:1px solid var(--border);white-space:nowrap;transition:color .1s,background .1s;}
+.pnav-drop-menu a:last-child{border-bottom:none;}
+.pnav-drop-menu a:hover,.pnav-drop-menu a.active{background:rgba(124,111,224,.12);color:var(--violet-soft);}
 </style>
 {% endblock %}
 
@@ -22,6 +40,34 @@
         <h1 style="color:#fff;font-size:1.5rem;margin:6px 0 0;">프로젝트 병합</h1>
       </div>
       <a href="{{ url_for('logout') }}" class="btn btn-outline" style="font-size:.8rem;padding:7px 14px;color:rgba(255,255,255,.7);border-color:rgba(255,255,255,.2);">로그아웃</a>
+    </div>
+  </div>
+
+  <!-- ── 포털 네비게이션 ── -->
+  <div class="portal-nav">
+    <div class="container portal-nav-inner">
+      <a href="{{ url_for('portal') }}" class="pnav-btn">🗂 프로젝트</a>
+      <div class="pnav-drop active-section">
+        <button class="pnav-drop-btn">📊 데이터 <span class="arrow">▾</span></button>
+        <div class="pnav-drop-menu">
+          <a href="{{ url_for('portal_all_participants') }}">전체 참여자</a>
+          <a href="{{ url_for('portal_all_sessions') }}">전체 세션</a>
+          <a href="{{ url_for('portal_merge') }}" class="active">프로젝트 병합</a>
+          <a href="{{ url_for('portal_files') }}">📁 파일 관리</a>
+        </div>
+      </div>
+      <a href="{{ url_for('portal_tasks') }}" class="pnav-btn">📅 일정</a>
+      <a href="{{ url_for('portal_wardy') }}" class="pnav-btn">📱 App</a>
+      <div class="pnav-drop">
+        <button class="pnav-drop-btn">⚙️ 관리 <span class="arrow">▾</span></button>
+        <div class="pnav-drop-menu">
+          <a href="{{ url_for('portal_news') }}">📣 공지 관리</a>
+          <a href="{{ url_for('portal_contacts') }}">✉ 문의 수신함</a>
+          <a href="{{ url_for('portal_settings') }}">설정</a>
+          <a href="{{ url_for('portal_audit') }}">🗒 감사 로그</a>
+          <a href="{{ url_for('api_docs') }}">📖 API 문서</a>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -116,4 +162,20 @@
 
   </div>
 </div>
+
+{% block scripts %}
+<script>
+// Portal nav dropdown click toggle
+document.querySelectorAll('.pnav-drop-btn').forEach(btn=>{
+  btn.addEventListener('click',e=>{
+    e.stopPropagation();
+    const drop=btn.closest('.pnav-drop');
+    const wasOpen=drop.classList.contains('open');
+    document.querySelectorAll('.pnav-drop').forEach(d=>d.classList.remove('open'));
+    if(!wasOpen)drop.classList.add('open');
+  });
+});
+document.addEventListener('click',()=>document.querySelectorAll('.pnav-drop').forEach(d=>d.classList.remove('open')));
+</script>
+{% endblock %}
 {% endblock %}

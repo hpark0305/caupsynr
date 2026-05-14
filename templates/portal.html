@@ -18,14 +18,14 @@
 /* 드롭다운 */
 .pnav-drop{position:relative;display:flex;align-items:stretch;}
 .pnav-drop-btn{cursor:pointer;background:none;border:none;font-family:var(--font-body);font-size:.82rem;font-weight:500;padding:11px 14px;color:var(--fg-3);border-bottom:2px solid transparent;transition:color .15s;white-space:nowrap;display:flex;align-items:center;gap:5px;}
-.pnav-drop-btn:hover{color:var(--fg-1);}
+.pnav-drop-btn:hover,.pnav-drop.open .pnav-drop-btn{color:var(--fg-1);}
 .pnav-drop-btn .arrow{font-size:.65rem;transition:transform .2s;}
-.pnav-drop:hover .arrow{transform:rotate(180deg);}
-.pnav-drop-menu{display:none;position:absolute;top:100%;left:0;background:var(--surface2);border:1px solid var(--line-strong);border-radius:0 0 12px 12px;min-width:175px;box-shadow:0 12px 40px rgba(0,0,0,.4);backdrop-filter:blur(12px);z-index:100;}
-.pnav-drop:hover .pnav-drop-menu{display:block;}
-.pnav-drop-menu a{display:block;padding:10px 16px;font-size:.8rem;font-family:var(--font-body);color:var(--fg-3);text-decoration:none;border-bottom:1px solid var(--border);white-space:nowrap;transition:color .1s,background .1s;}
+.pnav-drop:hover .arrow,.pnav-drop.open .arrow{transform:rotate(180deg);}
+.pnav-drop-menu{display:none;position:absolute;top:100%;left:0;background:var(--surface2);border:1px solid var(--line-strong);border-radius:0 0 12px 12px;min-width:190px;box-shadow:0 12px 40px rgba(0,0,0,.5);backdrop-filter:blur(16px);z-index:200;}
+.pnav-drop:hover .pnav-drop-menu,.pnav-drop.open .pnav-drop-menu{display:block;}
+.pnav-drop-menu a{display:flex;align-items:center;gap:8px;padding:11px 16px;font-size:.82rem;font-family:var(--font-body);color:var(--fg-2);text-decoration:none;border-bottom:1px solid var(--border);white-space:nowrap;transition:color .1s,background .1s;}
 .pnav-drop-menu a:last-child{border-bottom:none;}
-.pnav-drop-menu a:hover{background:rgba(124,111,224,.1);color:var(--violet-soft);}
+.pnav-drop-menu a:hover{background:rgba(124,111,224,.12);color:var(--violet-soft);}
 
 /* Project grid */
 .project-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin-top:24px;}
@@ -170,5 +170,19 @@
 </div>
 {% endblock %}
 {% block scripts %}
-<script>document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open'));});</script>
+<script>
+// Modal Escape key
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('open'));});
+// Portal nav dropdown — click toggle
+document.querySelectorAll('.pnav-drop-btn').forEach(btn=>{
+  btn.addEventListener('click',e=>{
+    e.stopPropagation();
+    const drop=btn.closest('.pnav-drop');
+    const wasOpen=drop.classList.contains('open');
+    document.querySelectorAll('.pnav-drop').forEach(d=>d.classList.remove('open'));
+    if(!wasOpen)drop.classList.add('open');
+  });
+});
+document.addEventListener('click',()=>document.querySelectorAll('.pnav-drop').forEach(d=>d.classList.remove('open')));
+</script>
 {% endblock %}

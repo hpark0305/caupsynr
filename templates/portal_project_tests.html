@@ -18,7 +18,7 @@
 /* ── Test card ── */
 .test-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:20px;overflow:hidden;}
 .test-card-header{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--border);}
-.test-card-title{font-family:'Nunito',sans-serif;font-size:.95rem;font-weight:700;color:var(--text);}
+.test-card-title{font-family:var(--font-body);font-size:.95rem;font-weight:700;color:var(--text);}
 .test-card-unit{font-size:.76rem;color:var(--muted);background:var(--bg);padding:2px 8px;border-radius:100px;border:1px solid var(--border);}
 
 /* ── Test table ── */
@@ -228,7 +228,7 @@
                 {% if norm.normal %}
                 <span class="sig-badge sig-yes">정규분포 충족</span>
                 {% else %}
-                <span style="display:inline-block;font-size:.72rem;padding:2px 7px;border-radius:100px;font-weight:600;background:#fee2e2;color:#991b1b;">비정규분포</span>
+                <span style="display:inline-block;font-size:.72rem;padding:2px 7px;border-radius:100px;font-weight:600;background:rgba(239,68,68,0.18);color:#fca5a5;">비정규분포</span>
                 {% endif %}
               </div>
               {% endfor %}

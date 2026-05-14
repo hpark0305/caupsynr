@@ -8,8 +8,8 @@
 .stat-tbl th{padding:9px 14px;text-align:center;font-weight:600;color:var(--muted);font-size:.73rem;text-transform:uppercase;letter-spacing:.06em;background:var(--bg);}
 .stat-tbl td{padding:9px 14px;border-top:1px solid var(--border-light);text-align:center;}
 .stat-tbl td:first-child{text-align:left;font-weight:600;}
-.badge-warn{font-size:.72rem;background:#fef3c7;color:#92400e;padding:2px 7px;border-radius:100px;}
-.badge-miss{font-size:.72rem;background:#fee2e2;color:#991b1b;padding:2px 7px;border-radius:100px;}
+.badge-warn{font-size:.72rem;background:rgba(245,158,11,0.18);color:#fbbf24;padding:2px 7px;border-radius:100px;}
+.badge-miss{font-size:.72rem;background:rgba(239,68,68,0.18);color:#fca5a5;padding:2px 7px;border-radius:100px;}
 .var-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:20px;overflow:hidden;}
 .var-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:var(--bg);}
 .var-body{padding:0;}
@@ -39,7 +39,7 @@
     <div class="var-section">
       <div class="var-header">
         <div>
-          <strong style="font-family:'Nunito',sans-serif;">{{ s.label }}</strong>
+          <strong style="font-family:var(--font-body);">{{ s.label }}</strong>
           {% if s.unit %}<span style="font-size:.78rem;color:var(--muted);margin-left:6px;">단위: {{ s.unit }}</span>{% endif %}
         </div>
         <div style="display:flex;gap:8px;">
@@ -148,7 +148,7 @@
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
           {% for o in s.outliers %}
-          <span style="font-size:.8rem;background:#fef3c7;color:#92400e;padding:4px 10px;border-radius:8px;">
+          <span style="font-size:.8rem;background:rgba(245,158,11,0.18);color:#fbbf24;padding:4px 10px;border-radius:8px;">
             {{ o.participant_code }}{% if o.phase %}/{{ o.phase }}{% endif %}: <strong>{{ o.value }}</strong>
             <span style="font-size:.7rem;opacity:.7;">(허용: {{ o.lb }}~{{ o.ub }})</span>
           </span>
@@ -178,7 +178,7 @@
         <p style="font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:#991b1b;margin-bottom:8px;">결측값</p>
         <div style="display:flex;flex-wrap:wrap;gap:8px;">
           {% for m in s.missing %}
-          <span style="font-size:.8rem;background:#fee2e2;color:#991b1b;padding:4px 10px;border-radius:8px;">
+          <span style="font-size:.8rem;background:rgba(239,68,68,0.18);color:#fca5a5;padding:4px 10px;border-radius:8px;">
             {{ m.code }} / {{ m.phase }}
           </span>
           {% endfor %}

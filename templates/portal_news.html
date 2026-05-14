@@ -5,29 +5,42 @@
 .portal-wrap{min-height:calc(100vh - var(--nav-h));background:var(--bg);}
 .portal-header{background:var(--dark);padding:28px 0;border-bottom:1px solid rgba(255,255,255,.08);}
 .portal-header-inner{display:flex;justify-content:space-between;align-items:center;}
-.portal-nav{background:var(--surface);border-bottom:1px solid var(--border);}
-.portal-nav-inner{display:flex;align-items:center;gap:2px;padding:0 28px;}
-.pnav-btn{font-size:.82rem;font-weight:500;padding:12px 16px;color:var(--muted);border-bottom:2px solid transparent;transition:all .15s;text-decoration:none;display:block;}
-.pnav-btn:hover{color:var(--dark);}
-.pnav-btn.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600;}
+/* Portal nav */
+.portal-nav{background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:var(--nav-h,72px);z-index:50;}
+.portal-nav-inner{display:flex;align-items:stretch;gap:0;padding:0 20px;overflow-x:auto;scrollbar-width:none;}
+.portal-nav-inner::-webkit-scrollbar{display:none;}
+.pnav-btn{font-family:var(--font-body);font-size:.82rem;font-weight:500;padding:11px 14px;color:var(--fg-3);border-bottom:2px solid transparent;transition:color .15s,border-color .15s;text-decoration:none;display:flex;align-items:center;gap:5px;white-space:nowrap;}
+.pnav-btn:hover{color:var(--fg-1);}
+.pnav-btn.active{color:var(--violet-soft);border-bottom-color:var(--violet);font-weight:600;}
+.pnav-drop{position:relative;display:flex;align-items:stretch;}
+.pnav-drop-btn{cursor:pointer;background:none;border:none;font-family:var(--font-body);font-size:.82rem;font-weight:500;padding:11px 14px;color:var(--fg-3);border-bottom:2px solid transparent;transition:color .15s;white-space:nowrap;display:flex;align-items:center;gap:5px;}
+.pnav-drop-btn:hover,.pnav-drop.open .pnav-drop-btn{color:var(--fg-1);}
+.pnav-drop-btn .arrow{font-size:.65rem;transition:transform .2s;}
+.pnav-drop:hover .arrow,.pnav-drop.open .arrow{transform:rotate(180deg);}
+.pnav-drop.active-section .pnav-drop-btn{color:var(--violet-soft);border-bottom:2px solid var(--violet);}
+.pnav-drop-menu{display:none;position:absolute;top:100%;left:0;background:var(--surface2);border:1px solid var(--line-strong);border-radius:0 0 12px 12px;min-width:190px;box-shadow:0 12px 40px rgba(0,0,0,.5);backdrop-filter:blur(16px);z-index:200;}
+.pnav-drop:hover .pnav-drop-menu,.pnav-drop.open .pnav-drop-menu{display:block;}
+.pnav-drop-menu a{display:flex;align-items:center;gap:8px;padding:11px 16px;font-size:.82rem;font-family:var(--font-body);color:var(--fg-2);text-decoration:none;border-bottom:1px solid var(--border);white-space:nowrap;transition:color .1s,background .1s;}
+.pnav-drop-menu a:last-child{border-bottom:none;}
+.pnav-drop-menu a:hover,.pnav-drop-menu a.active{background:rgba(124,111,224,.12);color:var(--violet-soft);}
 
 .news-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:22px 24px;margin-bottom:12px;display:flex;align-items:flex-start;gap:20px;transition:box-shadow .2s;}
-.news-card:hover{box-shadow:0 3px 16px rgba(0,0,0,.08);}
+.news-card:hover{box-shadow:0 3px 16px rgba(124,111,224,.15);}
 .news-card-body{flex:1;min-width:0;}
-.news-card-title{font-size:.97rem;font-weight:700;color:var(--dark);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.news-card-title{font-size:.97rem;font-weight:700;color:var(--fg-1);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .news-card-content{font-size:.83rem;color:var(--muted);line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
 .news-card-meta{display:flex;align-items:center;gap:10px;margin-top:10px;}
 .news-date{font-size:.75rem;color:var(--muted);}
 .badge-pub{font-size:.7rem;font-weight:600;padding:2px 9px;border-radius:100px;}
-.badge-pub.public{background:#d1fae5;color:#065f46;}
+.badge-pub.public{background:rgba(52,211,153,0.18);color:#34d399;}
 .badge-pub.private{background:var(--surface2,#f3f4f6);color:var(--muted);}
 .news-actions{display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex-shrink:0;}
 
 /* Modal */
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);z-index:1000;align-items:center;justify-content:center;}
 .modal-overlay.open{display:flex;}
-.modal-box{background:var(--surface);border-radius:var(--radius-lg);padding:32px;width:100%;max-width:520px;box-shadow:0 12px 48px rgba(0,0,0,.22);position:relative;}
-.modal-box h2{font-family:'Nunito',sans-serif;font-size:1.15rem;font-weight:700;margin-bottom:22px;}
+.modal-box{background:var(--surface2);border:1px solid var(--line-strong);border-radius:var(--radius-lg);padding:32px;width:100%;max-width:520px;box-shadow:0 12px 48px rgba(0,0,0,.22);position:relative;}
+.modal-box h2{font-family:var(--font-body);font-size:1.15rem;font-weight:700;margin-bottom:22px;}
 .modal-close{position:absolute;top:18px;right:20px;background:none;border:none;font-size:1.3rem;color:var(--muted);cursor:pointer;line-height:1;}
 .modal-close:hover{color:var(--dark);}
 
@@ -43,7 +56,7 @@
   <div class="portal-header">
     <div class="container portal-header-inner">
       <div>
-        <span style="color:var(--accent-mid,#4fb3b3);font-size:.75rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;display:block;margin-bottom:4px;">Researcher Portal</span>
+        <span style="color:var(--violet-soft);font-size:.75rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;display:block;margin-bottom:4px;">Researcher Portal</span>
         <h1 style="color:#fff;font-size:1.6rem;margin:0;">공지 관리</h1>
       </div>
       <div style="display:flex;align-items:center;gap:14px;">
@@ -53,15 +66,37 @@
     </div>
   </div>
 
-  <!-- Nav -->
+  <!-- ── 포털 네비게이션 ── -->
   <div class="portal-nav">
     <div class="container portal-nav-inner">
-      <a href="{{ url_for('portal') }}" class="pnav-btn">프로젝트</a>
-      <a href="{{ url_for('portal_all_participants') }}" class="pnav-btn">전체 참여자</a>
-      <a href="{{ url_for('portal_all_sessions') }}" class="pnav-btn">전체 세션</a>
-      <a href="{{ url_for('portal_files') }}" class="pnav-btn">파일 관리</a>
-      <a href="{{ url_for('portal_settings') }}" class="pnav-btn">설정</a>
-      <a href="{{ url_for('portal_news') }}" class="pnav-btn active">공지</a>
+
+      <a href="{{ url_for('portal') }}" class="pnav-btn">🗂 프로젝트</a>
+
+      <div class="pnav-drop">
+        <button class="pnav-drop-btn">📊 데이터 <span class="arrow">▾</span></button>
+        <div class="pnav-drop-menu">
+          <a href="{{ url_for('portal_all_participants') }}">전체 참여자</a>
+          <a href="{{ url_for('portal_all_sessions') }}">전체 세션</a>
+          <a href="{{ url_for('portal_merge') }}">프로젝트 병합</a>
+          <a href="{{ url_for('portal_files') }}">📁 파일 관리</a>
+        </div>
+      </div>
+
+      <a href="{{ url_for('portal_tasks') }}" class="pnav-btn">📅 일정</a>
+
+      <a href="{{ url_for('portal_wardy') }}" class="pnav-btn">📱 App</a>
+
+      <div class="pnav-drop active-section">
+        <button class="pnav-drop-btn">⚙️ 관리 <span class="arrow">▾</span></button>
+        <div class="pnav-drop-menu">
+          <a href="{{ url_for('portal_news') }}" class="active">📣 공지 관리</a>
+          <a href="{{ url_for('portal_contacts') }}">✉ 문의 수신함</a>
+          <a href="{{ url_for('portal_settings') }}">설정</a>
+          <a href="{{ url_for('portal_audit') }}">🗒 감사 로그</a>
+          <a href="{{ url_for('api_docs') }}">📖 API 문서</a>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -79,7 +114,7 @@
     <!-- Top bar -->
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
       <div>
-        <h2 style="font-family:'Nunito',sans-serif;font-size:1.1rem;font-weight:700;margin:0;">공지 목록</h2>
+        <h2 style="font-family:var(--font-body);font-size:1.1rem;font-weight:700;margin:0;">공지 목록</h2>
         <p style="font-size:.82rem;color:var(--muted);margin:4px 0 0;">연구 참여자에게 보이는 공지를 관리해요.</p>
       </div>
       <button class="btn btn-primary" style="font-size:.85rem;" onclick="openModal('create-modal')">+ 공지 작성</button>
@@ -145,7 +180,7 @@
     <!-- Empty state -->
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:64px 40px;text-align:center;">
       <div style="font-size:3rem;margin-bottom:16px;opacity:.4;">📢</div>
-      <p style="font-weight:700;color:var(--dark);margin-bottom:6px;">아직 공지가 없어요</p>
+      <p style="font-weight:700;color:var(--fg-1);margin-bottom:6px;">아직 공지가 없어요</p>
       <p style="font-size:.85rem;color:var(--muted);margin-bottom:20px;">첫 번째 공지를 작성해 참여자에게 알려보세요.</p>
       <button class="btn btn-primary" style="font-size:.85rem;" onclick="openModal('create-modal')">새 공지 작성</button>
     </div>
@@ -185,6 +220,19 @@
 {% endblock %}
 
 {% block scripts %}
+<script>
+// Portal nav dropdown click toggle
+document.querySelectorAll('.pnav-drop-btn').forEach(btn=>{
+  btn.addEventListener('click',e=>{
+    e.stopPropagation();
+    const drop=btn.closest('.pnav-drop');
+    const wasOpen=drop.classList.contains('open');
+    document.querySelectorAll('.pnav-drop').forEach(d=>d.classList.remove('open'));
+    if(!wasOpen)drop.classList.add('open');
+  });
+});
+document.addEventListener('click',()=>document.querySelectorAll('.pnav-drop').forEach(d=>d.classList.remove('open')));
+</script>
 <script>
 function openModal(id) {
   document.getElementById(id).classList.add('open');
