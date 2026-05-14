@@ -151,7 +151,7 @@
       {% for n in news %}
       <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 24px;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
         <div>
-          <h3 style="font-family:'Nunito',sans-serif;font-size:1rem;font-weight:700;color:var(--dark);margin-bottom:6px;">{{ n.title }}</h3>
+          <h3 style="font-family:var(--font-body);font-size:1rem;font-weight:700;color:var(--dark);margin-bottom:6px;">{{ n.title }}</h3>
           {% if n.content %}
           <p style="font-size:.88rem;color:var(--muted);line-height:1.6;">{{ n.content[:120] }}{% if n.content|length > 120 %}…{% endif %}</p>
           {% endif %}
