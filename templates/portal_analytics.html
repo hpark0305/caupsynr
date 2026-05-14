@@ -3,7 +3,7 @@
 
 {% block head %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 /* ── Layout ── */
 .analytics-wrap{display:flex;height:calc(100vh - var(--nav-h) - 56px);min-height:600px;overflow:hidden;}
@@ -154,10 +154,10 @@
            ondragover="e=>{e.preventDefault();this.classList.add('drag')}"
            ondragleave="this.classList.remove('drag')"
            ondrop="handleDrop(event)">
-        <input type="file" id="csv-input" accept=".csv,.txt" onchange="loadCSV(this.files[0])">
+        <input type="file" id="csv-input" accept=".csv,.xlsx,.xls,.txt" onchange="loadFile(this.files[0])">
         <div class="upload-zone-icon">📂</div>
-        <strong>CSV 파일 드래그 or 클릭</strong>
-        <p style="margin-top:4px;">Excel에서 CSV로 저장 후 업로드</p>
+        <strong>Excel / CSV 드래그 or 클릭</strong>
+        <p style="margin-top:4px;">.xlsx · .xls · .csv 모두 지원</p>
       </div>
 
       <!-- File loaded chip -->
@@ -166,6 +166,13 @@
           <span id="file-name-chip">파일명</span>
           <button onclick="clearData()" title="파일 제거">✕</button>
         </span>
+      </div>
+
+      <!-- Sheet Selector (Excel 다중 시트) -->
+      <div class="an-section" id="sheet-section" style="display:none;">
+        <div class="an-section-title">📋 시트 선택</div>
+        <select class="an-select" id="sheet-select" onchange="loadSheet(this.value)"></select>
+        <p style="font-size:.72rem;color:var(--fg-4);margin:0;">시트를 전환하면 차트가 자동 갱신됩니다</p>
       </div>
 
       <!-- Column Settings -->
@@ -210,13 +217,14 @@
       <div class="an-empty" id="empty-state">
         <div class="em-icon">📈</div>
         <h3>데이터를 업로드하세요</h3>
-        <p>CSV 파일을 왼쪽에 드래그하거나 클릭해서 업로드하면 자동으로 그래프와 지표가 표시됩니다.</p>
+        <p>Excel 또는 CSV 파일을 왼쪽에 드래그하거나 클릭해서 업로드하면 자동으로 그래프와 지표가 표시됩니다.</p>
         <div style="margin-top:16px;display:flex;flex-direction:column;gap:8px;text-align:left;background:var(--surface);border-radius:12px;padding:16px 20px;border:1px solid var(--border);">
-          <div style="font-size:.78rem;color:var(--fg-3);font-weight:600;">💡 CSV 파일 준비 방법</div>
-          <div style="font-size:.75rem;color:var(--fg-4);line-height:1.7;">
-            1. Excel에서 <strong style="color:var(--fg-2);">다른 이름으로 저장</strong> → CSV 선택<br>
-            2. 첫 행은 <strong style="color:var(--fg-2);">컬럼명</strong> (예: 참여자코드, 측정값1, 날짜)<br>
-            3. 숫자 컬럼은 <strong style="color:var(--fg-2);">쉼표 없이</strong> 입력 (1000 O / 1,000 X)
+          <div style="font-size:.78rem;color:var(--fg-3);font-weight:600;">💡 파일 업로드 안내</div>
+          <div style="font-size:.75rem;color:var(--fg-4);line-height:1.8;">
+            ✅ <strong style="color:var(--fg-2);">Excel(.xlsx/.xls)</strong> 직접 업로드 가능<br>
+            ✅ <strong style="color:var(--fg-2);">여러 시트</strong> 있으면 시트 선택 드롭다운 표시<br>
+            ✅ <strong style="color:var(--fg-2);">CSV(.csv)</strong>도 지원<br>
+            ⚠ 첫 행은 반드시 <strong style="color:var(--fg-2);">컬럼명</strong>으로 설정
           </div>
         </div>
       </div>
@@ -243,6 +251,7 @@ let parsedData = [];    // array of row objects
 let headers = [];       // all column names
 let numericCols = [];   // columns with numeric data
 let activeCharts = {};  // Chart.js instances
+let workbook = null;    // SheetJS workbook (시트 전환에 재사용)
 
 const VIOLET  = 'rgba(124,111,224,';
 const CYAN    = 'rgba(79,195,247,';
@@ -255,35 +264,71 @@ function handleDrop(e) {
   e.preventDefault();
   document.getElementById('upload-zone').classList.remove('drag');
   const file = e.dataTransfer.files[0];
-  if (file) loadCSV(file);
+  if (file) { setFileName(file.name); loadFile(file); }
 }
 
-function loadCSV(file) {
-  if (!file) return;
-  document.getElementById('file-name-chip').textContent = file.name;
+function setFileName(name) {
+  document.getElementById('file-name-chip').textContent = name;
   document.getElementById('file-chip').style.display = 'block';
+}
 
-  Papa.parse(file, {
-    header: true,
-    skipEmptyLines: true,
-    dynamicTyping: true,
-    complete(results) {
-      parsedData = results.data;
-      headers = results.meta.fields || [];
-      numericCols = headers.filter(h => parsedData.some(r => typeof r[h] === 'number'));
-      populateControls();
-      showStats();
-      document.getElementById('run-btn').disabled = false;
-      document.getElementById('col-settings').style.display = 'block';
-      // Auto-render
-      renderCharts();
-    }
-  });
+// loadFile — SheetJS로 xlsx/xls/csv 모두 파싱
+function loadFile(file) {
+  if (!file) return;
+  setFileName(file.name);
+  const reader = new FileReader();
+  reader.onload = e => {
+    workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true });
+    const sheets = workbook.SheetNames;
+
+    // 시트 선택 드롭다운 갱신
+    const sel = document.getElementById('sheet-select');
+    sel.innerHTML = sheets.map(s => `<option value="${s}">${s}</option>`).join('');
+    // 시트 2개 이상일 때만 표시
+    document.getElementById('sheet-section').style.display = sheets.length > 1 ? 'block' : 'none';
+
+    loadSheet(sheets[0]);  // 첫 시트 자동 로드
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// loadSheet — 선택된 시트 데이터 파싱 후 차트 갱신
+function loadSheet(sheetName) {
+  if (!workbook) return;
+  const ws = workbook.Sheets[sheetName];
+  // header:1 → 첫 행을 컬럼명 배열로, defval:'' → 빈 셀 빈 문자열 처리
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+  if (!rows || rows.length < 2) {
+    alert(`"${sheetName}" 시트에 데이터가 없습니다.`);
+    return;
+  }
+
+  headers = rows[0].map(String);
+  parsedData = rows.slice(1).map(row => {
+    const obj = {};
+    headers.forEach((h, i) => {
+      const v = row[i];
+      // 빈 문자열이 아니고 숫자로 변환 가능하면 숫자로 저장
+      obj[h] = (v !== '' && v !== null && !isNaN(Number(v))) ? Number(v) : v;
+    });
+    return obj;
+  }).filter(r => Object.values(r).some(v => v !== '' && v !== null));
+
+  numericCols = headers.filter(h => parsedData.some(r => typeof r[h] === 'number'));
+
+  populateControls();
+  showStats();
+  document.getElementById('run-btn').disabled = false;
+  document.getElementById('col-settings').style.display = 'block';
+  renderCharts();
 }
 
 function clearData() {
   parsedData = []; headers = []; numericCols = [];
+  workbook = null;
   document.getElementById('file-chip').style.display = 'none';
+  document.getElementById('sheet-section').style.display = 'none';
+  document.getElementById('sheet-select').innerHTML = '';
   document.getElementById('col-settings').style.display = 'none';
   document.getElementById('stat-strip').style.display = 'none';
   document.getElementById('run-btn').disabled = true;
