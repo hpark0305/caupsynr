@@ -41,7 +41,18 @@
       "PowerShell(Get-ChildItem \"C:\\\\Users\\\\hpark\\\\Downloads\\\\\" | Where-Object { $_.Extension -eq '.xlsx' })",
       "Bash(cat)",
       "Bash(python /tmp/analyze_excel.py)",
-      "Bash(python *)"
+      "Bash(python *)",
+      "Bash(Get-Content \"C:\\\\Users\\\\hpark\\\\OneDrive\\\\문서\\\\TSL\\\\web\\\\templates\\\\portal_merge.html\")",
+      "Bash(Measure-Object -Line)",
+      "Bash(Get-Content \"C:\\\\Users\\\\hpark\\\\OneDrive\\\\문서\\\\TSL\\\\web\\\\templates\\\\portal_wardy.html\")",
+      "Bash(Get-Content \"C:\\\\Users\\\\hpark\\\\OneDrive\\\\문서\\\\TSL\\\\web\\\\templates\\\\portal_participants.html\")",
+      "Bash(Get-Content \"C:\\\\Users\\\\hpark\\\\OneDrive\\\\문서\\\\TSL\\\\web\\\\templates\\\\portal_sessions.html\")",
+      "Bash(Get-Content \"C:\\\\Users\\\\hpark\\\\OneDrive\\\\문서\\\\TSL\\\\web\\\\templates\\\\portal_news.html\")",
+      "Bash(Get-Content \"C:\\\\Users\\\\hpark\\\\OneDrive\\\\문서\\\\TSL\\\\web\\\\templates\\\\portal_audit.html\")",
+      "Bash(Get-Content \"C:\\\\Users\\\\hpark\\\\OneDrive\\\\문서\\\\TSL\\\\web\\\\templates\\\\portal_contacts.html\")",
+      "Bash(Get-Content \"C:\\\\Users\\\\hpark\\\\OneDrive\\\\문서\\\\TSL\\\\web\\\\templates\\\\portal_settings.html\")",
+      "Bash(Get-Content \"C:\\\\Users\\\\hpark\\\\OneDrive\\\\문서\\\\TSL\\\\web\\\\templates\\\\portal_files.html\")",
+      "Bash(Get-Content \"C:\\\\Users\\\\hpark\\\\OneDrive\\\\문서\\\\TSL\\\\web\\\\templates\\\\portal_analytics.html\")"
     ]
   },
   "hooks": {
