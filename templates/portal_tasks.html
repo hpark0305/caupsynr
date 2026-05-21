@@ -972,7 +972,7 @@ function showPopup(evt, task) {
   document.getElementById('tp-rows').innerHTML = rows;
 
   document.getElementById('tp-actions').innerHTML =
-    '<button class="tp-btn primary" onclick="closePopup();openEdit(JSON.parse(this.dataset.t))" data-t="'+JSON.stringify(task).replace(/"/g,'&quot;')+'">편집</button>'+
+    '<button class="tp-btn primary" onclick="closePopup();openEdit('+JSON.stringify(task).replace(/"/g,'&quot;')+')" >편집</button>'+
     '<form style="flex:1" method="POST" action="/portal/tasks/'+task.id+'/delete" onsubmit="return confirm(\'삭제할까요?\')">' +
     '<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">' +
     '<button type="submit" class="tp-btn danger" style="width:100%">삭제</button></form>';

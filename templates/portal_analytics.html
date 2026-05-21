@@ -425,7 +425,7 @@
       <div id="upload-zone-wrap">
         <div class="upload-zone-compact" id="upload-zone"
              onclick="document.getElementById('csv-input').click()"
-             ondragover="e=>{e.preventDefault();this.classList.add('drag')}"
+             ondragover="event.preventDefault();this.classList.add('drag')"
              ondragleave="this.classList.remove('drag')"
              ondrop="handleDrop(event)">
           <input type="file" id="csv-input" accept=".csv,.xlsx,.xls,.txt" onchange="loadFile(this.files[0])">

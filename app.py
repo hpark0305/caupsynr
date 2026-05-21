@@ -1191,6 +1191,7 @@ def portal_project_export(project_id):
     measurements = sb("GET","measurements",params=f"?project_id=eq.{project_id}&order=measured_at.desc") or []
     p_map = {p["id"]: p for p in (participants if isinstance(participants,list) else [])}
     output = io.StringIO()
+    output.write('﻿')
     writer = csv.writer(output)
     writer.writerow(["participant_code","group","gender","age","phase","measured_at","notes","data"])
     for m in (measurements if isinstance(measurements,list) else []):
@@ -1200,7 +1201,7 @@ def portal_project_export(project_id):
                          m.get("notes",""),json.dumps(m.get("data",{}),ensure_ascii=False)])
     output.seek(0)
     safe = proj_name.replace(" ","_")
-    return Response(output.getvalue(), mimetype="text/csv",
+    return Response(output.getvalue(), mimetype="text/csv;charset=utf-8-sig",
         headers={"Content-Disposition":f"attachment;filename={safe}_{datetime.now().strftime('%Y%m%d')}.csv"})
 
 @app.route("/portal/projects/<project_id>/export/range")
