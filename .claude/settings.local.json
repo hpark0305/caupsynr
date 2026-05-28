@@ -53,7 +53,10 @@
       "Bash(Get-Content \"C:\\\\Users\\\\hpark\\\\OneDrive\\\\문서\\\\TSL\\\\web\\\\templates\\\\portal_settings.html\")",
       "Bash(Get-Content \"C:\\\\Users\\\\hpark\\\\OneDrive\\\\문서\\\\TSL\\\\web\\\\templates\\\\portal_files.html\")",
       "Bash(Get-Content \"C:\\\\Users\\\\hpark\\\\OneDrive\\\\문서\\\\TSL\\\\web\\\\templates\\\\portal_analytics.html\")",
-      "Bash(cd \"C:\\\\Users\\\\hpark\\\\AppData\\\\Roaming\\\\Claude\\\\local-agent-mode-sessions\\\\skills-plugin\\\\5e8822c4-8f34-43fa-b670-bc8a41f57833\\\\e470b935-3f85-4ecb-965b-4a752ddd8e60\" *)"
+      "Bash(cd \"C:\\\\Users\\\\hpark\\\\AppData\\\\Roaming\\\\Claude\\\\local-agent-mode-sessions\\\\skills-plugin\\\\5e8822c4-8f34-43fa-b670-bc8a41f57833\\\\e470b935-3f85-4ecb-965b-4a752ddd8e60\" *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\hpark\\\\OneDrive\\\\문서\\\\수업\\\\실습\\\\간호관리학실습_중앙대병원\\\\eicu_qi_app\" -Recurse)",
+      "Bash(Select-Object FullName)",
+      "Bash(Sort-Object FullName)"
     ]
   },
   "hooks": {
