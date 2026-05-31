@@ -46,54 +46,48 @@
 {% endblock %}
 
 {% block content %}
-<div class="portal-wrap">
-  <div class="portal-header">
-    <div class="container portal-header-inner">
-      <div>
-        <span class="label" style="color:var(--accent-mid);display:block;margin-bottom:4px;">Researcher Portal</span>
-        <h1 style="color:#fff;font-size:1.6rem;margin:0;">감사 로그</h1>
-      </div>
-      <div style="display:flex;align-items:center;gap:14px;">
-        <span style="color:rgba(255,255,255,.45);font-size:.83rem;">{{ researcher }}</span>
-        <a href="{{ url_for('logout') }}" class="btn btn-outline" style="font-size:.8rem;padding:7px 14px;color:rgba(255,255,255,.7);border-color:rgba(255,255,255,.2);">로그아웃</a>
+<div class="lin-wrap">
+  <aside class="lin-sidebar">
+    <div class="lin-sidebar-top">
+      <div class="lin-workspace">
+        <div class="lin-workspace-icon">T</div>
+        <div style="min-width:0;"><div class="lin-workspace-name">TSL Portal</div><div class="lin-workspace-user">{{ researcher }}</div></div>
       </div>
     </div>
-  </div>
-
-  <!-- ── 포털 네비게이션 ── -->
-  <div class="portal-nav">
-    <div class="container portal-nav-inner">
-
-      <a href="{{ url_for('portal') }}" class="pnav-btn">🗂 프로젝트</a>
-
-      <div class="pnav-drop">
-        <button class="pnav-drop-btn">📊 데이터 <span class="arrow">▾</span></button>
-        <div class="pnav-drop-menu">
-          <a href="{{ url_for('portal_all_participants') }}">전체 참여자</a>
-          <a href="{{ url_for('portal_all_sessions') }}">전체 세션</a>
-          <a href="{{ url_for('portal_merge') }}">프로젝트 병합</a>
-          <a href="{{ url_for('portal_files') }}">📁 파일 관리</a>
-          <a href="{{ url_for('portal_analytics') }}">📈 분석</a>
+    <div class="lin-sidebar-scroll">
+      <div class="lin-nav-section" style="padding-top:4px;">
+        <a href="{{ url_for('portal') }}" class="lin-nav-item"><span class="lin-nav-icon">🗂</span><span>프로젝트</span></a>
+        <div class="lin-nav-item" id="nav-data" onclick="toggleNav('data')"><span class="lin-nav-icon">📊</span><span>데이터</span><span class="lin-nav-arrow">▶</span></div>
+        <div class="lin-sub-group" id="sub-data">
+          <a href="{{ url_for('portal_all_participants') }}" class="lin-nav-sub">전체 참여자</a>
+          <a href="{{ url_for('portal_all_sessions') }}" class="lin-nav-sub">전체 세션</a>
+          <a href="{{ url_for('portal_merge') }}" class="lin-nav-sub">프로젝트 병합</a>
+          <a href="{{ url_for('portal_files') }}" class="lin-nav-sub">📁 파일 관리</a>
+          <a href="{{ url_for('portal_analytics') }}" class="lin-nav-sub">📈 분석</a>
+        </div>
+        <a href="{{ url_for('portal_tasks') }}" class="lin-nav-item"><span class="lin-nav-icon">📅</span><span>일정</span></a>
+        <div class="lin-nav-item" id="nav-app" onclick="toggleNav('app')"><span class="lin-nav-icon">📱</span><span>App 로그</span><span class="lin-nav-arrow">▶</span></div>
+        <div class="lin-sub-group" id="sub-app">
+          <a href="{{ url_for('portal_wardy') }}" class="lin-nav-sub">🎮 Wardy</a>
+          <span class="lin-nav-sub" style="opacity:.4;cursor:default;pointer-events:none">App 2 <small>(준비중)</small></span>
+          <span class="lin-nav-sub" style="opacity:.4;cursor:default;pointer-events:none">App 3 <small>(준비중)</small></span>
+          <span class="lin-nav-sub" style="opacity:.4;cursor:default;pointer-events:none">App 4 <small>(준비중)</small></span>
+        </div>
+        <div class="lin-nav-item expanded" id="nav-admin" onclick="toggleNav('admin')"><span class="lin-nav-icon">⚙️</span><span>관리</span><span class="lin-nav-arrow">▶</span></div>
+        <div class="lin-sub-group open" id="sub-admin">
+          <a href="{{ url_for('portal_news') }}" class="lin-nav-sub">📣 공지 관리</a>
+          <a href="{{ url_for('portal_contacts') }}" class="lin-nav-sub">✉ 문의 수신함</a>
+          <a href="{{ url_for('portal_settings') }}" class="lin-nav-sub">설정</a>
+          <a href="{{ url_for('portal_audit') }}" class="lin-nav-sub active">🗒 감사 로그</a>
+          <a href="{{ url_for('api_docs') }}" class="lin-nav-sub">📖 API 문서</a>
         </div>
       </div>
-
-      <a href="{{ url_for('portal_tasks') }}" class="pnav-btn">📅 일정</a>
-
-      <a href="{{ url_for('portal_wardy') }}" class="pnav-btn">📱 App</a>
-
-      <div class="pnav-drop active-section">
-        <button class="pnav-drop-btn">⚙️ 관리 <span class="arrow">▾</span></button>
-        <div class="pnav-drop-menu">
-          <a href="{{ url_for('portal_news') }}">📣 공지 관리</a>
-          <a href="{{ url_for('portal_contacts') }}">✉ 문의 수신함</a>
-          <a href="{{ url_for('portal_settings') }}">설정</a>
-          <a href="{{ url_for('portal_audit') }}" class="active">🗒 감사 로그</a>
-          <a href="{{ url_for('api_docs') }}">📖 API 문서</a>
-        </div>
-      </div>
-
     </div>
-  </div>
+    <div class="lin-sidebar-bottom">
+      <a href="{{ url_for('logout') }}" class="lin-nav-item" style="margin:0;"><span class="lin-nav-icon" style="font-size:.8rem;">↩</span><span style="font-size:.79rem;">로그아웃</span></a>
+    </div>
+  </aside>
+  <div class="lin-main">
 
   <div class="container" style="padding-top:24px;padding-bottom:60px;">
 
@@ -169,22 +163,13 @@
   {% endif %}
 
   </div>
+  </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-// Portal nav dropdown click toggle
-document.querySelectorAll('.pnav-drop-btn').forEach(btn=>{
-  btn.addEventListener('click',e=>{
-    e.stopPropagation();
-    const drop=btn.closest('.pnav-drop');
-    const wasOpen=drop.classList.contains('open');
-    document.querySelectorAll('.pnav-drop').forEach(d=>d.classList.remove('open'));
-    if(!wasOpen)drop.classList.add('open');
-  });
-});
-document.addEventListener('click',()=>document.querySelectorAll('.pnav-drop').forEach(d=>d.classList.remove('open')));
+function toggleNav(key){const btn=document.getElementById('nav-'+key),group=document.getElementById('sub-'+key);if(!btn||!group)return;const open=group.classList.contains('open');group.classList.toggle('open',!open);btn.classList.toggle('expanded',!open);}
 </script>
 <script>
 function filterLog() {

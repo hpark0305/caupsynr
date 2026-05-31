@@ -2,27 +2,30 @@
 {% block title %}파일 관리 · 연구자 포털{% endblock %}
 {% block head %}
 <style>
-.portal-wrap{min-height:calc(100vh - var(--nav-h));background:var(--bg);}
-.portal-header{background:var(--dark);padding:28px 0;border-bottom:1px solid rgba(255,255,255,.08);}
-.portal-header-inner{display:flex;justify-content:space-between;align-items:center;}
-/* Portal nav */
-.portal-nav{background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:var(--nav-h,72px);z-index:50;}
-.portal-nav-inner{display:flex;align-items:stretch;gap:0;padding:0 20px;overflow-x:auto;scrollbar-width:none;}
-.portal-nav-inner::-webkit-scrollbar{display:none;}
-.pnav-btn{font-family:var(--font-body);font-size:.82rem;font-weight:500;padding:11px 14px;color:var(--fg-3);border-bottom:2px solid transparent;transition:color .15s,border-color .15s;text-decoration:none;display:flex;align-items:center;gap:5px;white-space:nowrap;}
-.pnav-btn:hover{color:var(--fg-1);}
-.pnav-btn.active{color:var(--violet-soft);border-bottom-color:var(--violet);font-weight:600;}
-.pnav-drop{position:relative;display:flex;align-items:stretch;}
-.pnav-drop-btn{cursor:pointer;background:none;border:none;font-family:var(--font-body);font-size:.82rem;font-weight:500;padding:11px 14px;color:var(--fg-3);border-bottom:2px solid transparent;transition:color .15s;white-space:nowrap;display:flex;align-items:center;gap:5px;}
-.pnav-drop-btn:hover,.pnav-drop.open .pnav-drop-btn{color:var(--fg-1);}
-.pnav-drop-btn .arrow{font-size:.65rem;transition:transform .2s;}
-.pnav-drop:hover .arrow,.pnav-drop.open .arrow{transform:rotate(180deg);}
-.pnav-drop.active-section .pnav-drop-btn{color:var(--violet-soft);border-bottom:2px solid var(--violet);}
-.pnav-drop-menu{display:none;position:absolute;top:100%;left:0;background:var(--surface2);border:1px solid var(--line-strong);border-radius:0 0 12px 12px;min-width:190px;box-shadow:0 12px 40px rgba(0,0,0,.5);backdrop-filter:blur(16px);z-index:200;}
-.pnav-drop:hover .pnav-drop-menu,.pnav-drop.open .pnav-drop-menu{display:block;}
-.pnav-drop-menu a{display:flex;align-items:center;gap:8px;padding:11px 16px;font-size:.82rem;font-family:var(--font-body);color:var(--fg-2);text-decoration:none;border-bottom:1px solid var(--border);white-space:nowrap;transition:color .1s,background .1s;}
-.pnav-drop-menu a:last-child{border-bottom:none;}
-.pnav-drop-menu a:hover,.pnav-drop-menu a.active{background:rgba(124,111,224,.12);color:var(--violet-soft);}
+/* ── Sidebar layout ── */
+.lin-wrap{display:flex;height:calc(100vh - var(--nav-h,72px));overflow:hidden;background:var(--bg);}
+.lin-sidebar{width:232px;min-width:232px;height:100%;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;}
+.lin-sidebar-top{padding:14px 10px 10px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.lin-workspace{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:9px;}
+.lin-workspace-icon{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--violet,#7c6fe0),#4fc3f7);display:flex;align-items:center;justify-content:center;font-size:.9rem;color:#fff;font-weight:900;flex-shrink:0;}
+.lin-workspace-name{font-size:.84rem;font-weight:700;color:var(--fg-1,#fff);line-height:1.2;}
+.lin-workspace-user{font-size:.7rem;color:var(--fg-4,rgba(255,255,255,.35));overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px;}
+.lin-sidebar-scroll{flex:1;overflow-y:auto;padding:8px 0 0;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+.lin-sidebar-bottom{padding:8px;border-top:1px solid var(--border);flex-shrink:0;}
+.lin-nav-section{margin-bottom:4px;}
+.lin-nav-item{display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:.81rem;color:var(--fg-3,rgba(255,255,255,.6));text-decoration:none;border-radius:8px;margin:1px 6px;cursor:pointer;transition:background .12s,color .12s;user-select:none;}
+.lin-nav-item:hover{background:rgba(124,111,224,.09);color:var(--fg-1);}
+.lin-nav-item.active{background:rgba(124,111,224,.16);color:var(--violet-soft,#a89af0);font-weight:600;}
+.lin-nav-icon{font-size:.82rem;width:18px;text-align:center;flex-shrink:0;}
+.lin-nav-arrow{margin-left:auto;font-size:.58rem;color:var(--fg-4);transition:transform .2s;}
+.lin-nav-item.expanded .lin-nav-arrow{transform:rotate(90deg);}
+.lin-sub-group{display:none;}
+.lin-sub-group.open{display:block;}
+.lin-nav-sub{display:flex;align-items:center;gap:8px;padding:5px 10px 5px 36px;font-size:.78rem;color:var(--fg-3);text-decoration:none;border-radius:7px;margin:1px 6px;cursor:pointer;transition:background .12s,color .12s;}
+.lin-nav-sub:hover{background:rgba(124,111,224,.08);color:var(--fg-1);}
+.lin-nav-sub.active{background:rgba(124,111,224,.12);color:var(--violet-soft,#a89af0);font-weight:600;}
+.lin-main{flex:1;overflow-y:auto;min-width:0;}
+@media(max-width:640px){.lin-sidebar{display:none;}}
 .file-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-top:24px;}
 .file-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;transition:box-shadow .2s,transform .2s;}
 .file-card:hover{box-shadow:0 4px 20px rgba(0,0,0,.1);transform:translateY(-2px);}
@@ -40,50 +43,49 @@
 </style>
 {% endblock %}
 {% block content %}
-<div class="portal-wrap">
-  <div class="portal-header">
-    <div class="container portal-header-inner">
-      <div>
-        <span class="label" style="color:var(--accent-mid);display:block;margin-bottom:4px;">Researcher Portal</span>
-        <h1 style="color:#fff;font-size:1.6rem;margin:0;">파일 관리</h1>
-      </div>
-      <div style="display:flex;align-items:center;gap:14px;">
-        <span style="color:rgba(255,255,255,.45);font-size:.83rem;">{{ researcher }}</span>
-        <a href="{{ url_for('logout') }}" class="btn btn-outline" style="font-size:.8rem;padding:7px 14px;color:rgba(255,255,255,.7);border-color:rgba(255,255,255,.2);">로그아웃</a>
+<div class="lin-wrap">
+  <aside class="lin-sidebar">
+    <div class="lin-sidebar-top">
+      <div class="lin-workspace">
+        <div class="lin-workspace-icon">T</div>
+        <div style="min-width:0;"><div class="lin-workspace-name">TSL Portal</div><div class="lin-workspace-user">{{ researcher }}</div></div>
       </div>
     </div>
-  </div>
-  <!-- ── 포털 네비게이션 ── -->
-  <div class="portal-nav">
-    <div class="container portal-nav-inner">
-
-      <a href="{{ url_for('portal') }}" class="pnav-btn">🗂 프로젝트</a>
-
-      <div class="pnav-drop active-section">
-        <button class="pnav-drop-btn">📊 데이터 <span class="arrow">▾</span></button>
-        <div class="pnav-drop-menu">
-          <a href="{{ url_for('portal_all_participants') }}">전체 참여자</a>
-          <a href="{{ url_for('portal_all_sessions') }}">전체 세션</a>
-          <a href="{{ url_for('portal_merge') }}">프로젝트 병합</a>
-          <a href="{{ url_for('portal_files') }}" class="active">📁 파일 관리</a>
+    <div class="lin-sidebar-scroll">
+      <div class="lin-nav-section" style="padding-top:4px;">
+        <a href="{{ url_for('portal') }}" class="lin-nav-item"><span class="lin-nav-icon">🗂</span><span>프로젝트</span></a>
+        <div class="lin-nav-item expanded" id="nav-data" onclick="toggleNav('data')"><span class="lin-nav-icon">📊</span><span>데이터</span><span class="lin-nav-arrow">▶</span></div>
+        <div class="lin-sub-group open" id="sub-data">
+          <a href="{{ url_for('portal_all_participants') }}" class="lin-nav-sub">전체 참여자</a>
+          <a href="{{ url_for('portal_all_sessions') }}" class="lin-nav-sub">전체 세션</a>
+          <a href="{{ url_for('portal_merge') }}" class="lin-nav-sub">프로젝트 병합</a>
+          <a href="{{ url_for('portal_files') }}" class="lin-nav-sub active">📁 파일 관리</a>
+          <a href="{{ url_for('portal_analytics') }}" class="lin-nav-sub">📈 분석</a>
+        </div>
+        <a href="{{ url_for('portal_tasks') }}" class="lin-nav-item"><span class="lin-nav-icon">📅</span><span>일정</span></a>
+        <div class="lin-nav-item" id="nav-app" onclick="toggleNav('app')"><span class="lin-nav-icon">📱</span><span>App 로그</span><span class="lin-nav-arrow">▶</span></div>
+        <div class="lin-sub-group" id="sub-app">
+          <a href="{{ url_for('portal_wardy') }}" class="lin-nav-sub">🎮 Wardy</a>
+          <span class="lin-nav-sub" style="opacity:.4;cursor:default;pointer-events:none">App 2 <small>(준비중)</small></span>
+          <span class="lin-nav-sub" style="opacity:.4;cursor:default;pointer-events:none">App 3 <small>(준비중)</small></span>
+          <span class="lin-nav-sub" style="opacity:.4;cursor:default;pointer-events:none">App 4 <small>(준비중)</small></span>
+        </div>
+        <div class="lin-nav-item" id="nav-admin" onclick="toggleNav('admin')"><span class="lin-nav-icon">⚙️</span><span>관리</span><span class="lin-nav-arrow">▶</span></div>
+        <div class="lin-sub-group" id="sub-admin">
+          <a href="{{ url_for('portal_news') }}" class="lin-nav-sub">📣 공지 관리</a>
+          <a href="{{ url_for('portal_contacts') }}" class="lin-nav-sub">✉ 문의 수신함</a>
+          <a href="{{ url_for('portal_settings') }}" class="lin-nav-sub">설정</a>
+          <a href="{{ url_for('portal_audit') }}" class="lin-nav-sub">🗒 감사 로그</a>
+          <a href="{{ url_for('api_docs') }}" class="lin-nav-sub">📖 API 문서</a>
         </div>
       </div>
-
-      <a href="{{ url_for('portal_tasks') }}" class="pnav-btn">📅 일정</a>
-
-      <div class="pnav-drop">
-        <button class="pnav-drop-btn">⚙️ 관리 <span class="arrow">▾</span></button>
-        <div class="pnav-drop-menu">
-          <a href="{{ url_for('portal_news') }}">📣 공지 관리</a>
-          <a href="{{ url_for('portal_contacts') }}">✉ 문의 수신함</a>
-          <a href="{{ url_for('portal_settings') }}">설정</a>
-          <a href="{{ url_for('portal_audit') }}">🗒 감사 로그</a>
-          <a href="{{ url_for('api_docs') }}">📖 API 문서</a>
-        </div>
-      </div>
-
     </div>
-  </div>
+    <div class="lin-sidebar-bottom">
+      <a href="{{ url_for('logout') }}" class="lin-nav-item" style="margin:0;"><span class="lin-nav-icon" style="font-size:.8rem;">↩</span><span style="font-size:.79rem;">로그아웃</span></a>
+    </div>
+  </aside>
+  <div class="lin-main">
+
   <div class="container" style="padding-top:32px;padding-bottom:60px;">
 
     <!-- Flash messages -->
@@ -176,22 +178,13 @@
     </div>
     {% endif %}
   </div>
+  </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-// Portal nav dropdown click toggle
-document.querySelectorAll('.pnav-drop-btn').forEach(btn=>{
-  btn.addEventListener('click',e=>{
-    e.stopPropagation();
-    const drop=btn.closest('.pnav-drop');
-    const wasOpen=drop.classList.contains('open');
-    document.querySelectorAll('.pnav-drop').forEach(d=>d.classList.remove('open'));
-    if(!wasOpen)drop.classList.add('open');
-  });
-});
-document.addEventListener('click',()=>document.querySelectorAll('.pnav-drop').forEach(d=>d.classList.remove('open')));
+function toggleNav(key){const btn=document.getElementById('nav-'+key),group=document.getElementById('sub-'+key);if(!btn||!group)return;const open=group.classList.contains('open');group.classList.toggle('open',!open);btn.classList.toggle('expanded',!open);}
 </script>
 <script>
 const zone = document.getElementById('upload-zone');

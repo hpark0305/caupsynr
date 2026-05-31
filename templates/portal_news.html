@@ -191,6 +191,7 @@
     {% endif %}
 
   </div>
+  </div>
 </div>
 
 <!-- Create modal -->
@@ -225,19 +226,7 @@
 
 {% block scripts %}
 <script>
-// Portal nav dropdown click toggle
-document.querySelectorAll('.pnav-drop-btn').forEach(btn=>{
-  btn.addEventListener('click',e=>{
-    e.stopPropagation();
-    const drop=btn.closest('.pnav-drop');
-    const wasOpen=drop.classList.contains('open');
-    document.querySelectorAll('.pnav-drop').forEach(d=>d.classList.remove('open'));
-    if(!wasOpen)drop.classList.add('open');
-  });
-});
-document.addEventListener('click',()=>document.querySelectorAll('.pnav-drop').forEach(d=>d.classList.remove('open')));
-</script>
-<script>
+function toggleNav(key){const btn=document.getElementById('nav-'+key),group=document.getElementById('sub-'+key);if(!btn||!group)return;const open=group.classList.contains('open');group.classList.toggle('open',!open);btn.classList.toggle('expanded',!open);}
 function openModal(id) {
   document.getElementById(id).classList.add('open');
   document.body.style.overflow = 'hidden';
