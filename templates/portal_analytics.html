@@ -425,6 +425,16 @@
     <!-- ── Controls ── -->
     <div class="an-controls">
 
+      <!-- Source tab toggle -->
+      <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:9px;overflow:hidden;flex-shrink:0;">
+        <button id="tab-file-btn" onclick="switchTab('file')"
+          style="flex:1;padding:7px 0;font-size:.76rem;font-weight:700;background:rgba(124,111,224,.18);color:var(--violet-soft);border:none;cursor:pointer;font-family:var(--font-body);">📂 파일 업로드</button>
+        <button id="tab-proj-btn" onclick="switchTab('proj')"
+          style="flex:1;padding:7px 0;font-size:.76rem;font-weight:600;background:transparent;color:var(--fg-3);border:none;cursor:pointer;font-family:var(--font-body);">🗂 프로젝트 데이터</button>
+      </div>
+
+      <!-- ── Tab: File upload ── -->
+      <div id="tab-file">
       <!-- Upload / File chip -->
       <div id="upload-zone-wrap">
         <div class="upload-zone-compact" id="upload-zone"
@@ -446,6 +456,26 @@
           <button onclick="clearData()" title="파일 제거">✕</button>
         </div>
       </div>
+      </div><!-- /tab-file -->
+
+      <!-- ── Tab: Project data ── -->
+      <div id="tab-proj" style="display:none;">
+        <div class="an-ctrl-row" style="flex-wrap:nowrap;gap:8px;">
+          <select class="an-select" id="proj-select" style="flex:1;max-width:100%;">
+            <option value="">— 프로젝트 선택 —</option>
+            {% for p in projects %}
+            <option value="{{ p.id }}">{{ p.name }}</option>
+            {% endfor %}
+          </select>
+          <button class="an-run-btn" onclick="loadProjectData()" style="white-space:nowrap;">불러오기</button>
+        </div>
+        <div id="proj-chip-wrap" style="display:none;">
+          <div class="file-chip">
+            <span id="proj-name-chip">프로젝트명</span>
+            <button onclick="clearData();document.getElementById('proj-chip-wrap').style.display='none';document.getElementById('proj-select').value='';" title="초기화">✕</button>
+          </div>
+        </div>
+      </div><!-- /tab-proj -->
 
       <!-- Sheet selector (multi-sheet Excel) -->
       <div id="sheet-section" style="display:none;">
@@ -850,6 +880,68 @@ function chartOpts() {
       y: { ticks: { color: 'rgba(255,255,255,0.4)', font:{size:10} }, grid: { color: 'rgba(255,255,255,0.05)' } }
     }
   };
+}
+
+// ── Tab switcher ──
+function switchTab(tab) {
+  const isFile = tab === 'file';
+  document.getElementById('tab-file').style.display = isFile ? '' : 'none';
+  document.getElementById('tab-proj').style.display = isFile ? 'none' : '';
+  const fileBtn = document.getElementById('tab-file-btn');
+  const projBtn = document.getElementById('tab-proj-btn');
+  fileBtn.style.background = isFile ? 'rgba(124,111,224,.18)' : 'transparent';
+  fileBtn.style.color      = isFile ? 'var(--violet-soft)' : 'var(--fg-3)';
+  projBtn.style.background = isFile ? 'transparent' : 'rgba(124,111,224,.18)';
+  projBtn.style.color      = isFile ? 'var(--fg-3)' : 'var(--violet-soft)';
+  if (!isFile) clearData();
+}
+
+// ── Load project data from server ──
+async function loadProjectData() {
+  const sel = document.getElementById('proj-select');
+  const projId = sel.value;
+  if (!projId) return;
+  const projName = sel.options[sel.selectedIndex].text;
+
+  const btn = document.querySelector('#tab-proj .an-run-btn');
+  btn.disabled = true; btn.textContent = '로딩 중…';
+
+  try {
+    const res = await fetch(`/portal/analytics/data?project_id=${encodeURIComponent(projId)}`);
+    if (!res.ok) throw new Error('서버 오류: ' + res.status);
+    const json = await res.json();
+    if (!json.rows || json.rows.length === 0) {
+      alert('이 프로젝트에 측정 데이터가 없어요.');
+      return;
+    }
+
+    // Build parsedData from server rows
+    headers     = Object.keys(json.rows[0]);
+    parsedData  = json.rows.map(r => {
+      const obj = {};
+      headers.forEach(h => {
+        const v = r[h];
+        obj[h] = (v !== '' && v !== null && v !== undefined && !isNaN(Number(v)) && v !== '') ? Number(v) : (v ?? '');
+      });
+      return obj;
+    });
+    numericCols = headers.filter(h => parsedData.some(r => typeof r[h] === 'number'));
+
+    // Show chip
+    document.getElementById('proj-chip-wrap').style.display = 'block';
+    document.getElementById('proj-name-chip').textContent = `${projName} (${json.count}행)`;
+
+    populateControls();
+    renderDataTable();
+    document.getElementById('axis-section').style.display       = 'block';
+    document.getElementById('chart-type-section').style.display = 'block';
+    document.getElementById('run-btn').disabled = false;
+    renderCharts();
+  } catch(e) {
+    alert('데이터 로드 실패: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '불러오기';
+  }
 }
 
 // ── Sidebar nav toggle ──

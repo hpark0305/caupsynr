@@ -1258,20 +1258,34 @@ def portal_project_export_range(project_id):
 def portal_project_upload_sheets(project_id):
     import tempfile, openpyxl
     f = request.files.get('file')
-    if not f or not f.filename.lower().endswith('.xlsx'):
-        return jsonify({"sheets": []})
-    tmp_fd, tmppath = tempfile.mkstemp(suffix='.xlsx')
-    os.close(tmp_fd)
-    try:
-        f.save(tmppath)
-        wb = openpyxl.load_workbook(tmppath, read_only=True)
-        sheets = wb.sheetnames
-        wb.close()
-        return jsonify({"sheets": sheets})
-    except:
-        return jsonify({"sheets": []})
-    finally:
-        if os.path.exists(tmppath): os.unlink(tmppath)
+    if not f: return jsonify({"sheets": []})
+    fname_l = f.filename.lower()
+    if fname_l.endswith('.xlsx'):
+        tmp_fd, tmppath = tempfile.mkstemp(suffix='.xlsx')
+        os.close(tmp_fd)
+        try:
+            f.save(tmppath)
+            wb = openpyxl.load_workbook(tmppath, read_only=True)
+            sheets = wb.sheetnames
+            wb.close()
+            return jsonify({"sheets": sheets})
+        except:
+            return jsonify({"sheets": []})
+        finally:
+            if os.path.exists(tmppath): os.unlink(tmppath)
+    elif fname_l.endswith('.xls'):
+        import xlrd as _xlrd
+        tmp_fd, tmppath = tempfile.mkstemp(suffix='.xls')
+        os.close(tmp_fd)
+        try:
+            f.save(tmppath)
+            wb_xls = _xlrd.open_workbook(tmppath)
+            return jsonify({"sheets": wb_xls.sheet_names()})
+        except:
+            return jsonify({"sheets": []})
+        finally:
+            if os.path.exists(tmppath): os.unlink(tmppath)
+    return jsonify({"sheets": []})
 
 @app.route('/portal/projects/<project_id>/upload', methods=['POST'])
 @login_required
@@ -1314,8 +1328,28 @@ def portal_project_upload(project_id):
                     rows.append({headers[i]: (str(v).strip() if v is not None else '') for i, v in enumerate(row) if i < len(headers)})
             wb.close()
         elif fname_lower.endswith('.xls'):
-            flash('.xls 형식은 지원하지 않아요. Excel에서 "다른 이름으로 저장 → .xlsx"로 변환 후 다시 업로드해주세요.')
-            return redirect(url_for('portal_project', project_id=project_id))
+            import xlrd as _xlrd, tempfile as _tf
+            tmp_fd2, tmppath2 = _tf.mkstemp(suffix='.xls')
+            os.close(tmp_fd2)
+            f.seek(0); f.save(tmppath2)
+            try:
+                wb_xls = _xlrd.open_workbook(tmppath2)
+                if sheet_name and sheet_name in wb_xls.sheet_names():
+                    ws_xls = wb_xls.sheet_by_name(sheet_name)
+                else:
+                    ws_xls = wb_xls.sheet_by_index(0)
+                if ws_xls.nrows < 2:
+                    flash('데이터가 없어요.')
+                    return redirect(url_for('portal_project', project_id=project_id))
+                raw_h = [str(ws_xls.cell_value(0, c)).strip() for c in range(ws_xls.ncols)]
+                xls_headers = [h if h else f'col_{i}' for i, h in enumerate(raw_h)]
+                for r in range(1, ws_xls.nrows):
+                    rv = [ws_xls.cell_value(r, c) for c in range(ws_xls.ncols)]
+                    if any(v != '' and v is not None for v in rv):
+                        rows.append({xls_headers[i]: (str(v).strip() if v != '' and v is not None else '') for i, v in enumerate(rv) if i < len(xls_headers)})
+            finally:
+                try: os.unlink(tmppath2)
+                except: pass
         else:
             flash('CSV 또는 Excel(.xlsx) 파일만 업로드 가능해요.')
             return redirect(url_for('portal_project', project_id=project_id))
@@ -2404,6 +2438,39 @@ def portal_analytics():
     projects = sb("GET", "projects", params=f"?researcher_email=eq.{email}&order=created_at.desc") or []
     return render_template("portal_analytics.html", researcher=email,
         projects=projects if isinstance(projects, list) else [])
+
+@app.route("/portal/analytics/data")
+@csrf.exempt
+@login_required
+def portal_analytics_data():
+    email = session["researcher"]
+    project_id = request.args.get("project_id", "").strip()
+    if not project_id:
+        return jsonify({"error": "project_id required"}), 400
+    proj = sb("GET", "projects", params=f"?id=eq.{project_id}&researcher_email=eq.{email}")
+    if not proj:
+        return jsonify({"error": "unauthorized"}), 403
+    participants = sb("GET", "project_participants", params=f"?project_id=eq.{project_id}") or []
+    p_map = {p["id"]: p for p in (participants if isinstance(participants, list) else [])}
+    mlist = sb("GET", "measurements", params=f"?project_id=eq.{project_id}&excluded=eq.0&order=measured_at.asc") or []
+    rows = []
+    for m in (mlist if isinstance(mlist, list) else []):
+        info = p_map.get(m.get("participant_id", ""), {})
+        data = m.get("data") or {}
+        if not isinstance(data, dict):
+            try: data = json.loads(data)
+            except: data = {}
+        row = {
+            "참여자코드": info.get("code", ""),
+            "그룹": info.get("group_name", ""),
+            "성별": info.get("gender", ""),
+            "나이": info.get("age", ""),
+            "phase": m.get("phase", ""),
+            "측정일": (m.get("measured_at") or "")[:10],
+        }
+        row.update(data)
+        rows.append(row)
+    return jsonify({"rows": rows, "count": len(rows)})
 
 # ── API documentation ─────────────────────────────────
 @app.route("/api/docs")
