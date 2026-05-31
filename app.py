@@ -2182,31 +2182,50 @@ def portal_wardy():
     project_id = request.args.get("project_id", "")
     user_name  = request.args.get("user_name", "").strip()
     state      = request.args.get("state", "").strip()
-    page       = max(1, int(request.args.get("page", 1)))
-    per_page   = 100
 
-    params = "?select=*&order=received_at.desc"
+    params = "?select=*&order=event_time.asc"
     if project_id: params += f"&project_id=eq.{project_id}"
     if user_name:  params += f"&user_name=ilike.{user_name}%25"
     if state:      params += f"&state=ilike.{state}"
+    params += "&limit=3000"
 
-    total  = _sb_count("wardy_events", params)
-    offset = (page - 1) * per_page
-    params += f"&limit={per_page}&offset={offset}"
-    events = sb("GET", "wardy_events", params=params) or []
+    all_events = sb("GET", "wardy_events", params=params) or []
+    total = len(all_events)
+
+    # 참여자별로 그룹핑 (가장 최근 이벤트 순 정렬)
+    from collections import OrderedDict
+    groups = OrderedDict()
+    for ev in all_events:
+        key = ev.get("user_name") or "Unknown"
+        if key not in groups:
+            groups[key] = []
+        groups[key].append(ev)
+
+    grouped_users = []
+    for uname, evs in groups.items():
+        times = [e.get("event_time") or e.get("received_at") or "" for e in evs]
+        times = [t for t in times if t]
+        grouped_users.append({
+            "user_name": uname,
+            "events":    evs,
+            "count":     len(evs),
+            "first_time": min(times)[:16].replace("T"," ") if times else "",
+            "last_time":  max(times)[:16].replace("T"," ") if times else "",
+            "states":    sorted(set(e.get("state","") for e in evs if e.get("state"))),
+        })
+    # 최근 이벤트가 있는 참여자 먼저
+    grouped_users.sort(key=lambda g: g["last_time"], reverse=True)
 
     projects = sb("GET", "projects", params=f"?researcher_email=eq.{session['researcher']}&select=id,name") or []
-    total_pages = max(1, -(-total // per_page))
 
-    # DB에 실제 존재하는 state 값으로 드롭다운 생성 (최대 2000건 샘플링)
     state_rows = sb("GET", "wardy_events", params="?select=state&limit=2000&order=received_at.desc") or []
     distinct_states = sorted(set(r.get("state", "") for r in state_rows if r.get("state")))
 
     return render_template("portal_wardy.html",
         researcher=session["researcher"],
-        events=events, projects=projects,
+        grouped_users=grouped_users, projects=projects,
         project_id=project_id, user_name=user_name, state=state,
-        page=page, total_pages=total_pages, total=total,
+        total=total,
         distinct_states=distinct_states,
         api_key=os.getenv("APP_API_KEY","tsl-app-key-2025"))
 
