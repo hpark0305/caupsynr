@@ -78,14 +78,6 @@
 
   <div class="container" style="padding-top:28px;padding-bottom:60px;">
 
-    {% with messages = get_flashed_messages() %}
-    {% if messages %}
-    <div style="background:var(--accent-light);border:1px solid var(--accent);border-radius:var(--radius);padding:12px 18px;margin-bottom:20px;color:var(--accent);font-size:.9rem;font-weight:600;max-width:480px;">
-      {{ messages[0] }}
-    </div>
-    {% endif %}
-    {% endwith %}
-
     <!-- 비밀번호 변경 -->
     <div class="settings-card">
       <h3>비밀번호 변경</h3>

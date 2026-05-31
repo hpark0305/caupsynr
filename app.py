@@ -472,7 +472,7 @@ def _require_project_owner(project_id):
     """Returns (project_dict, None) if OK, (None, redirect_response) if unauthorized."""
     proj = sb("GET","projects",params=f"?id=eq.{project_id}")
     if not proj or not isinstance(proj,list):
-        flash("프로젝트를 찾을 수 없어요.")
+        flash("프로젝트를 찾을 수 없어요.", "error")
         return None, redirect(url_for("portal"))
     owner = proj[0].get("researcher_email","")
     email = session.get("researcher","")
@@ -481,7 +481,7 @@ def _require_project_owner(project_id):
         row = sb("GET", "project_collaborators",
                  params=f"?project_id=eq.{project_id}&researcher_email=eq.{email}&select=role")
         if not row:
-            flash("이 프로젝트에 접근 권한이 없어요.")
+            flash("이 프로젝트에 접근 권한이 없어요.", "error")
             return None, redirect(url_for("portal"))
     return proj[0], None
 
@@ -822,7 +822,7 @@ def contact():
             })
             success = True
         else:
-            flash("메시지를 입력해주세요.")
+            flash("메시지를 입력해주세요.", "error")
     return render_template("contact.html", success=success)
 
 @app.route("/gallery")
@@ -1006,18 +1006,18 @@ def portal_project_add_participant(project_id):
     age_raw = request.form.get("age","").strip()
     # Server-side validation
     if not code or len(code) > 50:
-        flash("참여자 코드는 1~50자로 입력해주세요."); return redirect(url_for("portal_project", project_id=project_id))
+        flash("참여자 코드는 1~50자로 입력해주세요.", "error"); return redirect(url_for("portal_project", project_id=project_id))
     if not re.match(r'^[A-Za-z0-9_\-가-힣]+$', code):
-        flash("코드에 사용할 수 없는 문자가 포함됐어요."); return redirect(url_for("portal_project", project_id=project_id))
+        flash("코드에 사용할 수 없는 문자가 포함됐어요.", "error"); return redirect(url_for("portal_project", project_id=project_id))
     age = None
     if age_raw:
         if not age_raw.isdigit() or not (1 <= int(age_raw) <= 120):
-            flash("나이는 1~120 사이 숫자로 입력해주세요."); return redirect(url_for("portal_project", project_id=project_id))
+            flash("나이는 1~120 사이 숫자로 입력해주세요.", "error"); return redirect(url_for("portal_project", project_id=project_id))
         age = int(age_raw)
     # Duplicate code check
     existing = sb("GET","project_participants",params=f"?project_id=eq.{project_id}&code=eq.{code}")
     if existing:
-        flash(f"'{code}' 코드는 이미 이 프로젝트에 존재해요."); return redirect(url_for("portal_project", project_id=project_id))
+        flash(f"'{code}' 코드는 이미 이 프로젝트에 존재해요.", "error"); return redirect(url_for("portal_project", project_id=project_id))
     sb("POST","project_participants",data={
         "project_id": project_id,
         "code":       code,
@@ -1294,7 +1294,7 @@ def portal_project_upload(project_id):
     if err: return err
     f = request.files.get('file')
     if not f or not f.filename:
-        flash('파일을 선택해주세요.')
+        flash('파일을 선택해주세요.', 'error')
         return redirect(url_for('portal_project', project_id=project_id))
 
     original_name = f.filename
@@ -1339,7 +1339,7 @@ def portal_project_upload(project_id):
                 else:
                     ws_xls = wb_xls.sheet_by_index(0)
                 if ws_xls.nrows < 2:
-                    flash('데이터가 없어요.')
+                    flash('데이터가 없어요.', 'error')
                     return redirect(url_for('portal_project', project_id=project_id))
                 raw_h = [str(ws_xls.cell_value(0, c)).strip() for c in range(ws_xls.ncols)]
                 xls_headers = [h if h else f'col_{i}' for i, h in enumerate(raw_h)]
@@ -1351,10 +1351,10 @@ def portal_project_upload(project_id):
                 try: os.unlink(tmppath2)
                 except: pass
         else:
-            flash('CSV 또는 Excel(.xlsx) 파일만 업로드 가능해요.')
+            flash('CSV 또는 Excel(.xlsx) 파일만 업로드 가능해요.', 'error')
             return redirect(url_for('portal_project', project_id=project_id))
     except Exception as e:
-        flash(f'파일 읽기 오류: {e}')
+        flash(f'파일 읽기 오류: {e}', 'error')
         return redirect(url_for('portal_project', project_id=project_id))
     finally:
         if tmppath and os.path.exists(tmppath):
@@ -1362,7 +1362,7 @@ def portal_project_upload(project_id):
             except: pass
 
     if not rows:
-        flash('데이터가 없어요.')
+        flash('데이터가 없어요.', 'error')
         return redirect(url_for('portal_project', project_id=project_id))
 
     # ── 원본 파일을 DATA_DIR에 저장 ──────────────────────────
@@ -1911,12 +1911,12 @@ def portal_files():
 def portal_files_upload():
     f = request.files.get("file")
     if not f or not f.filename:
-        flash("파일을 선택해주세요.")
+        flash("파일을 선택해주세요.", "error")
         return redirect(url_for("portal_files"))
     original = f.filename
     safe = secure_filename(original)
     if not safe:
-        flash("유효하지 않은 파일명입니다.")
+        flash("유효하지 않은 파일명입니다.", "error")
         return redirect(url_for("portal_files"))
     uid = str(_uuid.uuid4())
     ext = os.path.splitext(safe)[1]
@@ -1939,7 +1939,7 @@ def portal_files_download(file_id):
     if not rows: return redirect(url_for("portal_files"))
     row = rows[0]
     if row.get("researcher_email") != session["researcher"]:
-        flash("접근 권한이 없습니다."); return redirect(url_for("portal_files"))
+        flash("접근 권한이 없습니다.", "error"); return redirect(url_for("portal_files"))
     path = os.path.join(PORTAL_FILES_DIR, row["filename"])
     if not os.path.exists(path): return redirect(url_for("portal_files"))
     from flask import send_file
@@ -1980,9 +1980,9 @@ def portal_change_password():
     confirm=request.form.get("confirm","").strip()
     email=session["researcher"]
     stored = _get_account(email)
-    if not stored or not check_password_hash(stored, current): flash("현재 비밀번호가 틀렸어요."); return redirect(url_for("portal_settings"))
-    if new_pw!=confirm: flash("새 비밀번호가 일치하지 않아요."); return redirect(url_for("portal_settings"))
-    if len(new_pw)<6: flash("비밀번호는 6자 이상이어야 해요."); return redirect(url_for("portal_settings"))
+    if not stored or not check_password_hash(stored, current): flash("현재 비밀번호가 틀렸어요.", "error"); return redirect(url_for("portal_settings"))
+    if new_pw!=confirm: flash("새 비밀번호가 일치하지 않아요.", "error"); return redirect(url_for("portal_settings"))
+    if len(new_pw)<6: flash("비밀번호는 6자 이상이어야 해요.", "error"); return redirect(url_for("portal_settings"))
     _set_account(email, new_pw)
     flash("비밀번호가 변경됐어요.")
     return redirect(url_for("portal_settings"))
@@ -1992,8 +1992,8 @@ def portal_change_password():
 def portal_add_account():
     new_email=request.form.get("email","").strip()
     new_pw=request.form.get("password","").strip()
-    if not new_email or not new_pw: flash("이메일과 비밀번호를 입력해주세요."); return redirect(url_for("portal_settings"))
-    if _account_exists(new_email): flash("이미 존재하는 계정이에요."); return redirect(url_for("portal_settings"))
+    if not new_email or not new_pw: flash("이메일과 비밀번호를 입력해주세요.", "error"); return redirect(url_for("portal_settings"))
+    if _account_exists(new_email): flash("이미 존재하는 계정이에요.", "error"); return redirect(url_for("portal_settings"))
     _set_account(new_email, new_pw)
     flash(f"{new_email} 계정이 추가됐어요.")
     return redirect(url_for("portal_settings"))
@@ -2024,12 +2024,12 @@ def portal_db_backup():
 def portal_db_restore():
     f = request.files.get("backup_file")
     if not f or not f.filename.endswith(".db"):
-        flash("올바른 .db 파일을 선택해주세요.")
+        flash("올바른 .db 파일을 선택해주세요.", "error")
         return redirect(url_for("portal_settings"))
     # Validate it's a SQLite file
     header = f.read(16)
     if not header.startswith(b"SQLite format 3"):
-        flash("유효한 SQLite 데이터베이스 파일이 아닙니다.")
+        flash("유효한 SQLite 데이터베이스 파일이 아닙니다.", "error")
         return redirect(url_for("portal_settings"))
     f.seek(0)
     # Write to a temp file then validate before replacing
@@ -2042,7 +2042,7 @@ def portal_db_restore():
             test_conn.close()
         except Exception as e:
             os.unlink(tmp.name)
-            flash(f"복원 실패: DB 파일 검증 오류 — {e}")
+            flash(f"복원 실패: DB 파일 검증 오류 — {e}", "error")
             return redirect(url_for("portal_settings"))
         shutil.copy2(tmp.name, DB_PATH)
         os.unlink(tmp.name)
@@ -2061,7 +2061,7 @@ def portal_merge():
 @login_required
 def portal_merge_preview():
     p1_id=request.form.get("project1_id",""); p2_id=request.form.get("project2_id","")
-    if not p1_id or not p2_id or p1_id==p2_id: flash("서로 다른 프로젝트를 선택해주세요."); return redirect(url_for("portal_merge"))
+    if not p1_id or not p2_id or p1_id==p2_id: flash("서로 다른 프로젝트를 선택해주세요.", "error"); return redirect(url_for("portal_merge"))
     p1=sb("GET","projects",params=f"?id=eq.{p1_id}"); p2=sb("GET","projects",params=f"?id=eq.{p2_id}")
     p1_parts=sb("GET","project_participants",params=f"?project_id=eq.{p1_id}") or []
     p2_parts=sb("GET","project_participants",params=f"?project_id=eq.{p2_id}") or []
@@ -2080,7 +2080,7 @@ def portal_merge_execute():
     new_name=request.form.get("new_name","").strip() or "병합 프로젝트"
     new_proj=sb("POST","projects",data={"name":new_name,"description":f"병합: {p1_id[:8]}+{p2_id[:8]}",
         "researcher_email":session["researcher"]})
-    if not new_proj or not isinstance(new_proj,list): flash("병합 실패"); return redirect(url_for("portal_merge"))
+    if not new_proj or not isinstance(new_proj,list): flash("병합 실패", "error"); return redirect(url_for("portal_merge"))
     new_pid=new_proj[0]["id"]
     all_vars={}
     for src in [p1_id,p2_id]:
@@ -2130,6 +2130,7 @@ def portal_all_sessions():
         sessions=session_list)
 
 @app.route("/api/sessions", methods=["POST"])
+@csrf.exempt
 def api_receive_session():
     if request.headers.get("X-API-Key","")!=os.getenv("APP_API_KEY","tsl-app-key-2025"):
         return jsonify({"error":"Unauthorized"}),401
@@ -2214,7 +2215,7 @@ def portal_wardy():
 def portal_wardy_delete():
     ids = request.form.getlist("ids")
     if not ids:
-        flash("삭제할 항목을 선택해주세요.")
+        flash("삭제할 항목을 선택해주세요.", "error")
         return redirect(url_for("portal_wardy"))
     for eid in ids:
         sb("DELETE", "wardy_events", params=f"?id=eq.{eid}")
@@ -2544,7 +2545,7 @@ def portal_task_new():
         "created_by":  me,
     }
     if not data["title"]:
-        flash("태스크 제목을 입력하세요.")
+        flash("태스크 제목을 입력하세요.", "error")
         return redirect(url_for("portal_tasks"))
     sb("POST", "tasks", data=data)
     flash("태스크를 추가했습니다.")
@@ -2603,20 +2604,20 @@ def portal_project_add_collaborator(project_id):
     if err: return err
     # Only the owner can invite collaborators
     if proj.get("researcher_email") != session.get("researcher"):
-        flash("프로젝트 소유자만 협력자를 초대할 수 있어요.")
+        flash("프로젝트 소유자만 협력자를 초대할 수 있어요.", "error")
         return redirect(url_for("portal_project", project_id=project_id))
     email = (request.form.get("collaborator_email") or "").strip().lower()
     role  = request.form.get("role", "viewer")
     if not email:
-        flash("초대할 연구자 이메일을 입력해 주세요.")
+        flash("초대할 연구자 이메일을 입력해 주세요.", "error")
         return redirect(url_for("portal_project", project_id=project_id))
     if email == session.get("researcher"):
-        flash("본인을 협력자로 초대할 수 없어요.")
+        flash("본인을 협력자로 초대할 수 없어요.", "error")
         return redirect(url_for("portal_project", project_id=project_id))
     existing = sb("GET", "project_collaborators",
                   params=f"?project_id=eq.{project_id}&researcher_email=eq.{email}&select=id")
     if existing:
-        flash(f"{email}는 이미 협력자로 등록되어 있어요.")
+        flash(f"{email}는 이미 협력자로 등록되어 있어요.", "error")
         return redirect(url_for("portal_project", project_id=project_id))
     sb("POST", "project_collaborators", data={
         "project_id": project_id, "researcher_email": email, "role": role
@@ -2632,7 +2633,7 @@ def portal_project_remove_collaborator(project_id):
     proj, err = _require_project_owner(project_id)
     if err: return err
     if proj.get("researcher_email") != session.get("researcher"):
-        flash("프로젝트 소유자만 협력자를 제거할 수 있어요.")
+        flash("프로젝트 소유자만 협력자를 제거할 수 있어요.", "error")
         return redirect(url_for("portal_project", project_id=project_id))
     email = (request.form.get("collaborator_email") or "").strip().lower()
     sb("DELETE", "project_collaborators",
@@ -2674,7 +2675,7 @@ def reset_password_request():
             reset_url = url_for("reset_password_confirm", token=token, _external=True)
             flash(f"비밀번호 재설정 링크가 생성되었어요. (개발 환경: {reset_url})")
         else:
-            flash("해당 이메일로 등록된 계정이 없어요.")
+            flash("해당 이메일로 등록된 계정이 없어요.", "error")
         return redirect(url_for("reset_password_request"))
     return render_template("reset_password_request.html")
 
@@ -2682,16 +2683,16 @@ def reset_password_request():
 def reset_password_confirm(token):
     rows = sb("GET", "reset_tokens", params=f"?token=eq.{token}&select=email,expires_at")
     if not rows:
-        flash("유효하지 않거나 이미 사용된 링크예요.")
+        flash("유효하지 않거나 이미 사용된 링크예요.", "error")
         return redirect(url_for("login"))
     email, expires_at = rows[0]["email"], rows[0]["expires_at"]
     if datetime.now() > datetime.strptime(expires_at, "%Y-%m-%dT%H:%M:%S"):
-        flash("링크가 만료되었어요. 다시 요청해 주세요.")
+        flash("링크가 만료되었어요. 다시 요청해 주세요.", "error")
         return redirect(url_for("reset_password_request"))
     if request.method == "POST":
         pw = request.form.get("password", "")
         if len(pw) < 8:
-            flash("비밀번호는 8자 이상이어야 해요.")
+            flash("비밀번호는 8자 이상이어야 해요.", "error")
             return render_template("reset_password_confirm.html", token=token)
         sb("PATCH", "accounts",
            data={"password": generate_password_hash(pw, method='pbkdf2:sha256')},

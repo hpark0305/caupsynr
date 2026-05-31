@@ -75,13 +75,6 @@
           <p style="color:var(--muted);font-size:.88rem;">빠른 시일 내에 답변 드리겠습니다.</p>
         </div>
         {% else %}
-        {% with messages = get_flashed_messages() %}
-        {% if messages %}
-        <div style="margin-bottom:16px;padding:10px 14px;background:#fee2e2;border-radius:8px;color:#991b1b;font-size:.88rem;">
-          {% for m in messages %}{{ m }}{% endfor %}
-        </div>
-        {% endif %}
-        {% endwith %}
         <form action="{{ url_for('contact') }}" method="POST">
           <div class="grid-2">
             <div class="form-group">

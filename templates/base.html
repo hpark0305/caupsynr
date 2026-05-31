@@ -43,11 +43,15 @@
   </div>
 </header>
 
-{% with messages = get_flashed_messages() %}
+{% with messages = get_flashed_messages(with_categories=true) %}
 {% if messages %}
 <div style="max-width:960px;margin:.75rem auto;padding:0 1rem">
-  {% for msg in messages %}
+  {% for category, msg in messages %}
+  {% if category == 'error' %}
+  <div style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.35);border-radius:10px;padding:10px 16px;margin-bottom:8px;color:#f87171;font-size:.88rem;">{{ msg }}</div>
+  {% else %}
   <div style="background:rgba(94,230,168,0.12);border:1px solid rgba(94,230,168,0.35);border-radius:10px;padding:10px 16px;margin-bottom:8px;color:#5ee6a8;font-size:.88rem;">{{ msg }}</div>
+  {% endif %}
   {% endfor %}
 </div>
 {% endif %}
