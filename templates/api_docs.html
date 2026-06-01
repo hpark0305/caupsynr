@@ -243,6 +243,70 @@ URLSession.shared.dataTask(with: request) { data, response, error <span style="c
       <a href="{{ url_for('portal') }}" class="btn btn-outline" style="font-size:.85rem;margin-top:4px;display:inline-block;">프로젝트 목록 보기 →</a>
     </div>
 
+    <!-- Section 6: NeuroBreeze API -->
+    <div class="doc-section">
+      <a class="section-anchor" id="neurobreeze"></a>
+      <div class="doc-section-title">섹션 6</div>
+      <h2>🧠 NeuroBreeze 앱 API</h2>
+      <p>EEG 기반 명상 앱 NeuroBreeze의 뇌파검사 및 명상 세션 데이터를 전송하는 전용 엔드포인트입니다. 인증 방식은 동일하게 <span class="inline-code">X-API-Key</span> 헤더를 사용합니다.</p>
+
+      <!-- EEG endpoint -->
+      <p style="margin-top:20px;font-size:.92rem;font-weight:700;">📊 뇌파검사 (EEG) 전송</p>
+      <div class="endpoint-line">
+        <span class="method-badge">POST</span>
+        /api/neurobreeze/eeg
+      </div>
+      <p style="font-size:.83rem;color:var(--muted);margin:12px 0 6px;font-weight:600;">요청 본문 (JSON) — 단건 또는 배열 모두 허용</p>
+      <pre class="code-block"><code>{
+  "project_id":               "uuid-string",  <span style="color:#64748b;">// 선택</span>
+  "user_name":                "P001",          <span style="color:#64748b;">// 필수 — 참여자 식별자</span>
+  "session_num":              1,               <span style="color:#64748b;">// 회차</span>
+  "recorded_at":              "2026-01-26T14:30:00",
+  "leftAlphaPowerSpectrum":   0.85,
+  "rightAlphaPowerSpectrum":  0.92,
+  "AlphaPowerSpectrum":       1.77,
+  "leftAlphaIndicatorValue":  7,
+  "rightAlphaIndicatorValue": 8,
+  "AlphaIndicatorValue":      15
+}</code></pre>
+      <p style="font-size:.83rem;color:var(--muted);margin:12px 0 6px;font-weight:600;">성공 응답 — <span class="inline-code">201 Created</span></p>
+      <pre class="code-block"><code>{"ok": true, "saved": 1}</code></pre>
+
+      <!-- Meditation endpoint -->
+      <p style="margin-top:28px;font-size:.92rem;font-weight:700;">🧘 명상 세션 전송</p>
+      <div class="endpoint-line">
+        <span class="method-badge">POST</span>
+        /api/neurobreeze/meditation
+      </div>
+      <p style="font-size:.83rem;color:var(--muted);margin:12px 0 6px;font-weight:600;">요청 본문 (JSON) — 단건 또는 배열 모두 허용</p>
+      <pre class="code-block"><code>{
+  "project_id":               "uuid-string",   <span style="color:#64748b;">// 선택</span>
+  "user_name":                "P001",           <span style="color:#64748b;">// 필수</span>
+  "session_num":              1,
+  "start_time":               "2026-01-26T14:00:00",
+  "end_time":                 "2026-01-26T14:20:00",
+  "feedback_count":           3,
+  "breath_mode":              "5초",
+  "leftAlphaPowerSpectrum":   0.85,
+  "rightAlphaPowerSpectrum":  0.92,
+  "AlphaPowerSpectrum":       1.77,
+  "leftAlphaIndicatorValue":  7,
+  "rightAlphaIndicatorValue": 8,
+  "AlphaIndicatorValue":      15,
+  "Start_Alpha_Spectrum_Avg": 1.45,
+  "End_Alpha_Spectrum_Avg":   1.88,
+  "Start_Alpha_Indicator_Avg":6,
+  "End_Alpha_Indicator_Avg":  9,
+  "Alpha_Spec_Increase":      12.5,  <span style="color:#64748b;">// 증가율 %</span>
+  "Alpha_indi_Increase":      8.3,
+  "Alpha_Progress_Rate":      7.1
+}</code></pre>
+      <p style="font-size:.83rem;color:var(--muted);margin:12px 0 6px;font-weight:600;">성공 응답 — <span class="inline-code">201 Created</span></p>
+      <pre class="code-block"><code>{"ok": true, "saved": 1}</code></pre>
+
+      <p style="margin-top:20px;font-size:.83rem;color:var(--muted);">수신된 데이터는 포털의 <a href="{{ url_for('portal_neurobreeze') }}" style="color:var(--violet-soft);">🧠 NeuroBreeze 뷰어</a>에서 확인할 수 있습니다.</p>
+    </div>
+
   </div>
 </div>
 {% endblock %}
