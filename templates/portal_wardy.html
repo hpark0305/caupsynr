@@ -81,7 +81,7 @@ input[type=checkbox]{cursor:pointer;width:15px;height:15px;}
         <div class="lin-nav-item expanded" id="nav-app" onclick="toggleNav('app')"><span class="lin-nav-icon">📱</span><span>App 로그</span><span class="lin-nav-arrow">▶</span></div>
         <div class="lin-sub-group open" id="sub-app">
           <a href="{{ url_for('portal_wardy') }}" class="lin-nav-sub active">🎮 Wardy</a>
-          <span class="lin-nav-sub" style="opacity:.4;cursor:default;pointer-events:none">App 2 <small>(준비중)</small></span>
+          <a href="{{ url_for('portal_neurobreeze') }}" class="lin-nav-sub">🧠 NeuroBreeze</a>
           <span class="lin-nav-sub" style="opacity:.4;cursor:default;pointer-events:none">App 3 <small>(준비중)</small></span>
           <span class="lin-nav-sub" style="opacity:.4;cursor:default;pointer-events:none">App 4 <small>(준비중)</small></span>
         </div>

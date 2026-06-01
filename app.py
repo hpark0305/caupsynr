@@ -207,6 +207,44 @@ def init_db():
                 data TEXT DEFAULT '{}',
                 received_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now','localtime'))
             );
+            CREATE TABLE IF NOT EXISTS neurobreeze_eeg (
+                id TEXT PRIMARY KEY,
+                project_id TEXT,
+                user_name TEXT NOT NULL,
+                session_num INTEGER,
+                recorded_at TEXT,
+                left_alpha_power REAL,
+                right_alpha_power REAL,
+                alpha_power REAL,
+                left_alpha_indicator REAL,
+                right_alpha_indicator REAL,
+                alpha_indicator REAL,
+                received_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now','localtime'))
+            );
+            CREATE TABLE IF NOT EXISTS neurobreeze_meditation (
+                id TEXT PRIMARY KEY,
+                project_id TEXT,
+                user_name TEXT NOT NULL,
+                session_num INTEGER,
+                start_time TEXT,
+                end_time TEXT,
+                feedback_count INTEGER,
+                breath_mode TEXT,
+                left_alpha_power REAL,
+                right_alpha_power REAL,
+                alpha_power REAL,
+                left_alpha_indicator REAL,
+                right_alpha_indicator REAL,
+                alpha_indicator REAL,
+                start_alpha_power_avg REAL,
+                end_alpha_power_avg REAL,
+                start_alpha_indicator_avg REAL,
+                end_alpha_indicator_avg REAL,
+                alpha_power_increase REAL,
+                alpha_indicator_increase REAL,
+                alpha_progress_rate REAL,
+                received_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now','localtime'))
+            );
         ''')
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA synchronous=NORMAL")
@@ -273,6 +311,7 @@ _ALLOWED_TABLES = {
     'portal_files','accounts','news','research_topics_extra','contact_messages',
     'sessions','audit_log','project_collaborators','reset_tokens','project_protocols',
     'wardy_events','tasks',
+    'neurobreeze_eeg','neurobreeze_meditation',
 }
 
 def _safe_col(col):
@@ -2175,6 +2214,77 @@ def api_wardy_events():
         saved += 1
     return jsonify({"ok": True, "saved": saved}), 201
 
+# ── NeuroBreeze API ────────────────────────────────────
+@app.route("/api/neurobreeze/eeg", methods=["POST"])
+@csrf.exempt
+def api_neurobreeze_eeg():
+    if request.headers.get("X-API-Key","") != os.getenv("APP_API_KEY","tsl-app-key-2025"):
+        return jsonify({"error":"Unauthorized"}), 401
+    body = request.get_json(silent=True)
+    if not body:
+        return jsonify({"error":"No JSON body"}), 400
+    records = body if isinstance(body, list) else [body]
+    saved = 0
+    for r in records:
+        if not r.get("user_name"):
+            continue
+        sid = str(_uuid.uuid4())
+        sb("POST", "neurobreeze_eeg", data={
+            "id":                    sid,
+            "project_id":            r.get("project_id") or None,
+            "user_name":             str(r.get("user_name","")).strip(),
+            "session_num":           r.get("session_num") or r.get("회차"),
+            "recorded_at":           r.get("recorded_at") or r.get("기록시간"),
+            "left_alpha_power":      r.get("leftAlphaPowerSpectrum"),
+            "right_alpha_power":     r.get("rightAlphaPowerSpectrum"),
+            "alpha_power":           r.get("AlphaPowerSpectrum"),
+            "left_alpha_indicator":  r.get("leftAlphaIndicatorValue"),
+            "right_alpha_indicator": r.get("rightAlphaIndicatorValue"),
+            "alpha_indicator":       r.get("AlphaIndicatorValue"),
+        })
+        saved += 1
+    return jsonify({"ok": True, "saved": saved}), 201
+
+@app.route("/api/neurobreeze/meditation", methods=["POST"])
+@csrf.exempt
+def api_neurobreeze_meditation():
+    if request.headers.get("X-API-Key","") != os.getenv("APP_API_KEY","tsl-app-key-2025"):
+        return jsonify({"error":"Unauthorized"}), 401
+    body = request.get_json(silent=True)
+    if not body:
+        return jsonify({"error":"No JSON body"}), 400
+    records = body if isinstance(body, list) else [body]
+    saved = 0
+    for r in records:
+        if not r.get("user_name"):
+            continue
+        sid = str(_uuid.uuid4())
+        sb("POST", "neurobreeze_meditation", data={
+            "id":                        sid,
+            "project_id":                r.get("project_id") or None,
+            "user_name":                 str(r.get("user_name","")).strip(),
+            "session_num":               r.get("session_num") or r.get("회차"),
+            "start_time":                r.get("start_time") or r.get("시작시간"),
+            "end_time":                  r.get("end_time") or r.get("종료시간"),
+            "feedback_count":            r.get("feedback_count") or r.get("피드백"),
+            "breath_mode":               r.get("breath_mode") or r.get("호흡모드"),
+            "left_alpha_power":          r.get("leftAlphaPowerSpectrum"),
+            "right_alpha_power":         r.get("rightAlphaPowerSpectrum"),
+            "alpha_power":               r.get("AlphaPowerSpectrum"),
+            "left_alpha_indicator":      r.get("leftAlphaIndicatorValue"),
+            "right_alpha_indicator":     r.get("rightAlphaIndicatorValue"),
+            "alpha_indicator":           r.get("AlphaIndicatorValue"),
+            "start_alpha_power_avg":     r.get("Start_Alpha_Spectrum_Avg"),
+            "end_alpha_power_avg":       r.get("End_Alpha_Spectrum_Avg"),
+            "start_alpha_indicator_avg": r.get("Start_Alpha_Indicator_Avg"),
+            "end_alpha_indicator_avg":   r.get("End_Alpha_Indicator_Avg"),
+            "alpha_power_increase":      r.get("Alpha_Spec_Increase"),
+            "alpha_indicator_increase":  r.get("Alpha_indi_Increase"),
+            "alpha_progress_rate":       r.get("Alpha_Progress_Rate"),
+        })
+        saved += 1
+    return jsonify({"ok": True, "saved": saved}), 201
+
 # ── Wardy 이벤트 뷰어 ─────────────────────────────────
 @app.route("/portal/wardy")
 @login_required
@@ -2268,6 +2378,123 @@ def portal_wardy_export():
     buf.seek(0)
     return Response(buf.read(), mimetype="text/csv",
         headers={"Content-Disposition": "attachment;filename=wardy_events.csv"})
+
+# ── NeuroBreeze 뷰어 ──────────────────────────────────
+def _nb_group_by_user(rows):
+    """neurobreeze 레코드를 user_name 기준으로 그룹핑, 최근 순 정렬."""
+    from collections import OrderedDict
+    groups = OrderedDict()
+    for r in rows:
+        key = r.get("user_name") or "Unknown"
+        if key not in groups:
+            groups[key] = []
+        groups[key].append(r)
+    result = []
+    for uname, recs in groups.items():
+        times = [x.get("received_at") or "" for x in recs]
+        times = [t for t in times if t]
+        result.append({
+            "user_name":  uname,
+            "records":    recs,
+            "count":      len(recs),
+            "last_time":  max(times)[:16].replace("T"," ") if times else "",
+        })
+    result.sort(key=lambda g: g["last_time"], reverse=True)
+    return result
+
+@app.route("/portal/neurobreeze")
+@login_required
+def portal_neurobreeze():
+    project_id = request.args.get("project_id","")
+    user_name  = request.args.get("user_name","").strip()
+    tab        = request.args.get("tab","eeg")  # eeg | meditation
+
+    base_params = "?select=*&order=received_at.asc&limit=3000"
+    if project_id: base_params += f"&project_id=eq.{project_id}"
+    if user_name:  base_params += f"&user_name=ilike.{user_name}%25"
+
+    eeg_rows        = sb("GET","neurobreeze_eeg",        params=base_params) or []
+    meditation_rows = sb("GET","neurobreeze_meditation",  params=base_params) or []
+
+    projects = sb("GET","projects",params=f"?researcher_email=eq.{session['researcher']}&select=id,name") or []
+
+    return render_template("portal_neurobreeze.html",
+        researcher=session["researcher"],
+        eeg_groups=_nb_group_by_user(eeg_rows),
+        med_groups=_nb_group_by_user(meditation_rows),
+        eeg_total=len(eeg_rows), med_total=len(meditation_rows),
+        projects=projects,
+        project_id=project_id, user_name=user_name, tab=tab,
+        api_key=os.getenv("APP_API_KEY","tsl-app-key-2025"))
+
+@app.route("/portal/neurobreeze/eeg/delete", methods=["POST"])
+@login_required
+def portal_neurobreeze_eeg_delete():
+    ids = request.form.getlist("ids")
+    if not ids:
+        flash("삭제할 항목을 선택해주세요.", "error")
+        return redirect(url_for("portal_neurobreeze", tab="eeg"))
+    for eid in ids:
+        sb("DELETE","neurobreeze_eeg",params=f"?id=eq.{eid}")
+    flash(f"{len(ids)}건 삭제됐습니다.")
+    return redirect(url_for("portal_neurobreeze", tab="eeg"))
+
+@app.route("/portal/neurobreeze/meditation/delete", methods=["POST"])
+@login_required
+def portal_neurobreeze_meditation_delete():
+    ids = request.form.getlist("ids")
+    if not ids:
+        flash("삭제할 항목을 선택해주세요.", "error")
+        return redirect(url_for("portal_neurobreeze", tab="meditation"))
+    for eid in ids:
+        sb("DELETE","neurobreeze_meditation",params=f"?id=eq.{eid}")
+    flash(f"{len(ids)}건 삭제됐습니다.")
+    return redirect(url_for("portal_neurobreeze", tab="meditation"))
+
+@app.route("/portal/neurobreeze/export")
+@login_required
+def portal_neurobreeze_export():
+    project_id = request.args.get("project_id","")
+    user_name  = request.args.get("user_name","").strip()
+    tab        = request.args.get("tab","eeg")
+
+    params = "?select=*&order=received_at.asc"
+    if project_id: params += f"&project_id=eq.{project_id}"
+    if user_name:  params += f"&user_name=ilike.{user_name}%25"
+
+    buf = io.StringIO()
+    w = csv.writer(buf)
+
+    if tab == "eeg":
+        rows = sb("GET","neurobreeze_eeg",params=params) or []
+        w.writerow(["id","project_id","user_name","session_num","recorded_at",
+                    "left_alpha_power","right_alpha_power","alpha_power",
+                    "left_alpha_indicator","right_alpha_indicator","alpha_indicator","received_at"])
+        for r in rows:
+            w.writerow([r.get(c,"") for c in [
+                "id","project_id","user_name","session_num","recorded_at",
+                "left_alpha_power","right_alpha_power","alpha_power",
+                "left_alpha_indicator","right_alpha_indicator","alpha_indicator","received_at"]])
+        fname = "neurobreeze_eeg.csv"
+    else:
+        rows = sb("GET","neurobreeze_meditation",params=params) or []
+        w.writerow(["id","project_id","user_name","session_num","start_time","end_time",
+                    "feedback_count","breath_mode","alpha_power","alpha_indicator",
+                    "start_alpha_power_avg","end_alpha_power_avg",
+                    "start_alpha_indicator_avg","end_alpha_indicator_avg",
+                    "alpha_power_increase","alpha_indicator_increase","alpha_progress_rate","received_at"])
+        for r in rows:
+            w.writerow([r.get(c,"") for c in [
+                "id","project_id","user_name","session_num","start_time","end_time",
+                "feedback_count","breath_mode","alpha_power","alpha_indicator",
+                "start_alpha_power_avg","end_alpha_power_avg",
+                "start_alpha_indicator_avg","end_alpha_indicator_avg",
+                "alpha_power_increase","alpha_indicator_increase","alpha_progress_rate","received_at"]])
+        fname = "neurobreeze_meditation.csv"
+
+    buf.seek(0)
+    return Response(buf.read(), mimetype="text/csv",
+        headers={"Content-Disposition": f"attachment;filename={fname}"})
 
 # ── Project meta edit ────────────────────────────────
 @app.route("/portal/projects/<project_id>/edit", methods=["POST"])
