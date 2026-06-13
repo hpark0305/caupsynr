@@ -1,5 +1,6 @@
 /* ── Trauma Stress Lab · Dark Neural Design System ── */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
 
 /* ─── Reset ─── */
@@ -56,12 +57,12 @@ ul { list-style: none; }
   --shadow-sm:    0 1px 2px rgba(0,0,0,0.5);
   --shadow-md:    0 8px 24px rgba(0,0,0,0.45);
   --shadow-lg:    0 20px 60px rgba(0,0,0,0.65);
-  --glow-violet:  0 0 24px rgba(124,111,224,0.55), 0 8px 32px rgba(124,111,224,0.30);
-  --glow-cyan:    0 0 24px rgba(79,195,247,0.55),  0 8px 32px rgba(79,195,247,0.30);
+  --glow-violet:  0 10px 28px rgba(124,111,224,0.32);
+  --glow-cyan:    0 10px 28px rgba(79,195,247,0.30);
 
   /* ── Font families (iOS / SF Pro style) ── */
-  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Pretendard", sans-serif;
-  --font-body:    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Pretendard", sans-serif;
+  --font-display: "Plus Jakarta Sans", "Pretendard", -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  --font-body:    "Inter", "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif;
   --font-kr:      "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
   --font-mono:    ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
@@ -142,6 +143,7 @@ ul { list-style: none; }
 }
 [data-theme="light"] .hero::after {
   background:
+    linear-gradient(100deg, var(--bg) 0%, rgba(255,255,255,0.84) 26%, rgba(255,255,255,0.34) 50%, transparent 72%),
     radial-gradient(ellipse at 75% 35%, rgba(124,111,224,0.22) 0%, transparent 55%),
     radial-gradient(ellipse at 20% 75%, rgba(79,195,247,0.12) 0%, transparent 50%);
 }
@@ -297,7 +299,8 @@ body::before {
 .brand-text strong {
   font-family: var(--font-display);
   font-size: 1.05rem;
-  font-weight: 400;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--fg-1);
   display: block;
   line-height: 1.1;
@@ -383,7 +386,8 @@ body::before {
 .footer-brand strong {
   font-family: var(--font-display);
   font-size: 1.2rem;
-  font-weight: 400;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--fg-1);
   display: block;
   margin-bottom: 10px;
@@ -415,13 +419,21 @@ body::before {
   font-size: .78rem;
   color: var(--fg-4);
 }
-.footer-social { display: flex; flex-direction: column; gap: 7px; margin-top: 14px; }
+.footer-social { display: flex; flex-direction: row; gap: 10px; margin-top: 18px; }
 .footer-social-link {
-  font-size: .83rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 38px; height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
   color: var(--fg-3) !important;
-  transition: color var(--t-fast);
+  transition: color var(--t-fast), border-color var(--t-fast), background var(--t-fast);
 }
-.footer-social-link:hover { color: var(--fg-1) !important; }
+.footer-social-link svg { width: 18px; height: 18px; display: block; }
+.footer-social-link:hover {
+  color: var(--fg-1) !important;
+  border-color: var(--line-strong);
+  background: var(--bg-elev);
+}
 
 /* ═══════════════════════════════════════════════════════════════
    BUTTONS
@@ -433,8 +445,9 @@ body::before {
   gap: 8px;
   font-family: var(--font-body);
   font-size: .85rem;
-  font-weight: 500;
-  padding: 12px 24px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  padding: 12px 26px;
   border-radius: var(--r-pill);
   border: 1px solid transparent;
   cursor: pointer;
@@ -455,7 +468,8 @@ body::before {
 }
 .btn-primary:hover {
   background: var(--violet-soft);
-  box-shadow: 0 0 36px rgba(154,143,240,0.65), 0 8px 32px rgba(154,143,240,0.35);
+  box-shadow: 0 12px 30px rgba(124,111,224,0.42);
+  transform: translateY(-1px);
 }
 
 .btn-outline {
@@ -538,6 +552,7 @@ body::before {
   position: absolute;
   inset: 0;
   background:
+    linear-gradient(100deg, var(--bg) 0%, rgba(9,9,15,0.86) 26%, rgba(9,9,15,0.40) 50%, transparent 72%),
     radial-gradient(ellipse at 80% 30%, rgba(124,111,224,0.28) 0%, transparent 55%),
     radial-gradient(ellipse at 18% 80%, rgba(79,195,247,0.12) 0%, transparent 50%);
   pointer-events: none;
@@ -570,8 +585,11 @@ body::before {
   color: var(--fg-1);
   margin-bottom: 24px;
   line-height: 1.05;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.035em;
+  text-shadow: 0 2px 40px rgba(0,0,0,0.45);
 }
+[data-theme="light"] .hero-content h1 { text-shadow: none; }
+[data-theme="light"] .hero-content p { color: var(--fg-2); }
 .hero-content p {
   font-size: 1.1rem;
   color: var(--fg-3);
@@ -594,26 +612,27 @@ body::before {
   grid-template-columns: repeat(4, 1fr);
 }
 .stat-item {
-  padding: 32px 24px;
+  padding: 40px 24px;
   border-right: 1px solid var(--border);
   text-align: center;
 }
 .stat-item:last-child { border-right: none; }
 .stat-num {
   font-family: var(--font-display);
-  font-size: 2.6rem;
-  font-weight: 400;
-  color: var(--violet-soft);
+  font-size: clamp(2.4rem, 3.6vw, 3rem);
+  font-weight: 800;
+  color: var(--fg-1);
   display: block;
   line-height: 1;
-  margin-bottom: 6px;
+  margin-bottom: 10px;
+  letter-spacing: -0.03em;
 }
 .stat-lbl {
-  font-size: .78rem;
-  font-weight: 500;
-  letter-spacing: .1em;
+  font-size: .74rem;
+  font-weight: 600;
+  letter-spacing: .12em;
   text-transform: uppercase;
-  color: var(--fg-4);
+  color: var(--muted);
 }
 
 /* ═══════════════════════════════════════════════════════════════

@@ -27,3 +27,6 @@ gallery_data.json
 
 # Claude Code 설정 (로컬 전용)
 .claude/settings.local.json
+
+# NeuroBreeze APK + extracted contents (large binaries, not for git)
+neurobreeze/
