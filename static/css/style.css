@@ -1458,3 +1458,58 @@ body::before {
   .event-hero { padding: 44px 0 36px; }
   .hero-content h1 { font-size: clamp(2rem, 8vw, 3.2rem); }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   PORTAL ELEVATION — additive polish for the Linear-style portal.
+   Uses `.lin-wrap …` (higher specificity than the per-template inline
+   .lin-* rules) so these win globally without editing each template.
+   Visual refinements only — no layout geometry changes.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Editorial display font + tighter tracking on key portal titles */
+.lin-wrap .lin-workspace-name,
+.lin-wrap .lin-list-title,
+.lin-wrap .lin-detail-proj-name,
+.lin-wrap .lin-stat-chip-val,
+.lin-wrap .lin-row-name {
+  font-family: var(--font-display);
+  letter-spacing: -.02em;
+}
+
+/* Workspace logo tile — richer brand gradient + soft depth */
+.lin-wrap .lin-workspace-icon {
+  background: linear-gradient(135deg, var(--violet) 0%, var(--cyan) 100%);
+  box-shadow: 0 4px 14px rgba(124,111,224,0.35);
+}
+
+/* Active nav + count badge + app pill — consistent brand emphasis */
+.lin-wrap .lin-nav-item.active { background: rgba(124,111,224,0.16); color: var(--violet-soft); }
+.lin-wrap .lin-count-badge,
+.lin-wrap .lin-row-app { background: rgba(124,111,224,0.16); color: var(--violet-soft); }
+
+/* Primary buttons / actions — de-neon, soft branded shadow + hover */
+.lin-wrap .lin-btn-sm.primary,
+.lin-wrap .lin-action.primary { box-shadow: 0 6px 16px rgba(124,111,224,0.28); }
+.lin-wrap .lin-btn-sm.primary:hover,
+.lin-wrap .lin-action.primary:hover {
+  background: var(--violet-soft);
+  border-color: var(--violet-soft);
+  box-shadow: 0 8px 22px rgba(124,111,224,0.40);
+}
+
+/* Stat chips — subtle depth + crisper edge */
+.lin-wrap .lin-stat-chip { box-shadow: var(--shadow-sm); border-color: var(--line-strong); }
+
+/* Stronger row hover affordance */
+.lin-wrap .lin-proj-row:hover { background: rgba(124,111,224,0.08); }
+
+/* Thin, themed scrollbars across portal scroll regions */
+.lin-wrap .lin-list-scroll::-webkit-scrollbar,
+.lin-wrap .lin-sidebar-scroll::-webkit-scrollbar,
+.lin-wrap .lin-detail-inner::-webkit-scrollbar { width: 9px; height: 9px; }
+.lin-wrap .lin-list-scroll::-webkit-scrollbar-thumb,
+.lin-wrap .lin-sidebar-scroll::-webkit-scrollbar-thumb,
+.lin-wrap .lin-detail-inner::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+.lin-wrap .lin-list-scroll::-webkit-scrollbar-thumb:hover,
+.lin-wrap .lin-sidebar-scroll::-webkit-scrollbar-thumb:hover,
+.lin-wrap .lin-detail-inner::-webkit-scrollbar-thumb:hover { background: var(--line-strong); }
