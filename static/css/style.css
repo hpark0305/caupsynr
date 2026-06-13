@@ -1513,3 +1513,21 @@ body::before {
 .lin-wrap .lin-list-scroll::-webkit-scrollbar-thumb:hover,
 .lin-wrap .lin-sidebar-scroll::-webkit-scrollbar-thumb:hover,
 .lin-wrap .lin-detail-inner::-webkit-scrollbar-thumb:hover { background: var(--line-strong); }
+
+/* ── Portal System B (.portal-wrap top-tab layout: project / stats / data / tests / detail) ── */
+/* FIX: inline `.portal-header{background:var(--dark)}` resolves to near-WHITE in the
+   default dark theme, so the white header text was invisible (white-on-white).
+   Force an explicit dark header that reads correctly in both themes. */
+.portal-wrap .portal-header {
+  background: #15132c;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+/* Breadcrumb tabs + content tabs — branded active state */
+.portal-wrap .pnav-btn.active { color: var(--violet-soft); border-bottom-color: var(--violet); }
+.portal-wrap .tab-btn.active { background: var(--violet); border-bottom-color: var(--violet); color: #fff; }
+/* Stat tiles — editorial display font + subtle depth */
+.portal-wrap .stat-num { font-family: var(--font-display); letter-spacing: -.03em; }
+.portal-wrap .stat-card { box-shadow: var(--shadow-sm); }
+/* Data tables — refined header + row hover affordance */
+.portal-wrap .data-table th { background: var(--surface2); color: var(--fg-3); }
+.portal-wrap .data-table tbody tr:hover { background: rgba(124,111,224,0.06); }
