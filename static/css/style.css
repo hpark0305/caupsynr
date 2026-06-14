@@ -593,6 +593,25 @@ body::before {
 @media (prefers-reduced-motion: reduce) { .scroll-expand { transform: none; } .showcase-img { border-radius: 24px; } }
 @media (max-width: 640px) { .showcase-img { aspect-ratio: 4 / 5; } }
 
+/* ── Vibrant gradient cards (upsunday "Your Creative Engine" style) ── */
+.ri-grid .ri-card:not(.ri-card-new) { border: none; color: #fff; border-radius: 28px; }
+.ri-grid .ri-card:not(.ri-card-new):nth-child(4n+1) { background: radial-gradient(125% 95% at 50% 0%, #a8daff 0%, #5aa6f0 56%, #3d8ce6 100%); }
+.ri-grid .ri-card:not(.ri-card-new):nth-child(4n+2) { background: radial-gradient(125% 95% at 50% 0%, #ffb4e0 0%, #ff7ab8 56%, #f65ea1 100%); }
+.ri-grid .ri-card:not(.ri-card-new):nth-child(4n+3) { background: radial-gradient(125% 95% at 50% 0%, #ffd189 0%, #ff9f4d 56%, #fb8836 100%); }
+.ri-grid .ri-card:not(.ri-card-new):nth-child(4n+4) { background: radial-gradient(125% 95% at 50% 0%, #a2ecd2 0%, #4fcfae 56%, #23b692 100%); }
+.ri-grid .ri-card:not(.ri-card-new)::before { display: none; }
+.ri-grid .ri-card:not(.ri-card-new) .ri-card-top { background: transparent !important; aspect-ratio: 16 / 10; }
+.ri-grid .ri-card:not(.ri-card-new) .ri-card-body { color: #fff; }
+.ri-grid .ri-card:not(.ri-card-new) .ri-card-body .label { color: rgba(255,255,255,0.82); }
+.ri-grid .ri-card:not(.ri-card-new) .ri-card-body h3 { color: #fff; }
+.ri-grid .ri-card:not(.ri-card-new) .ri-card-desc { color: rgba(255,255,255,0.92); }
+.ri-grid .ri-card:not(.ri-card-new) .ri-read-more {
+  background: rgba(255,255,255,0.22); color: #fff; box-shadow: none;
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+}
+.ri-grid .ri-card:not(.ri-card-new) .ri-read-more:hover { background: rgba(255,255,255,0.34); box-shadow: none; }
+.ri-grid .ri-card:not(.ri-card-new):hover { transform: translateY(-6px); box-shadow: 0 34px 66px rgba(30,40,80,0.24); border: none; }
+
 .hero .container { position: relative; z-index: 1; }
 .hero-content { max-width: 860px; }
 .hero-eyebrow {
