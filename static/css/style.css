@@ -137,16 +137,12 @@ ul { list-style: none; }
   color: var(--violet);
   background: var(--accent-light);
 }
-[data-theme="light"] .hero {
+[data-theme="light"] .hero { background: var(--bg); }
+[data-theme="light"] .hero::after {
   background:
-    radial-gradient(58% 48% at 50% -8%, rgba(124,111,224,0.16) 0%, transparent 72%),
-    radial-gradient(46% 56% at 100% 104%, rgba(79,195,247,0.09) 0%, transparent 72%),
-    linear-gradient(180deg, #ffffff 0%, var(--bg) 58%);
+    linear-gradient(90deg, var(--bg) 0%, rgba(0,0,0,0) 42%),
+    linear-gradient(180deg, transparent 68%, var(--bg) 100%);
 }
-[data-theme="light"] .hero::after { background: linear-gradient(180deg, transparent 72%, var(--bg) 100%); }
-[data-theme="light"] .hero-eyebrow,
-[data-theme="light"] .hero-link { color: var(--violet-deep); }
-[data-theme="light"] .hero-link:hover { color: var(--dark); }
 [data-theme="light"] .stats-bar {
   background: var(--surface);
   border-color: var(--border);
@@ -544,19 +540,18 @@ body::before {
   display: flex;
   align-items: center;
   padding: 96px 0;
-  background:
-    radial-gradient(58% 48% at 50% -8%, rgba(124,111,224,0.22) 0%, transparent 72%),
-    radial-gradient(46% 56% at 100% 104%, rgba(79,195,247,0.10) 0%, transparent 72%),
-    linear-gradient(180deg, #0b0b12 0%, var(--bg) 60%);
+  background: var(--bg);
 }
 /* soft bottom fade into the page */
 .hero::after {
   content: '';
   position: absolute;
   inset: 0;
-  z-index: 0;
+  z-index: 1;
   pointer-events: none;
-  background: linear-gradient(180deg, transparent 72%, var(--bg) 100%);
+  background:
+    linear-gradient(90deg, var(--bg) 0%, rgba(0,0,0,0) 42%),
+    linear-gradient(180deg, transparent 68%, var(--bg) 100%);
 }
 .hero-orb, #neural-canvas { display: none; }
 
@@ -566,8 +561,9 @@ body::before {
   display: inline-block;
   font-size: .82rem;
   font-weight: 600;
-  letter-spacing: -.01em;
-  color: var(--violet-soft);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--fg-3);
   margin-bottom: 20px;
 }
 .hero-content h1 {
@@ -593,10 +589,20 @@ body::before {
 .hero-link {
   font-size: 1rem;
   font-weight: 500;
-  color: var(--violet-soft);
+  color: var(--fg-2);
   transition: color var(--t-fast);
 }
 .hero-link:hover { color: var(--fg-1); }
+/* Monochrome primary CTA in the hero (black on light / white on dark) */
+.hero .btn-primary {
+  background: var(--fg-1);
+  color: var(--bg);
+  box-shadow: 0 10px 26px rgba(0,0,0,0.16);
+}
+.hero .btn-primary:hover {
+  background: var(--fg-2);
+  box-shadow: 0 14px 32px rgba(0,0,0,0.22);
+}
 
 /* ── Hero graphic: Neural Aurora ── */
 .hero-graphic {
