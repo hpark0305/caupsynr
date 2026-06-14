@@ -1483,6 +1483,15 @@ span.ri-card-icon {
   .fade-up, .fade-up-2, .fade-up-3 { animation: none; }
 }
 
+/* Scroll-reveal (applied by reveal.js) */
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity .85s var(--ease-out), transform .85s var(--ease-out);
+  will-change: opacity, transform;
+}
+.reveal.is-visible { opacity: 1; transform: none; }
+
 /* ═══════════════════════════════════════════════════════════════
    RESPONSIVE
    ═══════════════════════════════════════════════════════════════ */
