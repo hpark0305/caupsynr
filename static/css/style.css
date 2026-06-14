@@ -1,6 +1,5 @@
 /* ── Trauma Stress Lab · Dark Neural Design System ── */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
 
 /* ─── Reset ─── */
@@ -61,8 +60,8 @@ ul { list-style: none; }
   --glow-cyan:    0 10px 28px rgba(79,195,247,0.30);
 
   /* ── Font families (iOS / SF Pro style) ── */
-  --font-display: "Plus Jakarta Sans", "Pretendard", -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
-  --font-body:    "Inter", "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Pretendard", sans-serif;
+  --font-body:    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Pretendard", sans-serif;
   --font-kr:      "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
   --font-mono:    ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
@@ -139,14 +138,12 @@ ul { list-style: none; }
   background: var(--accent-light);
 }
 [data-theme="light"] .hero {
-  background: linear-gradient(145deg, #f5f4ff 0%, #eef0ff 50%, #f0efff 100%);
-}
-[data-theme="light"] .hero::after {
   background:
-    linear-gradient(100deg, var(--bg) 0%, rgba(255,255,255,0.84) 26%, rgba(255,255,255,0.34) 50%, transparent 72%),
-    radial-gradient(ellipse at 75% 35%, rgba(124,111,224,0.22) 0%, transparent 55%),
-    radial-gradient(ellipse at 20% 75%, rgba(79,195,247,0.12) 0%, transparent 50%);
+    radial-gradient(58% 48% at 50% -8%, rgba(124,111,224,0.16) 0%, transparent 72%),
+    radial-gradient(46% 56% at 100% 104%, rgba(79,195,247,0.09) 0%, transparent 72%),
+    linear-gradient(180deg, #ffffff 0%, var(--bg) 58%);
 }
+[data-theme="light"] .hero::after { background: linear-gradient(180deg, transparent 72%, var(--bg) 100%); }
 [data-theme="light"] .stats-bar {
   background: var(--surface);
   border-color: var(--border);
@@ -538,66 +535,65 @@ body::before {
    HERO  (home page — neural canvas background)
    ═══════════════════════════════════════════════════════════════ */
 .hero {
-  background: var(--bg);
+  position: relative;
+  overflow: hidden;
   min-height: calc(100vh - var(--nav-h));
   display: flex;
   align-items: center;
-  position: relative;
-  overflow: hidden;
-  padding: 88px 0;
+  padding: 96px 0;
+  background:
+    radial-gradient(58% 48% at 50% -8%, rgba(124,111,224,0.22) 0%, transparent 72%),
+    radial-gradient(46% 56% at 100% 104%, rgba(79,195,247,0.10) 0%, transparent 72%),
+    linear-gradient(180deg, #0b0b12 0%, var(--bg) 60%);
 }
-/* gradient overlay on top of the neural canvas */
+/* soft bottom fade into the page */
 .hero::after {
   content: '';
   position: absolute;
   inset: 0;
-  background:
-    linear-gradient(100deg, var(--bg) 0%, rgba(9,9,15,0.86) 26%, rgba(9,9,15,0.40) 50%, transparent 72%),
-    radial-gradient(ellipse at 80% 30%, rgba(124,111,224,0.28) 0%, transparent 55%),
-    radial-gradient(ellipse at 18% 80%, rgba(79,195,247,0.12) 0%, transparent 50%);
+  z-index: 0;
   pointer-events: none;
-  z-index: 0;
+  background: linear-gradient(180deg, transparent 72%, var(--bg) 100%);
 }
+.hero-orb, #neural-canvas { display: none; }
 
-/* Neural canvas — full hero fill */
-#neural-canvas {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 0;
-  display: block;
+.hero .container { position: relative; z-index: 1; }
+.hero-content { max-width: 860px; }
+.hero-eyebrow {
+  display: inline-block;
+  font-size: .82rem;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  color: var(--violet-soft);
+  margin-bottom: 20px;
 }
-
-/* Hero orbs hidden — canvas does the job */
-.hero-orb { display: none; }
-
-.hero-content {
-  position: relative;
-  z-index: 1;
-  max-width: 700px;
-}
-.hero-content .label { color: var(--cyan-soft); margin-bottom: 22px; display: block; }
 .hero-content h1 {
   font-family: var(--font-display);
-  font-size: clamp(2.4rem, 5.5vw, 4rem);
-  font-weight: 800;
+  font-size: clamp(2.9rem, 7.5vw, 5.4rem);
+  font-weight: 700;
   color: var(--fg-1);
-  margin-bottom: 24px;
-  line-height: 1.05;
-  letter-spacing: -0.035em;
-  text-shadow: 0 2px 40px rgba(0,0,0,0.45);
+  margin-bottom: 22px;
+  line-height: 1.03;
+  letter-spacing: -0.04em;
 }
-[data-theme="light"] .hero-content h1 { text-shadow: none; }
-[data-theme="light"] .hero-content p { color: var(--fg-2); }
-.hero-content p {
-  font-size: 1.1rem;
+.hero-content .hero-sub {
+  font-size: clamp(1.12rem, 1.5vw, 1.34rem);
   color: var(--fg-3);
-  margin-bottom: 38px;
-  max-width: 540px;
-  line-height: 1.75;
+  margin: 0 0 40px;
+  max-width: 600px;
+  line-height: 1.5;
+  font-weight: 400;
 }
-.hero-actions { display: flex; gap: 14px; flex-wrap: wrap; }
+[data-theme="light"] .hero-content .hero-sub { color: var(--fg-2); }
+.hero-actions { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+.btn-lg { padding: 15px 32px; font-size: .96rem; }
+.hero-link {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--violet-soft);
+  transition: color var(--t-fast);
+}
+.hero-link:hover { color: var(--fg-1); }
 
 /* ═══════════════════════════════════════════════════════════════
    STATS BAR
