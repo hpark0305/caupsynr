@@ -31,6 +31,18 @@
   </div>
 </div>
 
+<!-- ── SHOWCASE (scroll-expand) ── -->
+<section class="showcase-sec">
+  <div class="showcase-wrap">
+    <div class="scroll-expand showcase-img" style="background-image:url('{{ url_for('static', filename='images/gallery/kripalu2023/Kripalu_Center2023.webp') }}');">
+      <div class="showcase-overlay">
+        <span class="label">Trauma Stress Lab</span>
+        <h2>From research to recovery.</h2>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ── ABOUT ── -->
 <section style="background: var(--surface);">
   <div class="container">
@@ -181,5 +193,6 @@
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/intro.js') }}"></script>
 <script src="{{ url_for('static', filename='js/paint.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/scroll-expand.js') }}" defer></script>
 {% endblock %}
 
