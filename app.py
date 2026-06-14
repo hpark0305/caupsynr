@@ -755,7 +755,8 @@ def _articles_by_year():
 def home():
     recent = sorted(ARTICLES, key=lambda x: -x["year"])[:5]
     news_list = sb("GET","news",params="?published=eq.1&order=created_at.desc") or []
-    return render_template("home.html", research_topics=RESEARCH_TOPICS, recent_pubs=recent, news=news_list[:5])
+    return render_template("home.html", research_topics=RESEARCH_TOPICS, recent_pubs=recent, news=news_list[:5],
+                           professor=PROFESSOR, team=TEAM)
 
 @app.route("/research")
 def research():

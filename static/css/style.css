@@ -612,6 +612,52 @@ body::before {
 .ri-grid .ri-card:not(.ri-card-new) .ri-read-more:hover { background: rgba(255,255,255,0.34); box-shadow: none; }
 .ri-grid .ri-card:not(.ri-card-new):hover { transform: translateY(-6px); box-shadow: 0 34px 66px rgba(30,40,80,0.24); border: none; }
 
+/* ── People carousel (researchers) ── */
+.lab-carousel { padding: 36px 0 104px; overflow: hidden; }
+.lab-carousel-head { text-align: center; max-width: 660px; margin: 0 auto 34px; padding: 0 24px; }
+.lab-eyebrow {
+  display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--muted);
+  background: var(--surface); border: 1px solid var(--border);
+  padding: 6px 14px; border-radius: 100px; margin-bottom: 18px;
+}
+.lab-carousel-head h2 { margin-bottom: 12px; }
+.lab-carousel-head p { color: var(--muted); font-size: 1.05rem; }
+.lab-nav { display: flex; gap: 12px; justify-content: center; margin-top: 24px; }
+.lab-nav button {
+  width: 50px; height: 50px; border-radius: 16px; border: none; cursor: pointer;
+  background: var(--fg-1); color: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  transition: opacity .2s, transform .15s, box-shadow .2s;
+  box-shadow: var(--shadow-sm);
+}
+.lab-nav button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.lab-nav button:disabled { opacity: .28; cursor: default; }
+.lab-viewport { overflow: visible; }
+.lab-track { display: flex; gap: 26px; will-change: transform; }
+.lab-card {
+  flex: 0 0 min(840px, 88vw);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 26px; padding: 30px;
+  display: grid; grid-template-columns: 230px 1fr; gap: 30px; align-items: center;
+  box-shadow: var(--shadow-sm);
+  opacity: .45; transition: opacity .45s var(--ease-out), box-shadow .45s var(--ease-out);
+}
+.lab-card.is-active { opacity: 1; box-shadow: var(--shadow-lg); }
+.lab-card-photo {
+  width: 100%; aspect-ratio: 1 / 1; border-radius: 18px; object-fit: cover;
+  filter: grayscale(1) contrast(1.05); transition: filter .55s var(--ease-out);
+}
+.lab-card.is-active .lab-card-photo { filter: grayscale(0); }
+.lab-card-role { font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 8px; }
+.lab-card-name { font-size: clamp(1.4rem, 2.4vw, 1.8rem); font-weight: 800; letter-spacing: -.02em; color: var(--fg-1); line-height: 1.1; }
+.lab-card-sub { color: var(--muted); font-size: .92rem; margin-top: 4px; margin-bottom: 14px; }
+.lab-card-text { font-size: 1.05rem; line-height: 1.6; color: var(--fg-2); margin-top: 10px; }
+@media (max-width: 640px) {
+  .lab-card { grid-template-columns: 1fr; gap: 18px; padding: 22px; }
+  .lab-card-photo { max-width: 150px; }
+}
+
 .hero .container { position: relative; z-index: 1; }
 .hero-content { max-width: 860px; }
 .hero-eyebrow {

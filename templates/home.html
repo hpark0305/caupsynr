@@ -128,6 +128,60 @@
   </div>
 </section>
 
+<!-- ── PEOPLE CAROUSEL ── -->
+{% if professor or team %}
+<section class="lab-carousel" data-carousel tabindex="0" aria-label="Lab researchers">
+  <div class="lab-carousel-head reveal">
+    <span class="lab-eyebrow">Our researchers</span>
+    <h2>The minds behind the work</h2>
+    <p>Faculty and graduate researchers advancing mental health science at Chung-Ang University.</p>
+    <div class="lab-nav">
+      <button type="button" data-prev aria-label="Previous">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <button type="button" data-next aria-label="Next">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="lab-viewport">
+    <div class="lab-track">
+      {% if professor %}
+      <article class="lab-card">
+        <img class="lab-card-photo" src="{{ url_for('static', filename=professor.photo) }}" alt="{{ professor.name }}">
+        <div class="lab-card-body">
+          <div class="lab-card-role">Principal Investigator</div>
+          <div class="lab-card-name">{{ professor.name }}</div>
+          <div class="lab-card-sub">{{ professor.title }}</div>
+          <p class="lab-card-text">{{ professor.bio[:170] }}{% if professor.bio|length > 170 %}…{% endif %}</p>
+        </div>
+      </article>
+      {% endif %}
+      {% for m in team.phd %}
+      <article class="lab-card">
+        <img class="lab-card-photo" src="{{ url_for('static', filename=m.image) }}" alt="{{ m.name }}">
+        <div class="lab-card-body">
+          <div class="lab-card-role">Ph.D. Student</div>
+          <div class="lab-card-name">{{ m.name }}</div>
+          <p class="lab-card-text">{{ m.interest }}</p>
+        </div>
+      </article>
+      {% endfor %}
+      {% for m in team.ma %}
+      <article class="lab-card">
+        <img class="lab-card-photo" src="{{ url_for('static', filename=m.image) }}" alt="{{ m.name }}">
+        <div class="lab-card-body">
+          <div class="lab-card-role">M.A. Student</div>
+          <div class="lab-card-name">{{ m.name }}</div>
+          <p class="lab-card-text">{{ m.interest }}</p>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
 <!-- ── RECENT PUBLICATIONS ── -->
 <section class="recent-pubs">
   <div class="container">
@@ -194,5 +248,6 @@
 <script src="{{ url_for('static', filename='js/intro.js') }}"></script>
 <script src="{{ url_for('static', filename='js/paint.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/scroll-expand.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/carousel.js') }}" defer></script>
 {% endblock %}
 
