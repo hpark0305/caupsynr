@@ -5,6 +5,14 @@
 
 <!-- ── HERO ── -->
 <section class="hero">
+  <div class="hero-graphic" aria-hidden="true">
+    <div class="hero-aurora">
+      <span class="aurora a1"></span>
+      <span class="aurora a2"></span>
+      <span class="aurora a3"></span>
+    </div>
+    <canvas id="hero-canvas"></canvas>
+  </div>
   <div class="container">
     <div class="hero-content">
       <span class="hero-eyebrow fade-up">Chung-Ang University · Seoul</span>
@@ -173,4 +181,8 @@
   </div>
 </section>
 
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/hero-neural.js') }}" defer></script>
 {% endblock %}

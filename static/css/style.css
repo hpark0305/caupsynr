@@ -598,6 +598,43 @@ body::before {
 }
 .hero-link:hover { color: var(--fg-1); }
 
+/* ── Hero graphic: Neural Aurora ── */
+.hero-graphic {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  animation: heroGraphicIn 1.7s var(--ease-out) both;
+}
+.hero-aurora { position: absolute; inset: -12%; }
+.aurora {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(72px);
+  mix-blend-mode: screen;
+  opacity: 0.55;
+  will-change: transform;
+}
+.aurora.a1 { width: 46vw; height: 46vw; left: -6vw;  top: -14vw; background: radial-gradient(circle, rgba(124,111,224,0.55), transparent 66%); animation: auroraA 20s ease-in-out infinite alternate; }
+.aurora.a2 { width: 40vw; height: 40vw; right: -4vw; top: 4vw;    background: radial-gradient(circle, rgba(79,195,247,0.42), transparent 66%); animation: auroraB 26s ease-in-out infinite alternate; }
+.aurora.a3 { width: 38vw; height: 38vw; left: 32vw;  bottom: -18vw; background: radial-gradient(circle, rgba(91,77,200,0.50), transparent 66%); animation: auroraC 30s ease-in-out infinite alternate; }
+#hero-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+[data-theme="light"] .aurora { mix-blend-mode: normal; opacity: 0.42; filter: blur(78px); }
+
+.hero::after { z-index: 1; }
+.hero .container { z-index: 2; }
+
+@keyframes auroraA { from { transform: translate3d(0,0,0) scale(1); }    to { transform: translate3d(5vw,4vw,0) scale(1.16); } }
+@keyframes auroraB { from { transform: translate3d(0,0,0) scale(1); }    to { transform: translate3d(-4vw,3vw,0) scale(1.20); } }
+@keyframes auroraC { from { transform: translate3d(0,0,0) scale(1.05); } to { transform: translate3d(3vw,-3vw,0) scale(1); } }
+@keyframes heroGraphicIn { from { opacity: 0; transform: scale(1.07); } to { opacity: 1; transform: scale(1); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora, .hero-graphic { animation: none; }
+}
+
 /* ═══════════════════════════════════════════════════════════════
    STATS BAR
    ═══════════════════════════════════════════════════════════════ */
@@ -1422,12 +1459,15 @@ span.ri-card-icon {
    ANIMATIONS
    ═══════════════════════════════════════════════════════════════ */
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(18px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(22px); filter: blur(6px); }
+  to   { opacity: 1; transform: translateY(0); filter: blur(0); }
 }
-.fade-up   { animation: fadeUp .55s var(--ease-out) both; }
-.fade-up-2 { animation: fadeUp .55s var(--ease-out) .12s both; }
-.fade-up-3 { animation: fadeUp .55s var(--ease-out) .22s both; }
+.fade-up   { animation: fadeUp .8s var(--ease-out) .05s both; }
+.fade-up-2 { animation: fadeUp .8s var(--ease-out) .18s both; }
+.fade-up-3 { animation: fadeUp .8s var(--ease-out) .32s both; }
+@media (prefers-reduced-motion: reduce) {
+  .fade-up, .fade-up-2, .fade-up-3 { animation: none; }
+}
 
 /* ═══════════════════════════════════════════════════════════════
    RESPONSIVE
