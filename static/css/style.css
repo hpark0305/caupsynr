@@ -854,9 +854,7 @@ span.ri-card-icon {
    PAGE HERO (inner pages) — always dark bg, always white text
    ═══════════════════════════════════════════════════════════════ */
 .page-hero {
-  background:
-    radial-gradient(58% 72% at 80% 26%, rgba(124,111,224,0.26) 0%, transparent 64%),
-    linear-gradient(140deg, #0b0a1c 0%, #0c1026 100%);
+  background: linear-gradient(165deg, #18181b 0%, #0c0c0f 100%);
   padding: 104px 0 88px;
   position: relative;
   overflow: hidden;
@@ -864,13 +862,20 @@ span.ri-card-icon {
 .page-hero::before {
   content: '';
   position: absolute; inset: 0;
-  background: radial-gradient(ellipse at 70% 50%, rgba(124,111,224,0.30) 0%, transparent 60%);
+  background: radial-gradient(ellipse at 78% 36%, rgba(255,255,255,0.05) 0%, transparent 60%);
   pointer-events: none;
 }
+/* Light mode: white banner with dark text (dark mode is the reverse) */
+[data-theme="light"] .page-hero { background: linear-gradient(180deg, #ffffff 0%, var(--surface) 100%); }
+[data-theme="light"] .page-hero::before { background: none; }
+[data-theme="light"] .page-hero h1,
+[data-theme="light"] .page-hero h2 { color: var(--dark) !important; }
+[data-theme="light"] .page-hero p { color: var(--muted) !important; }
+[data-theme="light"] .page-hero .label { color: var(--fg-3) !important; }
 /* Force white text regardless of light/dark theme */
 .page-hero .label,
 .gallery-hero .label,
-.event-hero .label { color: #7ed5fa !important; margin-bottom: 14px; display: block; position: relative; }
+.event-hero .label { color: rgba(255,255,255,0.56) !important; margin-bottom: 14px; display: block; position: relative; }
 
 .page-hero h1,
 .page-hero h2,

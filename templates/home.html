@@ -1,13 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Trauma Stress Lab · Chung-Ang University{% endblock %}
+{% block title %}Trauma Stress Lab · Mental Health Research Lab · Chung-Ang University{% endblock %}
 
 {% block content %}
 
 <!-- ── HERO ── -->
 <section class="hero">
-  <div class="hero-graphic" aria-hidden="true">
-    <div id="hero-3d"></div>
-  </div>
   <div class="container">
     <div class="hero-content">
       <span class="hero-eyebrow fade-up">Chung-Ang University · Seoul</span>
@@ -178,7 +175,3 @@
 
 {% endblock %}
 
-{% block scripts %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" defer></script>
-<script src="{{ url_for('static', filename='js/hero-brain.js') }}" defer></script>
-{% endblock %}

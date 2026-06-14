@@ -23,6 +23,7 @@ app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "tsl-dev-secret-2025")
 app.config['WTF_CSRF_TIME_LIMIT'] = 3600
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50 MB upload limit
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)  # keep researchers logged in
 csrf = CSRFProtect(app)
 limiter = Limiter(get_remote_address, app=app, default_limits=[], storage_uri="memory://")
 
@@ -949,6 +950,7 @@ def login():
         password = request.form.get("password","").strip()
         stored = _get_account(email)
         if stored and check_password_hash(stored, password):
+            session.permanent = True
             session["researcher"] = email
             return redirect(url_for("portal"))
         error = "이메일 또는 비밀번호가 올바르지 않습니다."

@@ -3,7 +3,36 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Trauma Stress Lab · CAU{% endblock %}</title>
+  <title>{% block title %}Trauma Stress Lab · Mental Health Research · Chung-Ang University{% endblock %}</title>
+  <meta name="description" content="{% block description %}Trauma Stress Lab (TSL) — a mental health research lab at Chung-Ang University Red Cross College of Nursing. We advance disaster trauma, neurofeedback, simulation education, and digital mental health interventions.{% endblock %}">
+  <meta name="keywords" content="mental health lab, mental health research lab, mental health nursing, trauma stress lab, neurofeedback, psychiatric mental health nursing, disaster trauma, digital mental health, Chung-Ang University">
+  <meta name="author" content="Trauma Stress Lab, Chung-Ang University">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="{{ request.url_root }}{% block canonical %}{% endblock %}">
+  <!-- Open Graph / social -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Trauma Stress Lab · Chung-Ang University">
+  <meta property="og:title" content="{{ self.title() }}">
+  <meta property="og:description" content="{{ self.description() }}">
+  <meta property="og:url" content="{{ request.url }}">
+  <meta property="og:image" content="{{ request.url_root }}static/images/cau.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <!-- Structured data: research organization -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "ResearchOrganization",
+    "name": "Trauma Stress Lab",
+    "alternateName": "TSL · Mental Health Research Lab",
+    "url": "{{ request.url_root }}",
+    "logo": "{{ request.url_root }}static/images/cau.jpg",
+    "parentOrganization": { "@type": "CollegeOrUniversity", "name": "Chung-Ang University" },
+    "department": "Red Cross College of Nursing",
+    "description": "Mental health research lab advancing disaster trauma, neurofeedback, simulation education, and digital mental health interventions.",
+    "knowsAbout": ["Mental health", "Trauma", "Neurofeedback", "Psychiatric nursing", "Disaster mental health", "Digital health"],
+    "address": { "@type": "PostalAddress", "addressLocality": "Seoul", "addressCountry": "KR" }
+  }
+  </script>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   {% block head %}{% endblock %}
 </head>
