@@ -613,6 +613,9 @@ body::before {
   pointer-events: none;
   animation: heroGraphicIn 1.7s var(--ease-out) both;
 }
+#hero-3d { position: absolute; top: 0; right: 0; bottom: 0; width: 64%; }
+#hero-3d canvas { display: block; width: 100% !important; height: 100% !important; }
+@media (max-width: 760px) { #hero-3d { width: 100%; opacity: 0.5; } }
 .hero-aurora { position: absolute; inset: -12%; }
 .aurora {
   position: absolute;
