@@ -5,6 +5,9 @@
 
 <!-- ── HERO ── -->
 <section class="hero">
+  <div class="hero-graphic" aria-hidden="true">
+    <canvas id="paint-canvas"></canvas>
+  </div>
   <div class="container">
     <div class="hero-content">
       <span class="hero-eyebrow fade-up">Chung-Ang University · Seoul</span>
@@ -173,5 +176,10 @@
   </div>
 </section>
 
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/intro.js') }}"></script>
+<script src="{{ url_for('static', filename='js/paint.js') }}" defer></script>
 {% endblock %}
 
