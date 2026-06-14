@@ -104,28 +104,28 @@ ul { list-style: none; }
    ═══════════════════════════════════════════════════════════════ */
 [data-theme="light"] {
   --bg:           #ffffff;
-  --surface:      #f5f4ff;
-  --surface2:     #eeeeff;
-  --bg-elev:      rgba(124,111,224,0.04);
+  --surface:      #f5f5f7;
+  --surface2:     #ebebf0;
+  --bg-elev:      rgba(0,0,0,0.03);
 
-  --dark:         #1a1a2e;
-  --text:         #1a1a2e;
-  --muted:        #5a5a7a;
-  --fg-1:         #1a1a2e;
-  --fg-2:         #2a2a42;
-  --fg-3:         #5a5a7a;
-  --fg-4:         #9090b0;
+  --dark:         #1d1d1f;
+  --text:         #1d1d1f;
+  --muted:        #6e6e73;
+  --fg-1:         #1d1d1f;
+  --fg-2:         #2d2d31;
+  --fg-3:         #6e6e73;
+  --fg-4:         #86868b;
 
-  --border:       rgba(124,111,224,0.14);
-  --border-light: rgba(124,111,224,0.07);
-  --line:         rgba(124,111,224,0.14);
-  --line-strong:  rgba(124,111,224,0.28);
+  --border:       rgba(0,0,0,0.10);
+  --border-light: rgba(0,0,0,0.06);
+  --line:         rgba(0,0,0,0.10);
+  --line-strong:  rgba(0,0,0,0.16);
 
-  --accent-light: rgba(124,111,224,0.08);
+  --accent-light: rgba(124,111,224,0.10);
 
-  --shadow-sm:  0 1px 3px rgba(100,90,200,0.10);
-  --shadow-md:  0 8px 24px rgba(100,90,200,0.12);
-  --shadow-lg:  0 20px 60px rgba(100,90,200,0.18);
+  --shadow-sm:  0 1px 3px rgba(0,0,0,0.08);
+  --shadow-md:  0 6px 20px rgba(0,0,0,0.10);
+  --shadow-lg:  0 20px 50px rgba(0,0,0,0.14);
 }
 
 [data-theme="light"] .site-header {
@@ -144,6 +144,9 @@ ul { list-style: none; }
     linear-gradient(180deg, #ffffff 0%, var(--bg) 58%);
 }
 [data-theme="light"] .hero::after { background: linear-gradient(180deg, transparent 72%, var(--bg) 100%); }
+[data-theme="light"] .hero-eyebrow,
+[data-theme="light"] .hero-link { color: var(--violet-deep); }
+[data-theme="light"] .hero-link:hover { color: var(--dark); }
 [data-theme="light"] .stats-bar {
   background: var(--surface);
   border-color: var(--border);
@@ -210,8 +213,8 @@ h1, h2, h3, h4 {
   letter-spacing: -0.025em;
   color: var(--dark);
 }
-h1 { font-size: clamp(2rem, 5vw, 3.4rem); }
-h2 { font-size: clamp(1.6rem, 3vw, 2.4rem); }
+h1 { font-size: clamp(2.2rem, 5.2vw, 3.8rem); letter-spacing: -0.03em; }
+h2 { font-size: clamp(1.7rem, 3.2vw, 2.6rem); letter-spacing: -0.03em; }
 h3 { font-size: 1.3rem; font-weight: 600; }
 h4 { font-size: 1.05rem; font-weight: 600; }
 p  { color: var(--text); }
@@ -232,7 +235,7 @@ code { font-family: var(--font-mono); font-size: .9em; color: var(--cyan-soft); 
 /* ── Layout ── */
 .container   { max-width: 1140px; margin: 0 auto; padding: 0 28px; }
 .container-sm{ max-width: 860px;  margin: 0 auto; padding: 0 28px; }
-section { padding: 88px 0; }
+section { padding: 104px 0; }
 
 /* ─── Section header ─── */
 .section-header {
@@ -665,10 +668,11 @@ body::before {
   pointer-events: none;
 }
 .ri-card:hover {
-  box-shadow: 0 16px 48px rgba(124,111,224,0.22);
+  box-shadow: 0 24px 56px rgba(0,0,0,0.34);
   transform: translateY(-6px);
   border-color: var(--line-strong);
 }
+[data-theme="light"] .ri-card:hover { box-shadow: 0 24px 56px rgba(60,50,120,0.16); }
 .ri-card:hover::before { width: 100%; }
 .ri-card-top {
   aspect-ratio: 4/3;
@@ -804,8 +808,10 @@ span.ri-card-icon {
    PAGE HERO (inner pages) — always dark bg, always white text
    ═══════════════════════════════════════════════════════════════ */
 .page-hero {
-  background: linear-gradient(135deg, #0c0a1e 0%, #0d1228 100%);
-  padding: 72px 0 60px;
+  background:
+    radial-gradient(58% 72% at 80% 26%, rgba(124,111,224,0.26) 0%, transparent 64%),
+    linear-gradient(140deg, #0b0a1c 0%, #0c1026 100%);
+  padding: 104px 0 88px;
   position: relative;
   overflow: hidden;
 }
@@ -825,12 +831,15 @@ span.ri-card-icon {
 .gallery-hero h1,
 .event-hero h1 {
   color: #ffffff !important;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
   font-weight: 700;
+  font-size: clamp(2.4rem, 5.5vw, 3.9rem);
+  letter-spacing: -0.035em;
+  line-height: 1.06;
   position: relative;
 }
 
-.page-hero p { color: rgba(255,255,255,0.65) !important; font-size: 1.05rem; max-width: 560px; position: relative; }
+.page-hero p { color: rgba(255,255,255,0.64) !important; font-size: 1.16rem; max-width: 600px; line-height: 1.55; position: relative; }
 
 /* ═══════════════════════════════════════════════════════════════
    RESEARCH PAGE
@@ -1104,7 +1113,7 @@ span.ri-card-icon {
 .apps-stat-row { background: rgba(5,5,18,0.9); padding: 36px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
 .apps-stat-inner { display: flex; justify-content: space-around; align-items: center; flex-wrap: wrap; gap: 24px; }
 .apps-stat-item { text-align: center; }
-.apps-stat-num { display: block; font-family: var(--font-display); font-size: 2.2rem; font-weight: 400; color: var(--violet-soft); line-height: 1.1; }
+.apps-stat-num { display: block; font-family: var(--font-display); font-size: 2.6rem; font-weight: 800; color: #ffffff; letter-spacing: -0.03em; line-height: 1.05; }
 .apps-stat-lbl { font-size: .75rem; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--fg-4); margin-top: 6px; display: block; }
 
 /* Research card on apps page */
