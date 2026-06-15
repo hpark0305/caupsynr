@@ -633,8 +633,10 @@ body::before {
 }
 .lab-nav button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: var(--shadow-md); }
 .lab-nav button:disabled { opacity: .28; cursor: default; }
-.lab-viewport { overflow: visible; }
-.lab-track { display: flex; gap: 26px; will-change: transform; }
+.lab-viewport { overflow: visible; cursor: grab; touch-action: pan-y; }
+.lab-track { display: flex; gap: 26px; will-change: transform; user-select: none; }
+.lab-track.is-dragging { cursor: grabbing; }
+.lab-card-photo { -webkit-user-drag: none; user-drag: none; pointer-events: none; }
 .lab-card {
   flex: 0 0 min(840px, 88vw);
   background: var(--surface); border: 1px solid var(--border);
