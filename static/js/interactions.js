@@ -38,7 +38,7 @@
   /* ── SVG icon line-drawing (research cards) ── */
   function drawIcons() {
     if (reduce) return;
-    var icons = [].slice.call(document.querySelectorAll('.ri-card-icon'));
+    var icons = [].slice.call(document.querySelectorAll('.ri-card-icon, .work-icon'));
     if (!icons.length) return;
     function shapesOf(svg) { return svg.querySelectorAll('path, line, circle, rect, polyline, polygon'); }
     icons.forEach(function (svg) {
@@ -58,19 +58,29 @@
     icons.forEach(function (svg) { io.observe(svg); });
   }
 
-  /* ── 3D tilt cards ── */
+  /* ── 3D tilt cards (rAF-lerped for a buttery, non-jittery feel) ── */
   function tilt() {
     if (reduce || !fine()) return;
     var cards = [].slice.call(document.querySelectorAll('.work-card, .note-card, .recog-card, .ri-grid .ri-card:not(.ri-card-new)'));
+    var MAX = 5;
     cards.forEach(function (card) {
+      var tx = 0, ty = 0, cx = 0, cy = 0, active = false, raf = 0;
+      function loop() {
+        cx += (tx - cx) * 0.14; cy += (ty - cy) * 0.14;
+        if (!active && Math.abs(cx) < 0.02 && Math.abs(cy) < 0.02) {
+          card.style.transform = ''; card.style.transition = ''; raf = 0; return;
+        }
+        var lift = active ? -6 : 0, sc = active ? 1.02 : 1;
+        card.style.transform = 'perspective(1000px) rotateX(' + cy.toFixed(2) + 'deg) rotateY(' + cx.toFixed(2) + 'deg) translateY(' + lift + 'px) scale(' + sc + ')';
+        raf = requestAnimationFrame(loop);
+      }
+      card.addEventListener('pointerenter', function () { active = true; card.style.transition = 'transform 0s'; if (!raf) raf = requestAnimationFrame(loop); });
       card.addEventListener('pointermove', function (e) {
         var r = card.getBoundingClientRect();
-        var px = (e.clientX - r.left) / r.width - 0.5;
-        var py = (e.clientY - r.top) / r.height - 0.5;
-        card.style.transition = 'transform .08s linear';
-        card.style.transform = 'perspective(900px) rotateX(' + (-py * 6).toFixed(2) + 'deg) rotateY(' + (px * 6).toFixed(2) + 'deg) translateY(-6px)';
+        tx = ((e.clientX - r.left) / r.width - 0.5) * 2 * MAX;
+        ty = -((e.clientY - r.top) / r.height - 0.5) * 2 * MAX;
       });
-      card.addEventListener('pointerleave', function () { card.style.transition = ''; card.style.transform = ''; });
+      card.addEventListener('pointerleave', function () { active = false; tx = 0; ty = 0; if (!raf) raf = requestAnimationFrame(loop); });
     });
   }
 
@@ -94,7 +104,7 @@
     if (!tracks.length) return;
     var items = tracks.map(function (t) {
       t.style.animation = 'none';
-      return { el: t, x: 0, half: t.scrollWidth / 2, base: t.classList.contains('logo-track') ? 0.4 : 0.7 };
+      return { el: t, x: 0, half: t.scrollWidth / 2, base: t.classList.contains('logo-track') ? 0.28 : 0.45 };
     });
     var last = window.scrollY, vel = 0;
     window.addEventListener('scroll', function () { var y = window.scrollY; vel = y - last; last = y; }, { passive: true });

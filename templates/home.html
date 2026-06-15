@@ -92,6 +92,8 @@
       {% for r in research_topics %}
       <a href="{{ url_for('research') }}?topic={{ r.key }}" class="ri-card">
         <div class="ri-card-top" style="background:{{ r.gradient }};">
+          {% if r.image %}<img class="ri-card-photo" src="{{ url_for('static', filename=r.image) }}" alt="" loading="lazy">{% endif %}
+          <span class="ri-card-tint" style="background:{{ r.gradient }};"></span>
           {% if r.key == 'brainwave' %}
           <svg class="ri-card-icon" viewBox="0 0 64 64" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
             <path d="M4 32 L12 32 L16 17 L22 47 L28 23 L33 38 L38 21 L43 41 L48 32 L60 32"/>
@@ -151,7 +153,26 @@
       {% for a in apps %}
       <a href="{{ url_for('app_detail', key=a.key) }}" class="work-card mask-reveal">
         <div class="work-media" style="background:{{ a.gradient }};">
+          {% if a.key == 'pls' %}
+          <svg class="work-icon" viewBox="0 0 64 64" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M32 54C14 40 8 30 15 22c5-6 13-3 17 3 4-6 12-9 17-3 7 8 1 18-17 32Z"/>
+            <path d="M13 33h9l4-8 5 16 4-8h16"/>
+          </svg>
+          {% elif a.key == 'tls' %}
+          <svg class="work-icon" viewBox="0 0 64 64" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M32 56V26"/>
+            <path d="M32 36c-12 0-18-9-16-20 12-1 18 8 16 20Z"/>
+            <path d="M32 42c12 0 18-8 16-19-12-1-18 8-16 19Z"/>
+          </svg>
+          {% elif a.key == 'mind_therapy' %}
+          <svg class="work-icon" viewBox="0 0 64 64" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M32 8c-11 0-18 8-15 19 1 4 5 7 5 12h20c0-5 4-8 5-12 3-11-4-19-15-19Z"/>
+            <path d="M26 45h12M28 51h8"/>
+            <path d="M32 18v9M27 23l5 4 5-4"/>
+          </svg>
+          {% else %}
           <span class="work-emoji">{{ a.icon }}</span>
+          {% endif %}
           <div class="work-tags">
             {% for t in a.tags[:2] %}<span>{{ t }}</span>{% endfor %}
           </div>
