@@ -38,13 +38,18 @@
   <script src="{{ url_for('static', filename='js/reveal.js') }}" defer></script>
   {% block head %}{% endblock %}
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
 <script>
   (function(){
+    document.documentElement.classList.add('js');
     var t = localStorage.getItem('theme') || 'dark';
     document.documentElement.setAttribute('data-theme', t);
   })();
 </script>
+
+<!-- Custom cursor (built/activated by cursor.js on fine-pointer devices) -->
+<div class="cursor-ring" id="cursor-ring" aria-hidden="true"></div>
+<div class="cursor-dot" id="cursor-dot" aria-hidden="true"></div>
 
 <!-- ── NAV ── -->
 <header class="site-header">
@@ -127,6 +132,15 @@
   </div>
 </footer>
 
+<!-- Cookie consent banner (shown once, controlled by ui-extras.js) -->
+<div class="cookie-banner" id="cookie-banner" hidden>
+  <p class="cookie-text">We use minimal cookies to keep you signed in and remember your theme. By using this site you agree to our use of essential cookies.</p>
+  <div class="cookie-actions">
+    <button type="button" class="btn btn-outline cookie-btn" id="cookie-decline">Essential only</button>
+    <button type="button" class="btn btn-primary cookie-btn" id="cookie-accept">Got it</button>
+  </div>
+</div>
+
 <script>
   const btn = document.getElementById('menu-btn');
   const nav = document.getElementById('site-nav');
@@ -174,6 +188,9 @@
     }
   })();
 </script>
+<script src="{{ url_for('static', filename='js/cursor.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/ui-extras.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/smooth-scroll.js') }}" defer></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

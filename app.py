@@ -742,6 +742,43 @@ COPYRIGHTS = [
     "기능성 게임 기반 심리적 응급처치 교육 프로그램 — 감염병",
 ]
 
+# ─── Homepage marketing content (upsunday-style sections) ─────
+# Recognition / impact figures — derived from real lab output.
+RECOGNITION = [
+    {"metric": "80+", "label": "Peer-reviewed Publications", "note": "SSCI / SCIE journals since 2007"},
+    {"metric": "8",   "label": "Registered Software Copyrights", "note": "PFA serious games & mobile apps"},
+    {"metric": "3",   "label": "Mental-Health Apps Released", "note": "PLS · TLS · Mind Therapy"},
+    {"metric": "10+", "label": "Years of Funded Research", "note": "Disaster trauma & digital health"},
+]
+
+# NOTE: Placeholder voices — replace `quote`/`role` with real, attributable
+# testimonials before relying on them. Attributions are role-based on purpose
+# (no invented individuals).
+TESTIMONIALS = [
+    {"quote": "The PFA simulation training changed how I approach survivors in the field — I felt calmer and more prepared during a real deployment.",
+     "role": "Disaster Relief Worker", "context": "PLS / PFA training participant"},
+    {"quote": "Mind Therapy's neurofeedback meditation became part of my daily routine for managing post-traumatic stress.",
+     "role": "Trauma Recovery Program Participant", "context": "Mind Therapy user"},
+    {"quote": "Standardized-patient simulations filled the gap that lectures never could in psychiatric nursing practice.",
+     "role": "Nursing Student", "context": "Simulation education cohort"},
+    {"quote": "The web-based case-manager education translated directly into better physical-health support for our clients.",
+     "role": "Community Mental Health Case Manager", "context": "Continuing-education program"},
+]
+
+# Partner & publishing venues — text wordmarks (no logo assets required).
+PARTNERS = [
+    "Chung-Ang University", "Red Cross College of Nursing", "Digital Health",
+    "Scientific Reports", "BMC Nursing", "Disaster Medicine & Public Health Preparedness",
+    "Applied Psychophysiology and Biofeedback", "Simulation in Healthcare",
+    "Journal of Nursing Management", "International Nursing Review",
+]
+
+# Rotating keyword band.
+KEYWORDS = [
+    "Disaster Trauma", "Neurofeedback", "Psychological First Aid", "Simulation Education",
+    "Binaural Beats", "Digital Mental Health", "PTSD Recovery", "Community Mental Health",
+]
+
 
 def _articles_by_year():
     result = OrderedDict()
@@ -755,8 +792,22 @@ def _articles_by_year():
 def home():
     recent = sorted(ARTICLES, key=lambda x: -x["year"])[:5]
     news_list = sb("GET","news",params="?published=eq.1&order=created_at.desc") or []
+    # Recent gallery events (with a cover photo) power the blog-style cards.
+    lab_events = []
+    try:
+        for ev in load_events():
+            photos = event_photos(ev['key'])
+            ev['cover_photo'] = ev.get('cover') or (photos[0] if photos else None)
+            if ev['cover_photo']:
+                lab_events.append(ev)
+            if len(lab_events) >= 3:
+                break
+    except Exception:
+        lab_events = []
     return render_template("home.html", research_topics=RESEARCH_TOPICS, recent_pubs=recent, news=news_list[:5],
-                           professor=PROFESSOR, team=TEAM)
+                           professor=PROFESSOR, team=TEAM, apps=APPS,
+                           recognition=RECOGNITION, testimonials=TESTIMONIALS,
+                           partners=PARTNERS, keywords=KEYWORDS, lab_events=lab_events)
 
 @app.route("/research")
 def research():

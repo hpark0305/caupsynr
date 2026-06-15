@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Trauma Stress Lab · Mental Health Research Lab · Chung-Ang University{% endblock %}
+{% block body_class %}page-home{% endblock %}
 
 {% block content %}
 
@@ -11,7 +12,7 @@
   <div class="container">
     <div class="hero-content">
       <span class="hero-eyebrow fade-up">Chung-Ang University · Seoul</span>
-      <h1 class="fade-up-2">Trauma Stress Lab</h1>
+      <h1 class="tt-split">Trauma Stress Lab</h1>
       <p class="hero-sub fade-up-3">Advancing mental health through research in disaster trauma, neurofeedback, simulation education, and digital health — since 2015.</p>
       <div class="hero-actions fade-up-3">
         <a href="{{ url_for('research') }}" class="btn btn-primary btn-lg">Explore research</a>
@@ -28,6 +29,14 @@
     <div class="stat-item"><span class="stat-num">80+</span><span class="stat-lbl">Publications</span></div>
     <div class="stat-item"><span class="stat-num">3</span><span class="stat-lbl">Mental Health Apps</span></div>
     <div class="stat-item"><span class="stat-num">4</span><span class="stat-lbl">Research Areas</span></div>
+  </div>
+</div>
+
+<!-- ── KEYWORD MARQUEE ── -->
+<div class="kw-marquee" aria-hidden="true">
+  <div class="kw-track">
+    {% for k in keywords %}<span class="kw-item">{{ k }}</span><span class="kw-star">✦</span>{% endfor %}
+    {% for k in keywords %}<span class="kw-item">{{ k }}</span><span class="kw-star">✦</span>{% endfor %}
   </div>
 </div>
 
@@ -49,7 +58,7 @@
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center;">
       <div>
         <span class="label" style="display:block;margin-bottom:14px;">About the Lab</span>
-        <h2 style="margin-bottom:20px;">Research at the intersection of trauma and digital health</h2>
+        <h2 class="tt-split" style="margin-bottom:20px;">Research at the intersection of trauma and digital health</h2>
         <p style="color:var(--muted);margin-bottom:14px;">The Trauma Stress Lab (TSL) at Chung-Ang University Red Cross College of Nursing has been operating since 2015. Our interdisciplinary team studies disaster trauma, community mental health, and develops evidence-based digital interventions.</p>
         <p style="color:var(--muted);margin-bottom:28px;">We bridge the gap between academic research and practical tools — developing mobile apps and simulation programs that help healthcare workers and survivors recover from traumatic stress.</p>
         <a href="{{ url_for('team') }}" class="btn btn-outline">Meet the Team</a>
@@ -128,6 +137,38 @@
   </div>
 </section>
 
+<!-- ── WORKS / CASE STUDIES ── -->
+{% if apps %}
+<section class="works-sec">
+  <div class="container">
+    <div class="section-header">
+      <span class="label">Our Work</span>
+      <h2>Tools built from our research</h2>
+      <p>Evidence-based apps and programs developed in the lab — from prototype to public release.</p>
+    </div>
+    <div class="works-grid">
+      {% for a in apps %}
+      <a href="{{ url_for('app_detail', key=a.key) }}" class="work-card mask-reveal">
+        <div class="work-media" style="background:{{ a.gradient }};">
+          <span class="work-emoji">{{ a.icon }}</span>
+          <div class="work-tags">
+            {% for t in a.tags[:2] %}<span>{{ t }}</span>{% endfor %}
+          </div>
+        </div>
+        <div class="work-info">
+          <div class="work-info-text">
+            <div class="work-name">{{ a.name }}</div>
+            <div class="work-full">{{ a.full_name or a.label }}</div>
+          </div>
+          <span class="work-arrow" aria-hidden="true">→</span>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
 <!-- ── PEOPLE CAROUSEL ── -->
 {% if professor or team %}
 <section class="lab-carousel" data-carousel tabindex="0" aria-label="Lab researchers">
@@ -177,6 +218,98 @@
         </div>
       </article>
       {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- ── RECOGNITION ── -->
+{% if recognition %}
+<section class="recog-sec">
+  <div class="container">
+    <div class="section-header">
+      <span class="label">Recognition</span>
+      <h2>A decade of measurable impact</h2>
+    </div>
+    <div class="recog-grid">
+      {% for r in recognition %}
+      <div class="recog-card mask-reveal">
+        <div class="recog-metric">{{ r.metric }}</div>
+        <div class="recog-label">{{ r.label }}</div>
+        <div class="recog-note">{{ r.note }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- ── TESTIMONIALS ── -->
+{% if testimonials %}
+<section class="tmo-sec" data-testimonials>
+  <div class="container">
+    <div class="section-header">
+      <span class="label">Voices</span>
+      <h2>What people take away</h2>
+    </div>
+    <div class="tmo-viewport">
+      <div class="tmo-track">
+        {% for t in testimonials %}
+        <figure class="tmo-card">
+          <svg class="tmo-quote" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6C6.5 7.2 5 9.6 5 13v5h6v-6H8c0-2 .6-3.4 1.9-4.2L9.5 6Zm9 0c-3 1.2-4.5 3.6-4.5 7v5h6v-6h-3c0-2 .6-3.4 1.9-4.2L18.5 6Z" fill="currentColor"/></svg>
+          <blockquote>{{ t.quote }}</blockquote>
+          <figcaption>
+            <span class="tmo-role">{{ t.role }}</span>
+            <span class="tmo-context">{{ t.context }}</span>
+          </figcaption>
+        </figure>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="tmo-dots" data-tmo-dots></div>
+  </div>
+</section>
+{% endif %}
+
+{% if lab_events %}
+<!-- ── FROM THE LAB (blog-style cards) ── -->
+<section class="notes-sec">
+  <div class="container">
+    <div class="notes-head">
+      <div>
+        <span class="label" style="display:block;margin-bottom:10px;">From the Lab</span>
+        <h2>Recent activities</h2>
+      </div>
+      <a href="{{ url_for('gallery') }}" class="btn btn-outline">View Gallery</a>
+    </div>
+    <div class="notes-grid">
+      {% for ev in lab_events %}
+      <a href="{{ url_for('gallery_event', key=ev.key) }}" class="note-card mask-reveal">
+        <div class="note-media">
+          <img src="{{ url_for('static', filename='images/gallery/' + ev.key + '/' + ev.cover_photo) }}" alt="{{ ev.title }}" loading="lazy">
+        </div>
+        <div class="note-body">
+          {% if ev.date %}<span class="note-date">{{ ev.date }}</span>{% endif %}
+          <h3>{{ ev.title }}</h3>
+          {% if ev.venue %}<span class="note-venue">{{ ev.venue }}</span>{% endif %}
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- ── PARTNERS LOGO MARQUEE ── -->
+{% if partners %}
+<section class="partners-sec">
+  <div class="container">
+    <p class="partners-eyebrow">Published in &amp; partnered with</p>
+  </div>
+  <div class="logo-marquee" aria-label="Partners and publishing venues">
+    <div class="logo-track">
+      {% for p in partners %}<span class="logo-item">{{ p }}</span>{% endfor %}
+      {% for p in partners %}<span class="logo-item">{{ p }}</span>{% endfor %}
     </div>
   </div>
 </section>
