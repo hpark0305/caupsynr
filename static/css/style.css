@@ -1918,3 +1918,68 @@ body.cursor-down .cursor-ring { width: 26px; height: 26px; margin: -13px 0 0 -13
   .kw-track, .logo-track { animation: none; }
   .tmo-track { transition: none; }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   INTERACTION LAYER — cursor label · scroll progress · page curtain ·
+   hero cue · CTA spotlight · hide-on-scroll header · theme wipe
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Cursor "View" label ── */
+.cursor-label {
+  position: fixed; top: 0; left: 0; z-index: 9999; pointer-events: none;
+  width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--violet); color: #fff;
+  font-family: var(--font-display); font-size: .6rem; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase;
+  opacity: 0; scale: .3; transition: opacity .2s var(--ease-out), scale .2s var(--ease-out);
+}
+body.cursor-view .cursor-label { opacity: 1; scale: 1; }
+body.cursor-view .cursor-ring, body.cursor-view .cursor-dot { opacity: 0 !important; }
+
+/* ── Scroll-progress gauge ── */
+.scroll-progress {
+  position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 1400;
+  transform: scaleX(0); transform-origin: 0 50%;
+  background: linear-gradient(90deg, var(--violet), var(--cyan));
+}
+
+/* ── Page-transition curtain (auto-lifts via CSS; JS adds .cover on exit) ── */
+.page-curtain {
+  position: fixed; inset: 0; z-index: 1500; pointer-events: none;
+  transform: translateY(-100%);
+  background: linear-gradient(158deg, var(--violet), var(--cyan));
+}
+@media (prefers-reduced-motion: no-preference) {
+  .curtain-in .page-curtain { animation: curtain-up .55s var(--ease-out) forwards; }
+}
+@keyframes curtain-up { from { transform: translateY(0); } to { transform: translateY(-100%); } }
+.page-curtain.cover { animation: curtain-down .36s var(--ease-out) forwards !important; }
+@keyframes curtain-down { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+/* ── Hero scroll-cue (mouse indicator) ── */
+.hero-cue {
+  position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); z-index: 3;
+  width: 28px; height: 46px; border: 1.5px solid var(--line-strong); border-radius: 16px;
+  display: flex; justify-content: center; padding-top: 8px; opacity: .85; transition: opacity .2s, border-color .2s;
+}
+.hero-cue:hover { opacity: 1; border-color: var(--violet); }
+.hero-cue span { width: 4px; height: 8px; border-radius: 2px; background: var(--fg-2); animation: cue-bob 1.6s var(--ease-out) infinite; }
+@keyframes cue-bob { 0% { transform: translateY(0); opacity: 1; } 70% { transform: translateY(13px); opacity: 0; } 100% { transform: translateY(0); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .hero-cue span { animation: none; } }
+
+/* ── CTA cursor spotlight ── */
+.cta-glow {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .3s var(--ease-out);
+  background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), rgba(94,230,168,0.18), transparent 70%);
+}
+.cta-spotlight.lit .cta-glow { opacity: 1; }
+
+/* ── Hide-on-scroll header ── */
+.site-header { transition: transform .38s var(--ease-out), background .3s var(--ease-out), backdrop-filter .3s var(--ease-out); }
+.site-header.nav-hidden { transform: translateY(-100%); }
+
+/* ── Theme-toggle circular wipe (View Transitions API) ── */
+::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+::view-transition-old(root) { z-index: 0; }
+::view-transition-new(root) { z-index: 1; }

@@ -6,6 +6,7 @@
   if (document.querySelector('.portal-wrap, .lin-wrap')) return;
   var ring = document.getElementById('cursor-ring');
   var dot = document.getElementById('cursor-dot');
+  var label = document.getElementById('cursor-label');
   if (!ring || !dot) return;
 
   document.body.classList.add('has-cursor');
@@ -17,6 +18,7 @@
     if (e.pointerType && e.pointerType !== 'mouse') return;
     x = e.clientX; y = e.clientY;
     dot.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+    if (label) label.style.transform = 'translate(' + x + 'px,' + y + 'px)';
     if (!visible) { visible = true; document.body.classList.add('cursor-on'); }
   }, { passive: true });
 
@@ -32,6 +34,16 @@
   });
   document.addEventListener('pointerout', function (e) {
     if (isHover(e.target) && !isHover(e.relatedTarget)) document.body.classList.remove('cursor-hover');
+  });
+
+  // "View" label over media/case cards (upsunday-style)
+  var viewSel = '.work-card, .note-card, .lab-card, .ev-photo, [data-cursor-view]';
+  function isView(t) { return t && t.closest && t.closest(viewSel); }
+  document.addEventListener('pointerover', function (e) {
+    if (isView(e.target)) document.body.classList.add('cursor-view');
+  });
+  document.addEventListener('pointerout', function (e) {
+    if (isView(e.target) && !isView(e.relatedTarget)) document.body.classList.remove('cursor-view');
   });
 
   (function loop() {

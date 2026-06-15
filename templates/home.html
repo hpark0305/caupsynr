@@ -20,10 +20,11 @@
       </div>
     </div>
   </div>
+  <a class="hero-cue" href="#after-hero" aria-label="Scroll to content"><span></span></a>
 </section>
 
 <!-- ── STATS ── -->
-<div class="stats-bar">
+<div class="stats-bar" id="after-hero">
   <div class="container">
     <div class="stat-item"><span class="stat-num">2015</span><span class="stat-lbl">Founded</span></div>
     <div class="stat-item"><span class="stat-num">80+</span><span class="stat-lbl">Publications</span></div>
@@ -364,8 +365,9 @@
 {% endif %}
 
 <!-- ── APPS CTA ── -->
-<section style="background:var(--dark);position:relative;overflow:hidden;">
+<section class="cta-spotlight" style="background:var(--dark);position:relative;overflow:hidden;">
   <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 60% 50%,rgba(15,107,107,.4) 0%,transparent 60%);pointer-events:none;"></div>
+  <div class="cta-glow" aria-hidden="true"></div>
   <div class="container" style="position:relative;text-align:center;">
     <span class="label" style="color:var(--accent-mid);display:block;margin-bottom:14px;">Digital Interventions</span>
     <h2 style="color:#fff;margin-bottom:16px;">Mental Health Apps for<br>Disaster Survivors & Workers</h2>

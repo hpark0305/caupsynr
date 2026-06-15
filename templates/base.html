@@ -42,6 +42,7 @@
 <script>
   (function(){
     document.documentElement.classList.add('js');
+    try { if (sessionStorage.getItem('curtain-nav')) { document.documentElement.classList.add('curtain-in'); sessionStorage.removeItem('curtain-nav'); } } catch(e){}
     var t = localStorage.getItem('theme') || 'dark';
     document.documentElement.setAttribute('data-theme', t);
   })();
@@ -50,6 +51,11 @@
 <!-- Custom cursor (built/activated by cursor.js on fine-pointer devices) -->
 <div class="cursor-ring" id="cursor-ring" aria-hidden="true"></div>
 <div class="cursor-dot" id="cursor-dot" aria-hidden="true"></div>
+<div class="cursor-label" id="cursor-label" aria-hidden="true">View</div>
+
+<!-- Scroll progress gauge + page-transition curtain -->
+<div class="scroll-progress" id="scroll-progress" aria-hidden="true"></div>
+<div class="page-curtain" id="page-curtain" aria-hidden="true"></div>
 
 <!-- ── NAV ── -->
 <header class="site-header">
@@ -157,9 +163,24 @@
     localStorage.setItem('theme', t);
   }
   applyTheme(document.documentElement.getAttribute('data-theme') || 'dark');
-  themeToggle.addEventListener('click', () => {
+  themeToggle.addEventListener('click', (e) => {
     const current = document.documentElement.getAttribute('data-theme');
-    applyTheme(current === 'light' ? 'dark' : 'light');
+    const next = current === 'light' ? 'dark' : 'light';
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // Circular wipe via the View Transitions API (graceful fallback otherwise)
+    if (!document.startViewTransition || reduce) { applyTheme(next); return; }
+    const x = e.clientX, y = e.clientY;
+    const r = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+    document.documentElement.style.setProperty('--vt-x', x + 'px');
+    document.documentElement.style.setProperty('--vt-y', y + 'px');
+    document.documentElement.style.setProperty('--vt-r', r + 'px');
+    const t = document.startViewTransition(() => applyTheme(next));
+    t.ready.then(() => {
+      document.documentElement.animate(
+        { clipPath: ['circle(0px at ' + x + 'px ' + y + 'px)', 'circle(' + r + 'px at ' + x + 'px ' + y + 'px)'] },
+        { duration: 520, easing: 'cubic-bezier(.22,.61,.36,1)', pseudoElement: '::view-transition-new(root)' }
+      );
+    });
   });
 
   // Auto-inject CSRF token into all POST forms
@@ -190,6 +211,7 @@
 </script>
 <script src="{{ url_for('static', filename='js/cursor.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/ui-extras.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/interactions.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/smooth-scroll.js') }}" defer></script>
 {% block scripts %}{% endblock %}
 </body>
