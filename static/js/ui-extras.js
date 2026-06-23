@@ -27,18 +27,24 @@
 
   if (inPortal) return; // remaining effects are public-site only
 
-  /* ── Mask reveal — images/cards unmask as they enter the viewport ── */
+  /* ── Mask reveal — cards unmask as they scroll into view. Scroll-position
+     based (not IntersectionObserver, which proved unreliable for these
+     elements and could leave whole sections invisible). ── */
   (function () {
     var els = [].slice.call(document.querySelectorAll('.mask-reveal'));
     if (!els.length) return;
-    if (reduce || !('IntersectionObserver' in window)) {
-      els.forEach(function (el) { el.classList.add('in'); });
-      return;
+    if (reduce) { els.forEach(function (el) { el.classList.add('in'); }); return; }
+    function check() {
+      var vh = window.innerHeight || document.documentElement.clientHeight;
+      for (var i = els.length - 1; i >= 0; i--) {
+        if (els[i].getBoundingClientRect().top < vh * 0.92) { els[i].classList.add('in'); els.splice(i, 1); }
+      }
+      if (!els.length) { window.removeEventListener('scroll', check); window.removeEventListener('resize', check); }
     }
-    var io = new IntersectionObserver(function (ents) {
-      ents.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
-    }, { threshold: 0.18, rootMargin: '0px 0px -8% 0px' });
-    els.forEach(function (el) { io.observe(el); });
+    window.addEventListener('scroll', check, { passive: true });
+    window.addEventListener('resize', check, { passive: true });
+    window.addEventListener('load', check);
+    check();
   })();
 
   /* ── Split-text headline reveal — wraps words and staggers them up.

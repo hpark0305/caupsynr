@@ -10,13 +10,20 @@
 
   /* ── Count-up numbers ── */
   function countUp() {
-    if (reduce || !hasIO) return;
+    if (reduce) return;
     var els = [].slice.call(document.querySelectorAll('.stat-num, .recog-metric'));
     if (!els.length) return;
-    var io = new IntersectionObserver(function (ents) {
-      ents.forEach(function (en) { if (en.isIntersecting) { io.unobserve(en.target); run(en.target); } });
-    }, { threshold: 0.6 });
-    els.forEach(function (el) { io.observe(el); });
+    var pending = els.slice();
+    function check() {
+      var vh = window.innerHeight || document.documentElement.clientHeight;
+      for (var i = pending.length - 1; i >= 0; i--) {
+        if (pending[i].getBoundingClientRect().top < vh * 0.85) { run(pending[i]); pending.splice(i, 1); }
+      }
+      if (!pending.length) { window.removeEventListener('scroll', check); window.removeEventListener('resize', check); }
+    }
+    window.addEventListener('scroll', check, { passive: true });
+    window.addEventListener('resize', check, { passive: true });
+    check();
     function run(el) {
       var m = el.textContent.trim().match(/^(\D*)(\d[\d,]*)(.*)$/);
       if (!m) return;
@@ -51,11 +58,18 @@
       });
     });
     function reveal(svg) { shapesOf(svg).forEach(function (s, i) { s.style.transitionDelay = (i * 0.08) + 's'; s.style.strokeDashoffset = '0'; }); }
-    if (!hasIO) { icons.forEach(reveal); return; }
-    var io = new IntersectionObserver(function (ents) {
-      ents.forEach(function (en) { if (en.isIntersecting) { reveal(en.target); io.unobserve(en.target); } });
-    }, { threshold: 0.4 });
-    icons.forEach(function (svg) { io.observe(svg); });
+    var pending = icons.slice();
+    function check() {
+      var vh = window.innerHeight || document.documentElement.clientHeight;
+      for (var i = pending.length - 1; i >= 0; i--) {
+        if (pending[i].getBoundingClientRect().top < vh * 0.9) { reveal(pending[i]); pending.splice(i, 1); }
+      }
+      if (!pending.length) { window.removeEventListener('scroll', check); window.removeEventListener('resize', check); }
+    }
+    window.addEventListener('scroll', check, { passive: true });
+    window.addEventListener('resize', check, { passive: true });
+    window.addEventListener('load', check);
+    check();
   }
 
   /* ── 3D tilt cards (rAF-lerped for a buttery, non-jittery feel) ── */
