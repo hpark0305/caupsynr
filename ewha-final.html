@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>이화의료원 최종면접 · 전용 대비실</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#143C44;--ink-2:#2E5A62;--ink-soft:#4B6B70;
+  --paper:#F6F4EE;--panel:#ECEFEC;--card:#FFFFFF;
+  --coral:#E0603F;--coral-deep:#BF4626;
+  --ewha:#00694E;--ewha-soft:#E8F1ED;
+  --lv1:#C0392B;--lv2:#C2882B;--lv3:#5E8390;--safe:#5F9374;
+  --line:#DED6C6;--line-2:#E7E0D2;
+  --shadow:0 1px 2px rgba(20,60,68,.05),0 8px 24px -16px rgba(20,60,68,.25);
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+  --sans:'IBM Plex Sans KR',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;scroll-padding-top:60px}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+button{font-family:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--coral);outline-offset:2px}
+
+/* NAV */
+.nav{position:sticky;top:0;z-index:50;background:rgba(246,244,238,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.nav-inner{max-width:1120px;margin:0 auto;display:flex;align-items:center;gap:16px;padding:10px 22px;overflow-x:auto}
+.nav-brand{font-family:var(--mono);font-weight:600;font-size:13px;letter-spacing:.04em;white-space:nowrap;flex-shrink:0}
+.nav-brand b{color:var(--ewha)}
+.nav-links{display:flex;gap:3px;margin-left:auto;flex-shrink:0}
+.nav-links a{font-family:var(--mono);font-size:12px;color:var(--ink-soft);text-decoration:none;padding:5px 9px;border-radius:6px;white-space:nowrap;transition:.15s}
+.nav-links a:hover{background:var(--panel);color:var(--ink)}
+.nav-links a.back{color:var(--coral-deep);font-weight:600}
+
+.wrap{max-width:1120px;margin:0 auto;padding:0 22px}
+section{padding:54px 0;border-bottom:1px solid var(--line-2)}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--ewha);font-weight:600;display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.eyebrow::before{content:"";width:26px;height:2px;background:var(--ewha)}
+h2.sec{font-size:28px;font-weight:700;letter-spacing:-.01em;line-height:1.2;margin-bottom:8px}
+.sec-sub{color:var(--ink-soft);font-size:15px;max-width:820px;margin-bottom:28px}
+.sec-sub b{color:var(--ink)}
+
+/* HERO */
+.hero{padding:46px 0 44px;border-bottom:1px solid var(--line-2)}
+.hero-eyebrow{font-family:var(--mono);font-size:12.5px;letter-spacing:.1em;color:var(--ink-soft);font-weight:500;margin-bottom:16px}
+.hero-eyebrow b{color:var(--ewha)}
+.hero h1{font-size:clamp(30px,5vw,48px);font-weight:700;line-height:1.07;letter-spacing:-.025em;margin-bottom:16px}
+.hero h1 .em{color:var(--ewha)}
+.hero-lead{font-size:16px;color:var(--ink-2);max-width:660px;margin-bottom:30px}
+.hero-lead b{color:var(--ink);font-weight:600}
+.monitor{background:var(--ink);color:#EAF1EF;border-radius:14px;padding:24px 26px;display:grid;grid-template-columns:auto 1fr;gap:24px 32px;align-items:center;box-shadow:0 18px 50px -28px rgba(20,60,68,.55);position:relative;overflow:hidden}
+.monitor::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(255,255,255,.025) 0 1px,transparent 1px 3px)}
+.mon-label{font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:#8FB3AE;text-transform:uppercase;margin-bottom:6px}
+.mon-num{font-family:var(--mono);font-weight:600;font-size:60px;line-height:.9;letter-spacing:-.02em;color:#fff;display:flex;align-items:baseline;gap:4px}
+.mon-num .d{color:var(--coral);font-size:28px;font-weight:500}
+.mon-num .blink{width:10px;height:42px;background:var(--coral);margin-left:6px;align-self:center;animation:blink 1.1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.mon-foot{font-family:var(--mono);font-size:11.5px;color:#9CBDB8;margin-top:9px}
+.mon-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:rgba(255,255,255,.12);border-radius:8px;overflow:hidden}
+.mon-cell{background:#163F47;padding:11px 14px}
+.mon-cell .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;color:#85A9A4;text-transform:uppercase;margin-bottom:3px}
+.mon-cell .v{font-family:var(--mono);font-size:14px;color:#EAF1EF;font-weight:500}
+.mon-cell .v small{color:#8FB3AE;font-size:11px}
+.stat-strip{display:flex;flex-wrap:wrap;gap:0;margin-top:24px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--card)}
+.stat{flex:1;min-width:120px;padding:15px 20px;border-right:1px solid var(--line-2)}
+.stat:last-child{border-right:0}
+.stat .n{font-family:var(--mono);font-size:24px;font-weight:600;letter-spacing:-.01em}
+.stat .n .u{font-size:13px;color:var(--ewha);font-weight:500}
+.stat .l{font-size:12.5px;color:var(--ink-soft);margin-top:2px}
+
+/* DRAW ROOM (뽑기 시뮬레이터) */
+.room-ctrl{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:flex-end;padding:18px 20px;border:1px solid var(--line);border-radius:12px;background:var(--card);box-shadow:var(--shadow);margin-bottom:18px}
+.ctrl-group{display:flex;flex-direction:column;gap:7px}
+.ctrl-label{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{background:var(--card);border:0;padding:7px 12px;font-size:12.5px;color:var(--ink-soft);border-right:1px solid var(--line-2)}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--ink);color:#fff}
+.draw-btn{margin-left:auto;background:var(--ewha);color:#fff;border:0;font-family:var(--mono);font-weight:600;font-size:14px;letter-spacing:.04em;padding:12px 26px;border-radius:9px;box-shadow:0 8px 20px -10px rgba(0,105,78,.6);transition:.15s}
+.draw-btn:hover{background:#00553F;transform:translateY(-1px)}
+.pool-note{font-family:var(--mono);font-size:11px;color:var(--ink-soft);margin-bottom:18px}
+.pool-note b{color:var(--ewha)}
+.stage{border:1px solid var(--line);border-radius:14px;background:var(--card);overflow:hidden;box-shadow:var(--shadow)}
+.stage-empty{padding:52px 24px;text-align:center;color:var(--ink-soft)}
+.stage-empty .big{font-size:17px;color:var(--ink);font-weight:600;margin-bottom:6px}
+.stage-head{background:var(--ink);color:#EAF1EF;padding:16px 22px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.stage-id{font-family:var(--mono);font-weight:600;font-size:20px;color:var(--ink);background:#fff;padding:4px 14px;border-radius:6px}
+.stage-title{font-size:17px;font-weight:600;color:#fff;flex:1;min-width:180px}
+.stage-src{font-family:var(--mono);font-size:10.5px;color:#8FB3AE}
+.stage-body{padding:22px}
+.stage-scn{font-size:16px;color:var(--ink);line-height:1.65;margin-bottom:16px;font-weight:500}
+.act-row{display:flex;gap:10px;flex-wrap:wrap}
+.reveal-btn{flex:1;min-width:160px;background:var(--ink);color:#fff;border:0;font-family:var(--mono);font-weight:600;font-size:13.5px;letter-spacing:.04em;padding:13px;border-radius:9px;transition:.15s}
+.reveal-btn:hover{background:var(--ink-2)}
+.next-btn{background:var(--panel);color:var(--ink);border:1px solid var(--line);font-family:var(--mono);font-size:13px;padding:13px 20px;border-radius:9px}
+.next-btn:hover{background:var(--line-2)}
+.answer{margin-top:20px;border-top:2px dashed var(--line);padding-top:20px}
+.answer[hidden]{display:none}
+.atag{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ewha);margin-bottom:7px}
+.apoint{border-left:4px solid var(--ewha);background:var(--ewha-soft);border-radius:0 9px 9px 0;padding:12px 16px;font-size:14px;color:var(--ink-2)}
+.apoint.none{border-left-color:var(--lv2);background:#FBF4E6;color:var(--ink-soft)}
+
+/* GENERIC CARDS / TABLE / LISTS */
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.card{border:1px solid var(--line);border-radius:12px;background:var(--card);padding:18px 20px;box-shadow:var(--shadow)}
+.card h4{font-size:15px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.card p,.card li{font-size:13.5px;color:var(--ink-2)}
+.card ul{padding-left:16px}
+.card li{margin-bottom:4px}
+.knum{font-family:var(--mono);font-size:11px;font-weight:600;color:#fff;background:var(--ewha);border-radius:5px;padding:2px 7px}
+.knum.warn{background:var(--lv1)}
+.knum.tip{background:var(--lv3)}
+table.plain{width:100%;border-collapse:collapse;font-size:13.5px;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+table.plain th{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);background:var(--panel);padding:10px 14px;text-align:left;border-bottom:1px solid var(--line)}
+table.plain td{padding:10px 14px;border-bottom:1px solid var(--line-2);color:var(--ink-2);vertical-align:top}
+table.plain tr:last-child td{border-bottom:0}
+table.plain td b{color:var(--ink)}
+.tbl-scroll{overflow-x:auto;border-radius:12px}
+.list-line{font-size:13.5px;color:var(--ink-2);padding-left:16px;position:relative;margin-bottom:5px}
+.list-line::before{content:"›";position:absolute;left:0;color:var(--ewha);font-family:var(--mono)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:12.5px;padding:5px 11px;border-radius:7px;background:var(--panel);border:1px solid var(--line-2);color:var(--ink-2)}
+.chip.hl{background:var(--ewha-soft);border-color:#CBE0D6;color:var(--ewha);font-weight:600}
+.callout{border:1px solid var(--line);border-left:4px solid var(--lv1);background:#FBEDEB;border-radius:0 10px 10px 0;padding:14px 18px;font-size:13.5px;color:var(--ink-2);margin:14px 0}
+.callout.tip{border-left-color:var(--safe);background:#EFF5F0}
+.callout.warn{border-left-color:var(--lv2);background:#FBF4E6}
+.callout b{color:var(--ink)}
+.yr{font-family:var(--mono);font-size:9.5px;font-weight:600;letter-spacing:.04em;border-radius:4px;padding:1px 6px;margin-left:6px;vertical-align:1px;white-space:nowrap}
+.yr.y25{background:var(--ewha);color:#fff}
+.yr.y24{background:#D8E7E0;color:var(--ewha)}
+.yr.y23{background:var(--panel);color:var(--ink-soft);border:1px solid var(--line-2)}
+.yr.all{background:#F3E4D9;color:var(--coral-deep)}
+
+/* QUESTION BANK */
+details.sys{border:1px solid var(--line);border-radius:11px;margin-bottom:10px;background:var(--card);overflow:hidden}
+details.sys>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;padding:14px 18px;font-weight:600;font-size:15px}
+details.sys>summary::-webkit-details-marker{display:none}
+details.sys>summary .cnt{font-family:var(--mono);font-size:11px;color:var(--ink-soft);font-weight:500;margin-left:auto}
+details.sys>summary::after{content:"+";font-family:var(--mono);color:var(--ink-soft);font-size:16px}
+details.sys[open]>summary::after{content:"–"}
+details.sys[open]>summary{border-bottom:1px solid var(--line-2)}
+.sys-body{padding:8px 18px 16px}
+.qitem{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line-2);font-size:13.5px;color:var(--ink-2)}
+.qitem:last-child{border-bottom:0}
+.qitem input{width:15px;height:15px;margin-top:3px;accent-color:var(--ewha);flex-shrink:0;cursor:pointer}
+.qitem.done label{color:#9AAFAC;text-decoration:line-through}
+.qitem label{cursor:pointer;flex:1}
+.qitem .a-toggle{font-family:var(--mono);font-size:10.5px;color:var(--ewha);background:var(--ewha-soft);border:1px solid #CBE0D6;border-radius:5px;padding:2px 8px;flex-shrink:0;white-space:nowrap}
+.qitem .a-toggle:hover{background:#D9EAE2}
+.q-ans{display:none;margin:2px 0 8px 25px;border-left:3px solid var(--ewha);background:var(--ewha-soft);border-radius:0 8px 8px 0;padding:9px 13px;font-size:12.8px;color:var(--ink-2)}
+.q-ans.show{display:block}
+.bank-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+.mini-btn{font-family:var(--mono);font-size:11.5px;border:1px solid var(--line);background:var(--card);color:var(--ink-2);padding:6px 12px;border-radius:7px}
+.mini-btn:hover{background:var(--panel)}
+.prog-wrap{margin-left:auto;display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:11px;color:var(--ink-soft)}
+.prog{width:130px;height:7px;background:var(--line-2);border-radius:99px;overflow:hidden}
+.prog>i{display:block;height:100%;background:var(--ewha);width:0%;transition:.3s}
+
+/* ROOM RECORDS */
+.rooms{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+.room-card{border:1px solid var(--line);border-radius:12px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.room-card .rh{background:var(--ink);color:#fff;font-family:var(--mono);font-size:12px;padding:9px 15px;display:flex;justify-content:space-between;align-items:center}
+.room-card .rh small{color:#8FB3AE;font-size:10.5px}
+.room-card ol{padding:13px 15px 13px 32px;font-size:13px;color:var(--ink-2)}
+.room-card ol li{margin-bottom:5px}
+.room-card ol li b{color:var(--ink)}
+.room-card ol li .tail{color:var(--coral-deep);font-size:12px}
+
+/* TIMELINE */
+.tl{border-left:2px solid var(--line);margin-left:8px;padding-left:22px}
+.tl-item{position:relative;padding-bottom:18px}
+.tl-item::before{content:"";position:absolute;left:-28px;top:5px;width:10px;height:10px;border-radius:50%;background:var(--ewha);border:2px solid var(--paper)}
+.tl-item h5{font-size:14px;font-weight:700}
+.tl-item p{font-size:13px;color:var(--ink-2)}
+.tl-item .t{font-family:var(--mono);font-size:10.5px;color:var(--ink-soft);letter-spacing:.06em}
+
+/* CHECKLIST */
+.check-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.dditem{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px dashed var(--line-2);font-size:13.5px}
+.dditem:last-child{border-bottom:0}
+.dditem input{width:16px;height:16px;margin-top:2px;accent-color:var(--coral);flex-shrink:0;cursor:pointer}
+.dditem.done label{color:#9AAFAC;text-decoration:line-through}
+.dditem label{cursor:pointer}
+
+footer{padding:36px 0 60px;color:var(--ink-soft);font-size:12.5px}
+footer .src{font-family:var(--mono);font-size:11px;line-height:1.9}
+@media(max-width:720px){.monitor{grid-template-columns:1fr}.mon-num{font-size:46px}}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <span class="nav-brand"><b>EUMC</b>·GUIDE / 이화의료원 종합 대비실</span>
+    <div class="nav-links">
+      <a href="#recruit">전형·스펙</a>
+      <a href="#essay">자소서</a>
+      <a href="#draw">뽑기룸</a>
+      <a href="#process">면접진행</a>
+      <a href="#rooms">방별실록</a>
+      <a href="#personality">인성기출</a>
+      <a href="#clinical">직무기출</a>
+      <a href="#issues">시사</a>
+      <a href="#answers">답변전략</a>
+      <a href="#hospital">병원분석</a>
+      <a href="#welfare">교육·복지</a>
+      <a href="#dday">체크리스트</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="hero-eyebrow">EWHA WOMANS UNIVERSITY MEDICAL CENTER · <b>이화의료원 신규간호사 종합 대비실</b> · 합격자 자료 12종 전수 정리</div>
+    <h1>전형·자소서·면접·병원정보 —<br><span class="em">이화의료원 준비를 한 페이지에</span></h1>
+    <p class="hero-lead">2023·2024·2025 세 개 연도 합격자 자료에서 <b>전형 통계·서합 스펙·자소서 문항과 합격 예시·면접 기출 전량·병원 분석·교육과 복지</b>까지 전부 추출했다. 면접 파트의 핵심은 하나 — <b>"뽑기는 매해 기출을 그대로 탄다."</b></p>
+    <div class="monitor">
+      <div>
+        <div class="mon-label">D-DAY · 이화 최종면접까지</div>
+        <div class="mon-num"><span id="dday">--</span><span class="d">일</span><span class="blink"></span></div>
+        <div class="mon-foot" id="dday-foot">계산 중…</div>
+      </div>
+      <div class="mon-grid">
+        <div class="mon-cell"><div class="k">면접 기간</div><div class="v">07.14(화) → 07.16(목)</div></div>
+        <div class="mon-cell"><div class="k">형식</div><div class="v">면접관 3 : 지원자 5~6 <small>· 다대다</small></div></div>
+        <div class="mon-cell"><div class="k">동시 진행</div><div class="v">5개 방 <small>· 방당 20~30분</small></div></div>
+        <div class="mon-cell"><div class="k">난이도 배분</div><div class="v">인성 &gt; 직무 <small>· 직무는 중하(초록이)</small></div></div>
+      </div>
+    </div>
+    <div class="stat-strip">
+      <div class="stat"><div class="n" id="st-p">0<span class="u">문항</span></div><div class="l">인성·뽑기 기출은행</div></div>
+      <div class="stat"><div class="n" id="st-c">0<span class="u">문항</span></div><div class="l">직무 기출은행</div></div>
+      <div class="stat"><div class="n" id="st-i">0<span class="u">문항</span></div><div class="l">시사·이슈</div></div>
+      <div class="stat"><div class="n">15<span class="u">개</span></div><div class="l">방별 실록(23~25)</div></div>
+      <div class="stat"><div class="n">12<span class="u">종</span></div><div class="l">원본 합격자 자료</div></div>
+    </div>
+  </div>
+</header>
+
+<!-- ============ 전형·스펙 ============ -->
+<section id="recruit">
+  <div class="wrap">
+    <div class="eyebrow">Recruitment</div>
+    <h2 class="sec">전형 개요·응시자격·서합 스펙</h2>
+    <p class="sec-sub">이대는 <b>서류 → AI역량검사 → 최종면접</b> 3단계. 서류는 정량(학점·어학) 컷이 뚜렷하고, 면접은 사실상 제로베이스 재경쟁이라는 게 합격자 공통 증언. <span class="yr y25">2025 채용(2026 입사)</span> 기준.</p>
+
+    <div class="grid3" style="margin-bottom:22px">
+      <div class="card"><h4><span class="knum">STEP 1</span> 서류전형</h4><p>약 <b>3,700명 지원 → 약 950명 합격</b>. 발표 9/12. 학점 비중이 크고, 어학 컷 미달 시 서류 자동 탈락.</p></div>
+      <div class="card"><h4><span class="knum">STEP 2</span> AI역량검사</h4><p>9/23~26(뷰인터). <b>완료</b> — 합불 영향은 크지 않다는 중론이나 기한 내 응시 필수였음.</p></div>
+      <div class="card"><h4><span class="knum">STEP 3</span> 최종면접 → 발표</h4><p>면접 10/21~24(4일). <b>약 200명 합격 + 예비 100여 명</b>, 발표 11/7. 면접 한 번이 당락의 전부.</p></div>
+    </div>
+
+    <div class="callout warn"><b>Lv1 · 응시자격(어학 컷) —</b> 2025 기준 <b>TOEIC 700 / TOEFL 70 / NewTEPS 293</b> 중 1개 이상 필수. 2024년 620 → 2025년 <b>700으로 상향</b>됐고 OPIc 기준은 폐지. 컷 미달이면 서류에서 무조건 탈락하므로 넉넉히 확보. <b>BLS는 가점은 아니지만 없으면 감점이라는 설</b>이 있어 챙기는 편을 권장(합격자 다수 보유). ※ 올해 컷은 반드시 공고로 재확인.</div>
+
+    <h3 style="font-size:16px;font-weight:700;margin:18px 0 12px">최종합격자 실제 스펙 (자료 수록분)</h3>
+    <div class="tbl-scroll" style="margin-bottom:16px">
+      <table class="plain">
+        <tr><th>구분</th><th>학교</th><th>학점</th><th>어학</th><th>봉사/자격</th><th>비고</th></tr>
+        <tr><td>최합 A</td><td>서울·자대유</td><td>4.31~4.43</td><td>TOEIC 890~985</td><td>36~85h / BLS</td><td>연합의료봉사·멘토링 등</td></tr>
+        <tr><td>최합 B</td><td>지방·자대유</td><td>4.19</td><td>TOEIC 935</td><td>서포터즈·튜터링</td><td>—</td></tr>
+        <tr><td>최합 C</td><td>지방·자대무</td><td>4.1 (석차 21/108)</td><td>TOEIC 825</td><td>BLS</td><td>봉사 36h·대외활동 거의 없음</td></tr>
+        <tr><td>최합 D</td><td>수도권·자대유</td><td>4.13 (석차 8/84)</td><td>TOEIC 915</td><td>BLS</td><td>대외활동 없음·학생회</td></tr>
+        <tr><td>최합 E</td><td>지방·자대유</td><td>4.21 (석차 3/106)</td><td>TOEIC 675 + OPIc</td><td>—</td><td>토익 대신 오픽으로 컷 충족</td></tr>
+        <tr><td>최합 F</td><td>지방·전문</td><td>4.29 (석차 4/180)</td><td>TOEIC 810</td><td>200h / BLS·KALS·카데바</td><td>—</td></tr>
+        <tr><td>최합 G</td><td>지자유</td><td>상위 20%</td><td>TOEIC 950·토스 AL</td><td>봉사·동아리·수상 없음</td><td>정량만으로 합격</td></tr>
+      </table>
+    </div>
+    <div class="grid2">
+      <div class="card"><h4>합격자가 말하는 우선순위</h4><ul>
+        <li>"<b>학점 &gt; 토익 &gt; 자소서</b>" — 단 학점·토익이 더 높은데 서류 탈락한 사례도 있어 <b>자소서도 무시 못 함</b></li>
+        <li>토익은 엄청 고득점 아니어도 <b>750~850선</b>은 지키는 편, 전학기·전체 평점·석차를 종합 평가(4-1만 보지 않음)</li>
+        <li>"저학점·저석차는 토익이 매우 높아야 가능 — 이대는 학점을 많이 본다"</li>
+        <li>전문대·저토익 합격자도 실재. 정량 스펙트럼은 넓다 = <b>당락은 결국 면접</b></li>
+      </ul></div>
+      <div class="card"><h4>서울 vs 목동 배치</h4><ul>
+        <li>통합 채용 후 <b>입사 전 수요조사</b>로 병원 선택 — "오픈카톡방으로 서울/목동 입사자를 나눠 받아 원하는 병원 배치, 대략 반반"(2025)</li>
+        <li>7월 입사 실례: <b>서울 17명 · 목동 5명</b> / 특수파트는 방마다 약 8명</li>
+        <li>자대생 우대는 체감 약함 — "자대인지 아닌지 잘 모른다, 아니어도 특파 잘 보내줌"</li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 자소서 ============ -->
+<section id="essay">
+  <div class="wrap">
+    <div class="eyebrow">Personal Statement</div>
+    <h2 class="sec">자기소개서 — 문항·작성 전략·합격 예시</h2>
+    <p class="sec-sub">문항은 6개(각 <b>최대 500자</b>), 가볍고 담백한 편. 면접이 자소서에서 출발하므로(밑줄 치며 읽음) <b>쓴 문장은 전부 방어 가능해야</b> 한다.</p>
+
+    <div class="grid2" style="margin-bottom:22px">
+      <div class="card"><h4>문항 구성 (각 500자)</h4><ul>
+        <li>① 성장과정 ② 성격 ③ 생활신조(가치관) ④ 지원동기 및 포부 ⑤ 특기사항 ⑥ 경험·경력기술서</li>
+        <li><b>⑥번은 필수 아님</b> — 미작성 서합자도 많으나, 어필 가능하면 <b>실습 소재</b>로 채우는 걸 권장</li>
+        <li>여대 부속병원이라는 점을 지원동기에 녹인 합격자 다수</li>
+      </ul></div>
+      <div class="card"><h4>작성 팁 (합격자 공통)</h4><ul>
+        <li>문항별로 <b>어떤 경험·어떤 역량</b>을 쓸지 먼저 배정, 상황·배경보다 <b>역량·행동 중심</b></li>
+        <li><b>컨셉 하나</b>로 관통(제목 대괄호 활용), 분량 꽉 채우기(성의)</li>
+        <li>가능하면 <b>입사 후 포부로 마무리</b>(뜬금없으면 생략 가능)</li>
+        <li>단점은 <b>치명적이지 않고 극복 가능한 것</b> + 보완책. 실습 경험은 부서별로 꼼꼼히 정리(실습일지·메모까지)</li>
+        <li>무료 첨삭: 잡아바·꿈날개(보건교사 지정 가능, 약 3일)</li>
+      </ul></div>
+    </div>
+
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:12px">합격 자소서 발췌 <span class="yr y25">최합</span> <span style="font-family:var(--mono);font-size:11px;color:var(--ink-soft);font-weight:400">— 구조 참고용, 그대로 복제 금지</span></h3>
+    <div class="grid2">
+      <div class="card"><h4>① 성장과정 예시</h4><p style="font-size:13px"><b>[따뜻한 손길을 먼저 내미는 사람]</b> 학창시절 멘토링으로 학업이 어려운 친구를 도와 성적 향상·자신감 회복으로 이어짐. "함께해줘서 포기하지 않을 수 있었다"는 말에 보람을 느끼고, 나눔이 누군가에게 힘이 됨을 깨달아 간호사를 지망 → 공감·소통·책임으로 마무리.</p></div>
+      <div class="card"><h4>① 성장과정 예시(문제해결형)</h4><p style="font-size:13px"><b>[행동하는 사람]</b> 어두운 밤길에 직접 시청 민원 → 가로등 설치. 급식실 분리배출 문제엔 영양사 자문 받아 안내지 제작·부착. 타인의 불편을 관찰하고 개선을 위해 행동해온 힘으로 근거기반 간호를 제공하겠다(497자).</p></div>
+      <div class="card"><h4>② 성격 예시</h4><p style="font-size:13px"><b>[끈기와 꼼꼼함]</b> 매주 학업계획서로 성적장학금 수령. 외과병동 실습 중 <b>환자 손 꺾여 수액 안 들어가는 것을 발견·즉시 보고</b>, 미열 확인 후 아이스백·15분마다 사정으로 악화 방지 도움 → 정확·안전한 간호로 연결.</p></div>
+      <div class="card"><h4>④ 지원동기 및 포부 예시</h4><p style="font-size:13px"><b>[전문성과 따뜻함의 전인간호]</b> 섬김과 나눔으로 인간중심 전인간호를 추구하는 이화 문화가 간호관과 부합. 심장계 중환자실 실습에서 "제가 있으니 힘내세요"라며 라디오를 틀어드리던 선생님을 보고 간호사는 환자의 <b>동반자</b>임을 느낌 → "그날 배운 건 그날 단권화" + QI 활동 기여로 마무리.</p></div>
+      <div class="card"><h4>③ 생활신조 예시(어학 연결)</h4><p style="font-size:13px"><b>[어제보다 한 걸음 더]</b> 어학연수 중 보건실 자원봉사에서 일사병 의심 학생에게 체온측정·냉요법을 신속 수행 → 지식의 실무 적용을 체득. 원서·팟캐스트로 <b>토익 960·토스 AL</b> 달성. 이화의 발전에 발맞춰 꾸준히 성장하겠다.</p></div>
+      <div class="card"><h4>⑤ 특기사항 예시(협업)</h4><p style="font-size:13px"><b>[적극적으로 동료를 돕는 자세]</b> 봉사 동아리에서 손마사지 대화를 어려워하던 동기를 역할 교체 대신 함께 해내도록 도움 → 동아리 전체 성장. 공감·화합·신뢰의 유연한 대응이 조직 성과를 높인다는 걸 배움.</p></div>
+    </div>
+    <div class="callout tip">자료의 자소서 소재 은행(공통 준비 항목): 생활신조와 그 계기(중·고·대 통일성), 가장 행복/힘들었던 경험, 실습 최고 기억, 도움 준 경험, 목표 성공/실패(+실패 원인·개선), 협력 성공/협력 시 어려움, 가장 몰입한 경험, 장점·단점(+보완), 스트레스 해소·취미·특기, 보유 직무역량(사례·활용)·부족 역량(극복·방향), 입사 1·3·5·10년 후 모습, 희망부서·이유·적합성.</div>
+  </div>
+</section>
+
+
+<!-- ============ 뽑기 시뮬레이터 ============ -->
+<section id="draw">
+  <div class="wrap">
+    <div class="eyebrow">Draw Room</div>
+    <h2 class="sec">뽑기 룸 — 실전처럼 번호를 뽑는다</h2>
+    <p class="sec-sub">실제 면접: 면접관이 <b>"20~44번 중 골라보세요"</b> 식으로 범위를 주면, 고른 번호의 질문이 스크린에 뜬다(풀 규모 100번대까지 확인됨). 여기서도 똑같이 — 풀을 고르고 <b>번호 뽑기</b>를 누르면 무작위 번호와 질문이 뜬다. 소리 내어 답한 뒤 "답변 포인트"를 펼쳐 비교한다.</p>
+    <div class="room-ctrl">
+      <div class="ctrl-group">
+        <span class="ctrl-label">질문 풀</span>
+        <div class="seg" id="draw-seg">
+          <button class="on" data-pool="p">인성·뽑기</button>
+          <button data-pool="c">직무</button>
+          <button data-pool="i">시사</button>
+          <button data-pool="all">전체</button>
+        </div>
+      </div>
+      <div class="ctrl-group">
+        <span class="ctrl-label">연도</span>
+        <div class="seg" id="draw-yr">
+          <button class="on" data-yr="all">전체</button>
+          <button data-yr="25">'25만</button>
+        </div>
+      </div>
+      <button class="draw-btn" id="draw-go">번호 뽑기 →</button>
+    </div>
+    <p class="pool-note">현재 풀 <b id="pool-count">0</b>문항 · 답변 포인트가 자료에 수록된 문항은 <b>정리 답안</b>이 함께 뜬다</p>
+    <div class="stage" id="stage">
+      <div class="stage-empty" id="stage-empty">
+        <div class="big">아직 뽑은 번호가 없습니다</div>
+        풀을 고르고 <b>번호 뽑기</b>를 눌러 시작하세요 — 준비 시간 없이 바로 답하는 게 실전이다.
+      </div>
+      <div id="stage-live" hidden>
+        <div class="stage-head">
+          <span class="stage-id" id="s-num">—</span>
+          <span class="stage-title" id="s-cat">—</span>
+          <span class="stage-src" id="s-src">EUMC 기출</span>
+        </div>
+        <div class="stage-body">
+          <p class="stage-scn" id="s-q">—</p>
+          <div class="act-row">
+            <button class="reveal-btn" id="s-reveal">답변 포인트 보기</button>
+            <button class="next-btn" id="s-next">다음 뽑기</button>
+          </div>
+          <div class="answer" id="s-answer" hidden>
+            <div class="atag">Answer Point · 자료 정리본</div>
+            <div class="apoint" id="s-apoint">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 진행방식 ============ -->
+<section id="process">
+  <div class="wrap">
+    <div class="eyebrow">Process</div>
+    <h2 class="sec">진행방식 — 서류 통과 후 곧바로 최종면접</h2>
+    <p class="sec-sub">이대는 <b>서류 → (AI역량검사·인적성) → 최종면접</b> 단 한 번의 대면 면접으로 끝난다. 면접 순번은 <b>지원번호순(원서 임시저장/접수순 추정)</b>, 이름순 아님. 아래는 2023·2024·2025 세 개 연도 후기를 교차 검증한 것.</p>
+
+    <div class="tbl-scroll" style="margin-bottom:26px">
+      <table class="plain">
+        <tr><th>구분</th><th>2023 채용</th><th>2024 채용</th><th>2025 채용(최신)</th></tr>
+        <tr><td><b>지원 → 서합</b></td><td>약 4,400 → 약 1,000명</td><td>—</td><td>약 3,700 → 약 950명</td></tr>
+        <tr><td><b>일정</b></td><td>—</td><td>서류 10/14~23 → 발표 11/7 → 인성검사 11/8~12 → <b>면접 11/19~21(3일)</b> → 최종 12/4</td><td>서류발표 9/12 → AI 9/23~26 → <b>면접 10/21~24(4일)</b> → 최종 11/7</td></tr>
+        <tr><td><b>최종합격</b></td><td>약 200명</td><td>170명+자대생(합 200+)</td><td>약 200명 + 예비 100여 명</td></tr>
+        <tr><td><b>비고</b></td><td>면접관 4명 방 후기 존재</td><td>AI면접 없음·인성검사만</td><td>AI역량검사(뷰인터) 신규 도입</td></tr>
+      </table>
+    </div>
+
+    <div class="grid2" style="margin-bottom:26px">
+      <div class="card">
+        <h4><span class="knum">구조</span> 면접장 세팅</h4>
+        <ul>
+          <li><b>면접관 3명</b> : 지원자 <b>6인 1조</b> — 철회자 발생 시 번호 당겨 3~5명 입장(철회 3명 방 다수)</li>
+          <li>동시 <b>5개 방</b>(A 1~5번방) 진행 · 방당 <b>20~30분</b>(질문 많으면 30분+)</li>
+          <li>면접관은 임원이 아니라 <b>각 부서 파트장급</b> — "내 부서에 데려갈 신규를 찾는 눈빛"이라는 후기. 직무 답변에 보고체계·이중확인·우선순위 등 <b>임상 절차감각</b>이 묻어나야 하는 이유</li>
+          <li>순서별 특성: 1~2번=준비시간 없지만 대표답변 선점 / 3~5번=시간 있지만 중복 회피 부담 → <b>핵심 메시지 2~3개를 미리 준비</b></li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4><span class="knum">뽑기</span> 이대 시그니처 — 번호 뽑기</h4>
+        <ul>
+          <li>면접관이 <b>"20~44번" · "100~120번 중 골라보세요"</b> 식으로 범위 제시 → 고른 번호의 질문이 <b>스크린(PPT)</b>에 뜸 → 읽고 답변</li>
+          <li>범위로 보아 문항 풀은 <b>100번대 이상</b> 규모</li>
+          <li>세 개 연도 후기 공통 증언: <b>"뽑기는 기출을 그대로 탄다"</b> → 아래 인성·뽑기 은행 전수 답변이 최우선 과제</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4><span class="knum warn">변수</span> 자기소개 — 2025년의 함정</h4>
+        <ul>
+          <li>역대 후기는 "자기소개만 시킨다" → 2025년 갑자기 <b>"자기소개+지원동기"</b> 요구, 방 전원이 절었다는 후기</li>
+          <li>→ <b>① 단독 40초~1분 ② 지원동기 포함 버전</b> 두 개 필수</li>
+          <li>단, "자기소개 타임 = 면접관이 원서 읽는 타임"(밑줄·메모하며 개별질문 준비) — 내용 완벽주의보다 <b>안정적 전달</b>이 우선</li>
+          <li>말을 절어도 당황하지 않고 끝까지 마무리하면 된다 — "아나운서가 아니라 간호사를 뽑는 것"(합격자)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4><span class="knum tip">전략</span> 마지막 할 말</h4>
+        <ul>
+          <li>방에 따라 ①전원 ②<b>손 든 사람만</b> ③시간 부족으로 생략</li>
+          <li>합격자 실전: "몇 명만 기회" → <b>가장 먼저 손 들고</b> 짧게 — 구조: 기회 감사 + 준비하며 성장 + "붙는다면 정년까지" 포부를 담담하게</li>
+          <li>기회가 안 오면 개별질문 답변 끝에 어필 포인트를 심는 <b>이중 설계</b> / 양해 구하고 만들어낸 사례도 있음</li>
+          <li>길고 뻔하면 역효과 — <b>짧고 간절하게</b></li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 style="font-size:18px;font-weight:700;margin-bottom:14px">당일 타임라인 (후기 재구성)</h3>
+    <div class="tl">
+      <div class="tl-item"><span class="t">STEP 1 · 도착</span><h5>이대서울병원 정문 → 지하 2층 컨벤션센터</h5><p>대기석 부족·<b>물 없음(지참)</b>·구두 신고 서 있어야 함 → <b>약 10분 전 도착</b>이 적당. 첫 타임은 8:20~30 도착, 9시 시작(2023 기준).</p></div>
+      <div class="tl-item"><span class="t">STEP 2 · 서류 접수</span><h5>수험표는 잘라 와서 핀으로 옷에 부착 · 신분증 필수</h5><p>서류봉투·핀·풀·클립·테이프 비치. 봉투 풀칠 불필요(어차피 열어봄). A/B조로 나눠 줄 서서 검토.</p></div>
+      <div class="tl-item"><span class="t">STEP 3 · 전자기기 전량 제출</span><h5>휴대폰·워치·아이패드 전부 제출</h5><p>→ 대기 중 볼 자료는 <b>반드시 종이로 프린트</b>. 짐은 최소화(보관 장소 별도).</p></div>
+      <div class="tl-item"><span class="t">STEP 4 · 대기</span><h5>대기실 → 5~6명씩 각 면접장 앞 2차 대기</h5><p>방별 딜레이 편차 있음(밀린 방은 '마지막 할 말' 생략된 사례).</p></div>
+      <div class="tl-item"><span class="t">STEP 5 · 입장 인사 — 병원이 정해주지 않음</span><h5>대기 중 인사 리드를 반드시 정할 것</h5><p>안 정하고 들어갔다가 <b>"여긴 차렷 경례도 안 하나요?"</b> 지적받은 실사례. 1번이 긴장해 못 하는 경우 흔함 → <b>본인이 리드 자원</b>이 최선. 합격자 예: "둘 셋, 안녕하십니까 / 둘 셋, 감사합니다"로 처음·끝 통일.</p></div>
+      <div class="tl-item"><span class="t">STEP 6 · 면접 진행</span><h5>자기소개(+지원동기) → 뽑기 → 개별 직무 1~2(+꼬리) → 개인·자소서 질문 → 공통질문 → 마지막 할 말</h5><p>공통질문 단골: <b>원티드·기피부서 / 타병원 지원현황 솔직하게</b>. 연도별 라운드 순서는 조금씩 다름(2024: 자기소개→직무→뽑기→개인 2~3개→마지막).</p></div>
+      <div class="tl-item"><span class="t">STEP 7 · 퇴장</span><h5>추가질문을 못 받아도 당락과 무관</h5><p>추가질문 못 받은 지원자 최합 / "가장 잘한" 지원자와 본인만 질문 못 받았는데 본인 합격 사례. 자평 5/10 합격 사례도 있음 — <b>체감·분위기와 결과는 무관</b>.</p></div>
+    </div>
+
+    <div class="callout" style="margin-top:22px"><b>면접관 스타일 요약 —</b> ① 자소서 기반 심층질문이 최대 비중(인용 명언의 뜻, 자소서에 쓴 병원 사업, 실습 술기 → 그대로 직무질문화. 예: 호스피스 봉사 기재 → 호스피스 간호 출제) ② 꼬리질문은 "정말 그렇게 생각해요? 왜요?" 톤으로 <b>앞뒤 논리 일관성</b> 검증 ③ 개인 배경 질문(기졸 근황·이직 사유 / 편입·연장자: 어린 선배 괜찮은지 / 학업중단 이유 / 공백기 / 자대 보유: 왜 자대 안 갔나·자대 붙어도 올 건가 / 집 위치·통근) 해당 시 필수 준비 ④ 분위기는 방바방(냉랭~화기애애) — 끄덕임+미소는 유지해주는 편.</div>
+  </div>
+</section>
+
+<!-- ============ 방별 실록 ============ -->
+<section id="rooms">
+  <div class="wrap">
+    <div class="eyebrow">Room Records</div>
+    <h2 class="sec">방별 실록 — 실제 방에서 나온 세트 그대로</h2>
+    <p class="sec-sub"><b>2025 채용(최신) 7개 방 전량</b> + 2023 채용 대표 세트. 한 방에서 자기소개 → 뽑기 → 직무 → 인성 → 공통이 어떤 조합으로 묶이는지 감각을 잡는 용도.</p>
+    <h3 style="font-size:16px;font-weight:700;margin:0 0 12px"><span class="yr y25">2025 채용</span> 최신 실록</h3>
+    <div class="rooms" style="margin-bottom:26px">
+      <div class="room-card"><div class="rh">1일차 오전 · 1번방 <small>철회 2</small></div><ol>
+        <li>자기소개</li><li><b>직무</b> 디곡신 투여 시 주의 / LC 환자 관리</li><li><b>뽑기</b> 센스 있다는 얘기 듣는 편인지</li><li><span class="tail">추가: 연장자·편입·학업중단 지원자에게 개별 배경 질문</span></li></ol></div>
+      <div class="room-card"><div class="rh">1일차 오전 · 5번방 <small>철회 3</small></div><ol>
+        <li>공통 자기소개+지원동기</li><li><b>인성(개별)</b> 안 될 것 같았는데 성공한 경험 / 실패 경험 / 인생 목표</li><li><b>직무(개별)</b> 기저질환 없는 저혈압 / 수술 후 출혈 간호 / 중심정맥관 간호</li><li><b>뽑기</b> 이화에서 일하고 싶은 이유 / 동료가 안 나올 때 / 선배가 오해로 화낼 때</li><li>공통: 인생 롤모델 · 마지막 할 말</li></ol></div>
+      <div class="room-card"><div class="rh">1일차 오후 · 2번방 <small>철회 3</small></div><ol>
+        <li>자기소개</li><li><b>뽑기</b> 전문 역량 어떻게 키울지 <span class="tail">꼬리: 본인의 가장 뛰어난 역량</span></li><li><b>직무</b> 일혈 유발 약물·증상 / intubation 목적 / 인슐린·항응고제 주의</li><li><b>인성</b> 간호수가로 매길 수 있는 간호사 업무</li><li>간호법 빠진 조항 생각 / 간호통합이란</li><li><b>공통</b> 간호사는 전문직인가 <span class="tail">꼬리: 호흡곤란 환자에게 독자적으로 뭘 할 수 있나</span></li><li>이론만 배운 술기를 설명 없이 시키면?</li></ol></div>
+      <div class="room-card"><div class="rh">2일차 오전 · 1번방 ①</div><ol>
+        <li>자기소개+지원동기</li><li><b>직무</b> 모르핀 작용기전 / 음압·양압병실 차이 / 협심증vs심근경색</li><li><b>뽑기</b> 힘든 순간 누구에게 이야기할지</li><li>입사 후 가장 어려울 부분</li><li>안 가고 싶은 부서</li><li><span class="tail">공통: 지원현황</span></li></ol></div>
+      <div class="room-card"><div class="rh">2일차 오전 · 1번방 ②</div><ol>
+        <li>자기소개</li><li><b>직무</b> 협심증vs심근경색</li><li><b>뽑기</b> 학교와 병원의 차이</li><li><b>인성</b> 본인의 약점</li><li><span class="tail">추가: 타병원 어디 지원했는지 솔직하게</span></li></ol></div>
+      <div class="room-card"><div class="rh">3일차 오전 · 5번방</div><ol>
+        <li>자기소개</li><li><b>직무</b> 의식수준 사정 방법 <span class="tail">꼬리: 갑자기 혼미해지면?</span></li><li><b>뽑기</b> 가장 몰두했던 경험</li><li><b>인성</b> 성격 단점 + 고치면 업무에 도움 될 부분</li></ol></div>
+      <div class="room-card"><div class="rh">4일차 오전 · 3번방 <small>철회 1</small></div><ol>
+        <li>자기소개</li><li><b>직무</b> MI 환자가 소화불량이라며 소화제 달라 할 때</li><li><b>뽑기</b> 적절한 판단력으로 칭찬받은 경험</li><li><b>인성</b> 동기들이 평가하는 '나는 어떤 간호사가 될까'</li></ol></div>
+      <div class="room-card"><div class="rh">4일차 오전 · 5번방 <small>철회 0</small></div><ol>
+        <li>자기소개</li><li>뽑기 인성(기출 유사)</li><li>개별 직무(초록이 유사)</li><li><b>잘하는 운동 있으면 말하기(전원)</b></li><li>3명 개별 질문(학교·취업현황)</li><li>하고 싶은 말</li></ol></div>
+      <div class="room-card"><div class="rh">타 방(2025) · 조합 기록 <small>부분</small></div><ol>
+        <li>인성 1(뽑기): 간호사로서 중요한 덕목 <span class="tail">타 지원자: 별명 / 2인 확인 혼자 하는 동료</span></li><li><b>직무 2</b> 수술 전 중단 약물 / 위절제술 후 합병증·간호 <span class="tail">타 지원자: 2인 확인 약물 / 수혈 목적 / 산소요법 / 흡인 목적·주의</span></li><li><span class="tail">공통: 원티드 부서 + 기피 부서</span></li></ol></div>
+    </div>
+    <h3 style="font-size:16px;font-weight:700;margin:0 0 12px"><span class="yr y23">2023 채용</span> 대표 세트 (질문 전량은 아래 은행에 통합)</h3>
+    <div class="rooms">
+      <div class="room-card"><div class="rh">세트 A</div><ol><li>자기소개+지원동기</li><li><b>직무</b> 협심증vs심근경색 / 멜레나 환자가 화장실 갔다 토혈 시 / LC 복수 간호</li><li><b>인성</b> 이화에 오기 위해 한 일 / 대학에서 추천할 것</li><li><b>뽑기</b> 실습 중 창의적인 일 <span class="tail">답 못 하자 "다른 경험도 괜찮다"</span></li></ol></div>
+      <div class="room-card"><div class="rh">세트 B</div><ol><li>자기소개</li><li><b>뽑기</b> 불가능한 것 도전 경험 / 언제까지 이화에서 일할지</li><li><b>직무</b> 억제대·발작·주삿바늘 자상·흉통 대처·조기이상 이유·관장</li><li><b>상황</b> 5R 미준수 투약사고 / 수간호사인 나: 환자는 후배에게 화, 후배는 억울</li><li><b>인성</b> 장단점이 간호사에 미칠 영향 / 면회 금지 생각 / 신규 이탈 이유·방안 <span class="tail">꼬리: 병원이 신규교육에 큰돈 투자하는 이유</span></li></ol></div>
+      <div class="room-card"><div class="rh">세트 C</div><ol><li>자기소개(지원동기 포함)</li><li>개인 목표와 조직 목표 불일치 시</li><li><b>직무</b> hematochezia vs melena</li><li>실습 중 인상 깊었던 일</li><li>마지막 할 말</li></ol></div>
+      <div class="room-card"><div class="rh">세트 D</div><ol><li>자기소개</li><li><b>직무</b> 활력징후 측정 금지 부위 / 정맥주사 금지 부위 / 의식수준 단계</li><li><b>뽑기</b> 학교 후배가 있는 곳에 신규로 가게 된다면</li><li><span class="tail">추가: 실습하면서 존경할 만한 간호사 있었는지</span></li></ol></div>
+      <div class="room-card"><div class="rh">세트 E</div><ol><li>자기소개</li><li><b>직무</b> 수혈 부작용시 대처(+종류) / 32도 날씨에 옆사람 실신 — 원인? <span class="tail">꼬리: 심장은 뛰고 있다면?</span></li><li><b>뽑기</b> 이화 지원한다니 주변 반응은?</li><li>마지막 할 말(희망자)</li></ol></div>
+      <div class="room-card"><div class="rh">세트 F</div><ol><li>자기소개</li><li><b>직무</b> 인퓨전 펌프</li><li>조직을 성장시킬 수 있는 방법</li><li>이화만의 장점</li><li>마지막 할 말</li></ol></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 인성·뽑기 은행 ============ -->
+<section id="personality">
+  <div class="wrap">
+    <div class="eyebrow">Bank 01 · Personality</div>
+    <h2 class="sec">인성·뽑기 기출은행 — 전량</h2>
+    <p class="sec-sub">세 개 연도에서 확인된 인성·뽑기·상황 질문 <b>전체</b>를 테마별로 병합했다(유사 문항은 한 줄로 통합, 연도 표기). <b>답변 달기 → 체크</b>가 이 페이지의 1순위 과제. <span class="yr all">전체</span>는 그 방 전원에게 물은 공통질문.</p>
+    <div class="bank-tools">
+      <button class="mini-btn" data-open="pbank">모두 펼치기</button>
+      <button class="mini-btn" data-close="pbank">모두 접기</button>
+      <div class="prog-wrap"><span id="p-progtxt">0 / 0</span><div class="prog"><i id="p-prog"></i></div></div>
+    </div>
+    <div id="pbank"></div>
+  </div>
+</section>
+
+<!-- ============ 직무 은행 ============ -->
+<section id="clinical">
+  <div class="wrap">
+    <div class="eyebrow">Bank 02 · Clinical</div>
+    <h2 class="sec">직무 기출은행 — 난이도 중하, 초록이 수준</h2>
+    <p class="sec-sub">전 연도 직무 기출을 계통별로 병합. <b>답변 보기</b>가 붙은 문항은 합격자 자료에 정리 답안이 수록된 것(요지만 압축). 재출제율 최상위: <b>협심증vs심근경색 · 의식수준/GCS · 일혈 · 수혈 · LC/멜레나 · 낙상·유치도뇨 · COPD 저농도 산소</b>.</p>
+    <div class="bank-tools">
+      <button class="mini-btn" data-open="cbank">모두 펼치기</button>
+      <button class="mini-btn" data-close="cbank">모두 접기</button>
+      <div class="prog-wrap"><span id="c-progtxt">0 / 0</span><div class="prog"><i id="c-prog"></i></div></div>
+    </div>
+    <div id="cbank"></div>
+  </div>
+</section>
+
+<!-- ============ 시사 ============ -->
+<section id="issues">
+  <div class="wrap">
+    <div class="eyebrow">Bank 03 · Issues</div>
+    <h2 class="sec">시사·이슈 — 인성·뽑기에 섞여 출제</h2>
+    <p class="sec-sub">2024 채용에서는 <b>의사파업 시 간호사 역할</b>이 여러 방에서 출제. 2025에는 간호법·간호수가·전문직 논쟁이 등장 — 정세 연동형이므로 각 30초 답변 + 병원 사례 1개씩 연결해 둘 것.</p>
+    <div class="bank-tools">
+      <button class="mini-btn" data-open="ibank">모두 펼치기</button>
+      <button class="mini-btn" data-close="ibank">모두 접기</button>
+      <div class="prog-wrap"><span id="i-progtxt">0 / 0</span><div class="prog"><i id="i-prog"></i></div></div>
+    </div>
+    <div id="ibank"></div>
+  </div>
+</section>
+
+<!-- ============ 답변 전략 ============ -->
+<section id="answers">
+  <div class="wrap">
+    <div class="eyebrow">Answer Strategy</div>
+    <h2 class="sec">답변 전략 — 합격자들이 실제로 한 것</h2>
+    <div class="grid2">
+      <div class="card">
+        <h4><span class="knum">1</span> 자기소개 — 40초 구조</h4>
+        <p style="margin-bottom:8px">다대다라 개인 노출 시간이 짧다. <b>키워드 1개 + 근거 경험 1개 + 이화 포부 1문장</b>으로 40초 내 완결.</p>
+        <ul>
+          <li>합격 실례 키워드: "스프링 같은 회복탄력성" 등 <b>두괄식 한 단어</b> 선언 후 근거</li>
+          <li>①단독 버전 ②지원동기 포함 버전 <b>둘 다 암기</b>(2025 변수)</li>
+          <li>자소서에 쓴 실습·활동이 그대로 직무질문이 되므로 자기소개에서 언급하는 소재는 <b>방어 가능한 것만</b></li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4><span class="knum">2</span> 지원동기 — 진솔함 검증</h4>
+        <p style="margin-bottom:8px">"진짜로 왜 오고 싶어요?"를 <b>여러 번</b> 되묻는다. 자소서 지원동기가 약하면 면전에서 재질문.</p>
+        <ul>
+          <li>합격 실례: <b>이대비전트립</b> 참여 계기 + 환자중심 문화 인상 / 이대 실습 중 파트장·선생님들 모습 → "함께 성장하는 공동체"</li>
+          <li>구조: 병원 팩트(보구녀관 정신·3인실·뇌혈관병원 등) × 본인 간호관 접합 — 팩트 나열만은 감점</li>
+          <li>이화 관련 이력(실습·비전트립·봉사)이 있으면 반드시 어필 — 면접관이 큰 흥미를 보임</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4><span class="knum">3</span> 인성·상황 답변 공통 골격</h4>
+        <ul>
+          <li>갈등·상황형: <b>경청·공감 → 원인 파악 → 내가 할 수 있는 조치 → 안 되면 상급 관리자 보고</b></li>
+          <li>윤리·안전 사안(2인 확인, 부정확 처방, 투약오류)은 <b>타협 없이 원칙 고수</b>가 정답 톤 — "절대 투약하지 않겠다"</li>
+          <li>꼬리 2차 방어선까지 설계: "의사소통으로 해결" → "소통 안 되는 사람이면?" → 공식 절차·보고 체계</li>
+          <li>모든 답에 가능하면 <b>병원에서 시행 중인 것과 연결</b>(합격자 공통 팁)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4><span class="knum">4</span> 태도 — 후기 공통 감점·가점 요소</h4>
+        <ul>
+          <li><b>크고 또박또박 + 잘 웃기</b> — 옆 사람 답변 때도 면접관과 눈이 마주침 → <b>끄덕임·경청 표정</b> 유지</li>
+          <li>옆 지원자가 완벽해도 <b>안 말리기</b> — "저라도 뽑고 싶을 만큼" 잘한 옆 지원자 두고 본인이 붙은 사례</li>
+          <li>복장: 정장 표준(바지·세미 합격 사례 있음), 머리망 권장 — 보수적 분위기</li>
+          <li>말 절어도 자책 금지, 끝까지 마무리 — 체감과 결과는 무관</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout tip" style="margin-top:16px"><b>답변에 엮을 병원 소재(합격자 실사용) —</b> 위드이화 '감정신호등'(태움·조직문화 질문) · 24시간 AI 보이스봇/임상통합상황실·스마트수술실(AI 질문) · 이대비전트립·이대 실습(지원동기) · 보구녀관 "섬김과 나눔"(1887, 국내 최초 여성병원) · 이대뇌혈관병원(국내 최초 24시간 365일)·대동맥혈관병원 EXPRESS(응급실 안 거치고 수술실 직행) · 국내 최초 3인실 기준병실+전 중환자실 1인실 · 힐링가든·아트큐브(전인간호) · 이대엄마아기병원·에드먼즈간호교육센터 · 로봇수술(다빈치 SP) · 몽골 의료봉사.</div>
+  </div>
+</section>
+
+<!-- ============ 병원 분석 ============ -->
+<section id="hospital">
+  <div class="wrap">
+    <div class="eyebrow">Hospital Intel</div>
+    <h2 class="sec">병원 분석 — 미션·가치·차별화 소재</h2>
+    <div class="callout"><b>Lv1 · 반드시 재확인 —</b> 간호부 미션·핵심가치가 자료 간 <b>두 버전</b> 존재. 구버전 "사랑의 돌봄간호 … 연민·양심·역량·신뢰" vs 신버전(2025 자료) <b>"사랑의 기독교 정신으로 최상의 간호를 실현하여 모든 이의 건강하고 행복한 삶에 기여" · 핵심가치 환자안전/전문성/존중과 배려/소통과 화합</b>. 면접 전 간호부 홈페이지 현행 버전 확인 필수 — 틀리게 인용하면 치명적.</div>
+    <div class="grid3" style="margin:16px 0 26px">
+      <div class="card"><h4>의료원 미션</h4><p>"사랑의 기독교 정신으로 인류를 질병으로부터 보호하고 구한다" — <b>보구녀관(普救女館)</b> 설립정신 계승. 핵심가치: <b>진료</b>(전인적 진료로 최상의 치유경험) · <b>교육</b>(미래 의료 리더 양성) · <b>연구</b>(헬스케어 산업 선도). 비전: 공감과 화합으로 이화 가족이 행복한 병원.</p></div>
+      <div class="card"><h4>간호부 (신버전 기준)</h4><p>미션: 사랑의 기독교 정신으로 <b>최상의 간호</b> 실현. 비전 4: 환자안전을 최우선으로 실천 / 표준화된 전문간호 제공 / 존중과 배려로 공감 / 소통과 화합으로 행복한 간호부.</p></div>
+      <div class="card"><h4>인재상 추정 키워드</h4><p>후기·자료 종합: <b>야무짐 · 밝음 · 끈기</b> + 환자안전 감수성. 파트장 면접관 관점 = "우리 병동에 와서 버티고, 가르치면 흡수하고, 사고 안 칠 신규."</p></div>
+    </div>
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:12px">차별화 소재 카드 — 답변·지원동기에 연결</h3>
+    <div class="grid3" style="margin-bottom:26px">
+      <div class="card"><h4><span class="knum">1887</span> 보구녀관</h4><p>국내 최초 근대식 여성병원, "섬김과 나눔". 이대가 가장 자부심 갖는 소재 — 합격 자소서·면접 답변에 공통 등장.</p></div>
+      <div class="card"><h4><span class="knum">뇌혈관</span> 이대뇌혈관병원</h4><p>국내 최초 <b>24시간 365일</b> 뇌혈관 전문 진료, 뇌졸중 집중치료실, 전 병상 1인실 신경계 중환자실.</p></div>
+      <div class="card"><h4><span class="knum">대동맥</span> EXPRESS 시스템</h4><p>환자 도착 전 수술 준비 완료, <b>응급실 안 거치고 수술실 직행</b> — 골든타임 사수. '난치가 아닌 완치' 지향.</p></div>
+      <div class="card"><h4><span class="knum">병실</span> 3인실·1인 중환자실</h4><p>국내 대학병원 최초 <b>기준병실 3인실</b> + 전 중환자실 1인실 — 감염 예방·환자중심의 대표 근거(이대서울).</p></div>
+      <div class="card"><h4><span class="knum">스마트</span> AI·스마트병원</h4><p>24시간 AI 보이스봇 상담, 임상통합상황실, 스마트 수술실, 스마트 모바일 플랫폼 — AI 시사 질문의 최적 연결고리.</p></div>
+      <div class="card"><h4><span class="knum">모성</span> 이대엄마아기병원</h4><p>2024.9 개원 — 고위험 산모·신생아. 에드먼즈간호교육센터(간호사 시뮬레이션 교육)도 함께.</p></div>
+      <div class="card"><h4><span class="knum">로봇</span> 로봇수술</h4><p>다빈치 SP 단일공 세계적 수준(목동 5,000례), 로봇수술 간호사 교육 세션 운영.</p></div>
+      <div class="card"><h4><span class="knum">문화</span> 위드이화 감정신호등</h4><p>태움 근절·조직문화 프로그램 — 태움/신규 퇴사율 질문에 합격자가 실제 사용한 카드.</p></div>
+      <div class="card"><h4><span class="knum">나눔</span> 몽골 의료봉사 14년</h4><p>섬김·나눔 정신의 실천 — "의료지원 갈 수 있는지"(23 전체질문)와도 연결.</p></div>
+    </div>
+    <h3 style="font-size:16px;font-weight:700;margin:8px 0 12px">병원 연혁·최근 동향 (지원동기·시사 답변 근거)</h3>
+    <div class="grid2">
+      <div class="card">
+        <h4>주요 연혁 타임라인</h4>
+        <ul>
+          <li><b>1887</b> 보구녀관 — 국내 최초 근대식 여성병원</li>
+          <li><b>2019</b> 이대서울병원 개원(3인실 기준병실·전 중환자실 1인실·스마트병원)</li>
+          <li><b>2022</b> 카카오헬스케어와 스마트병원 MOU / 목동 비뇨기병원</li>
+          <li><b>2023.8</b> 이대뇌혈관병원·대동맥혈관병원 개원(EXPRESS 시스템)</li>
+          <li><b>2024.6</b> 이대서울병원 개원 5주년</li>
+          <li><b>2024.9</b> 이대엄마아기병원 개원(5개 센터·에드먼즈간호교육센터)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4>여성 특화·글로벌 강점</h4>
+        <ul>
+          <li>국내 유일 <b>여자의과대학 부속병원</b> — 여성암(유방·갑상선·자궁·난소) 특화</li>
+          <li>이대여성암병원: 대학병원 최초 <b>암 진단 1주 내 시술·당일 원스톱</b>, 레이디병동·여성건강증진센터</li>
+          <li>목동: 여성암병원(2009)·비뇨기병원(2022, '비뇨기 4차병원')·제5기 상급종합·서남권 권역응급의료센터</li>
+          <li>몽골 국립 제1병원 MOU 등 <b>글로벌 의료 협력</b></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 교육·복지 ============ -->
+<section id="welfare">
+  <div class="wrap">
+    <div class="eyebrow">Training & Welfare</div>
+    <h2 class="sec">신규 교육과정·복지·급여 (자료 수록분)</h2>
+    <p class="sec-sub">"신규 이탈 방안·힘들 때 극복" 답변에 <b>교육체계를 근거</b>로 쓰면 설득력이 높다는 게 합격자 팁. 복지는 <b>사학연금 100% 병원 부담·본교 대학원 반액</b>이 대표 강점.</p>
+
+    <div class="grid2" style="margin-bottom:22px">
+      <div class="card">
+        <h4><span class="knum">교육</span> 신규간호사 교육 프로그램</h4>
+        <ul>
+          <li><b>공통실무교육(입문) 1~2주</b> — 공통 오리엔테이션, 표준 교육자료·체크리스트</li>
+          <li><b>프리셉터십 3~8주</b> → <b>현장업무교육(쉐도잉) 9주~1년</b>(추가 요청 가능)</li>
+          <li><b>멘토링(적응)</b> — 부서 순회, 면담·간담회</li>
+          <li>기본 술기 교육: 체크리스트·동영상·실습모형, <b>시나리오 시뮬레이션</b>, <b>찾아가는 정맥주사 1:1 교육</b></li>
+          <li>요구도별 개별 교육: 추가 전산 교육, <b>인수인계 교육</b> / 교육전담간호사 운영</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4><span class="knum">복지</span> 간호부 직원 복지 제도</h4>
+        <ul>
+          <li><b>사학연금 100% 병원 부담</b> (대부분 병원은 직원 50%+병원 50%)</li>
+          <li><b>본교 대학원 진학 시 등록금 반액</b> (5학기)</li>
+          <li>노동조합 존재(급여 등 상세는 이화의료원 노조 채널)</li>
+          <li>평균 <b>Off 10~12개</b> · 생리휴가 Off 월 1개 · <b>Night 5개당 Sleeping Off 1개</b></li>
+          <li>합격자 체감 장점: "병원이 예쁘다·밥이 괜찮다·노조가 세다·사학연금" / 월급은 타 병원과 비슷한 수준</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h4>서합 스펙 분포 <span class="yr y25">'25 서합자 투표</span></h4>
+        <ul>
+          <li>학교: 지자유 189 · 지자무 130 · 서자유 120 · 수자유 73 · 수전문 66 · 지전문 43 · 서자무/자대 각 42 · 수자무 19</li>
+          <li>토익: <b>850~895 최다(171)</b> — 900↑ 다수, 700대 서합 존재</li>
+          <li>학점: <b>4.2 최다(150)</b> — 3점대 서합 존재</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4>병동·부서 구성 메모 <span class="yr y25">자료 기준</span></h4>
+        <ul>
+          <li>중환자실: 내과계·외과계·신경계·응급·신생아</li>
+          <li>병동: 간호간병통합(여러 병동), 레이디병동, <b>뇌졸중집중치료실</b></li>
+          <li>원티드 답변 시 병동 번호는 불필요 — <b>부서 특성 × 본인 강점</b>이 핵심. 서울/목동 구분은 공고·홈페이지로 재확인</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 선배 Q&A ============ -->
+<section id="senior">
+  <div class="wrap">
+    <div class="eyebrow">Senior Q&A</div>
+    <h2 class="sec">선배 Q&A — 합격자가 직접 답한 것</h2>
+    <details class="sys"><summary>면접 난이도·분위기는?</summary><div class="sys-body">
+      <p class="list-line">직무는 무난(초록이·공구 수준) — 단 "대답 제대로 못 하면 안 될 것 같은" 긴장감.</p>
+      <p class="list-line">인성은 꼬리질문 多 — "너 정말 그렇게 생각해? 왜? 네 생각이 궁금해" 톤. 병풍면접 아님, 관심을 가져줌.</p>
+      <p class="list-line">상황면접이 나온 방도 있으나 난이도 높지 않음.</p></div></details>
+    <details class="sys"><summary>면접 시간대·순서는?</summary><div class="sys-body">
+      <p class="list-line">첫 타임 8:20~30 도착 → 9시 시작, 오후까지 적당한 텀으로 진행(2023).</p>
+      <p class="list-line">이름순 아님 — 지원번호순(임시저장/접수순 추정). 원서 빨리 쓰면 첫날 가능성↑.</p></div></details>
+    <details class="sys"><summary>목동 vs 서울, 발령은?</summary><div class="sys-body">
+      <p class="list-line">통합 채용 후 선호 조사 — 합격자 고민 실례: "목동이 3차(상급종합)인데 서울 건물이 좋고… 서울 55 : 목동 45" — 가치관 문제.</p>
+      <p class="list-line">목동: 제5기 상급종합, 서남권 권역응급의료센터, 여성암병원(2009)·비뇨기병원(2022, '비뇨기 4차병원'). 서울: 2019 개원, 3인실·1인 중환자실, 스마트병원.</p></div></details>
+    <details class="sys"><summary>예비합격은 어떻게 도나?</summary><div class="sys-body"><p class="list-line">'25 기준 예비 100여 명 규모. 번호 부여형인지 불명(합격자도 모름) — 철회가 많아 순환은 활발한 편.</p></div></details>
+    <details class="sys"><summary>말을 잘 절는데 괜찮을까?</summary><div class="sys-body"><p class="list-line">"모든 면접에서 절었지만 당황하지 않고 이어가는 게 중요 — 아나운서가 아니라 간호사를 뽑는다"(최합자). 자평 5/10·추가질문 0개 합격 사례 존재.</p></div></details>
+    <details class="sys"><summary>준비 기간이 짧은데?</summary><div class="sys-body"><p class="list-line">표준 루트: 서합 후 2주 — <b>기출 정리 → 답변 작성 → 소리 내어 암기(거울·가족 앞 모의면접)</b>. "공구 기출과 진짜 비슷하게 나온다, 꼭 보라"가 공통 증언.</p></div></details>
+    <details class="sys"><summary>이대가 좋아하는 인재상은?</summary><div class="sys-body">
+      <p class="list-line">후기 갈림: "<b>당차고 자신감 있는 사람</b>" vs "<b>배려심 넘치는 사람</b>" — 둘 다 등장. 자소서 키워드는 '도전과 혁신'으로 쓴 합격자도.</p>
+      <p class="list-line">인성검사 결과 기반으로 면접에서 질문한 사례("도전 성향 → 인생 터닝포인트가 뭐였냐") — <b>본인이 어떤 성향으로 답했는지 기억</b>.</p></div></details>
+    <details class="sys"><summary>듀티(근무표)·특파 배치는?</summary><div class="sys-body">
+      <p class="list-line">병동 친구들 기준 월 <b>11~12개</b> 정도. 특수파트는 별도.</p>
+      <p class="list-line">입사 전 <b>수요조사</b>로 특파 배치 — "자대 아니어도 특파 잘 보내준다".</p></div></details>
+    <details class="sys"><summary>자취·월세·통근은?</summary><div class="sys-body"><p class="list-line">자취 많이 하고 <b>월세 60~80만 원선</b>. 집 위치·통근 계획은 면접에서 물을 수 있으니 준비.</p></div></details>
+    <details class="sys"><summary>복지·급여 체감은?</summary><div class="sys-body"><p class="list-line">체감 강점: <b>사학연금·생리휴가</b>, 병원이 예쁘고 밥이 괜찮음, 노조가 셈. 월급은 타 병원과 비슷한 수준.</p></div></details>
+    <details class="sys"><summary>복장·신체 관련 신경 쓰이는데?</summary><div class="sys-body"><p class="list-line">정장 표준이나 <b>바지 입어도 크게 신경 안 씀</b>. "정상 범위 내면 된다"는 반응 — 과하게 걱정할 필요 없음.</p></div></details>
+  </div>
+</section>
+
+<!-- ============ AI·인적성 기록 ============ -->
+<section id="ai">
+  <div class="wrap">
+    <div class="eyebrow">Archive · Completed</div>
+    <h2 class="sec">AI역량검사·인적성 — 완료(기록용)</h2>
+    <div class="grid2">
+      <div class="card"><h4>AI역량검사 — 뷰인터 <span class="yr y25">'25 신설</span></h4>
+        <ul><li>경험 1개당 3연속 세트: 상황 → 나의 생각·행동·노력 → 반응·결과·다시 한다면 (준비 30초 / 답변 90초)</li>
+        <li>'25 출제 6세트: ①문화·사고방식 다른 동료와 협업 ②환경 변화 감지·신속 대응 ③반대에도 원칙 고수 ④아무도 문제 삼지 않던 일 개선 ⑤새 정보 분석해 과제 해결 ⑥팀으로 높은 목표 도전</li>
+        <li>면접에서 같은 역량 테마(원칙·협업·판단력)가 <b>대면 질문으로 재등장</b> — 위 6테마의 내 에피소드는 대면용으로 재활용</li></ul></div>
+      <div class="card"><h4>종합인적성 <span class="yr y24">'24</span></h4>
+        <ul><li>256문항/45분·MBTI형·녹화 없음 — 합불용이 아닌 일관성 필터, 솔직·일관 응답</li>
+        <li>검사 성향 기반으로 면접 질문이 나온 사례 有 → 본인이 어떤 성향으로 답했는지 기억해 둘 것</li></ul></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 체크리스트 ============ -->
+<section id="dday">
+  <div class="wrap">
+    <div class="eyebrow">D-Day Checklist</div>
+    <h2 class="sec">당일 체크리스트 — 체크하면 저장된다</h2>
+    <div class="check-grid">
+      <div class="card"><h4>가방·서류</h4><div id="ck-a"></div></div>
+      <div class="card"><h4>현장 행동</h4><div id="ck-b"></div></div>
+      <div class="card"><h4>마지막 점검(전날)</h4><div id="ck-c"></div></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p style="margin-bottom:10px"><b>EUMC·GUIDE</b> — 이화의료원 신규간호사 종합 대비 페이지(전형·자소서·면접·병원정보·복지). 수치·인원·순번·급여 기준은 합격자 개인 추정 후기 기반이며 공식 통계가 아님. 어학 컷·서울/목동 티오·복지 상세는 반드시 <b>당해 공고와 병원 홈페이지</b>로 재확인. 면접 불변 골격은 <b>다대다 · 뽑기 기출 반복 · 자소서 집중 검증 · 인성 중심 · 직무 중하</b>.</p>
+    <p class="src">SOURCES · 합격자 자료 12종 — '25 최합 all-in-one(방별 실록·뷰인터 기출) / '25 서합 자소서·기출 2종 / '25 최합 자소서 / '24 최합 all 2종 / '24 최합 자소서·꿀팁(스펙O·지자유) / 최합자 4인 자소서 ALL-IN-ONE 2종 / '23 분석·자소서·면접 꿀팁(인성 답변 233제) / '23 기출 총정리 2종 / AI면접 녹취록</p>
+  </div>
+</footer>
+
+<script>
+/* ---------- storage (GitHub Pages에선 저장, 미지원 환경에선 무시) ---------- */
+function sget(k){try{return JSON.parse(localStorage.getItem(k)||"{}")}catch(e){return {}}}
+function sset(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+
+/* ---------- D-DAY ---------- */
+(function(){
+  var t=new Date(2026,6,14), n=new Date();
+  var d=Math.ceil((new Date(t.getFullYear(),t.getMonth(),t.getDate())-new Date(n.getFullYear(),n.getMonth(),n.getDate()))/864e5);
+  document.getElementById("dday").textContent=d>0?("D-"+d):(d===0?"D-DAY":"진행중");
+  document.getElementById("dday-foot").textContent="이화 최종 07.14 시작 · 오늘 "+(n.getMonth()+1)+"."+n.getDate();
+})();
+
+/* ---------- 인성·뽑기 은행 (P) ---------- */
+var P=[
+/* 지원동기·이화 */
+{c:"지원동기·이화",q:"이화의료원에서 일하고 싶은 이유 / 우리 병원 왜 오고 싶나",y:["25","23"],a:"진솔함 검증용 — 여러 번 되물음. 합격례: 이대비전트립 참여 계기 + 환자중심 문화 인상. 병원 팩트(보구녀관 정신·3인실·뇌혈관병원)와 본인 간호관을 접합."},
+{c:"지원동기·이화",q:"이화의료원에 오기 위해 노력한 것",y:["24","23"],a:"블로그·유튜브·홈페이지 조사, 실습·비전트립, 직무 준비를 구체 행동으로 — 추상어 금지."},
+{c:"지원동기·이화",q:"이화의료원이 본인을 뽑아야 하는 이유 / 이화에 필요한 인재인 이유",y:["23"],all:1},
+{c:"지원동기·이화",q:"타병원 지원 현황 솔직하게 + 붙으면 어디 갈지",y:["25","24","23"],all:1,a:"솔직히 말하되 이화 선택 논리 준비. '둘 중 어디?'까지 꼬리로 들어옴."},
+{c:"지원동기·이화",q:"자대병원 말고 이화 지원한 이유 (자대 보유자 개별) / 자대 붙어도 올 건가",y:["25","23"]},
+{c:"지원동기·이화",q:"이화의료원을 알게 된 경위 · 첫인상 · 타 병원 대비 마음에 든 점과 단점",y:["23"],all:1},
+{c:"지원동기·이화",q:"이화의료원(이화여대의료원)의 강점과 약점 / 이화만의 장점",y:["23"]},
+{c:"지원동기·이화",q:"이화의료원 10년 후 미래 / 어떤 방향으로 발전했으면 좋겠는지",y:["23"]},
+{c:"지원동기·이화",q:"심뇌혈관센터 등 ~한다, 병원이 더 발전하려면?",y:["23"]},
+{c:"지원동기·이화",q:"최근 이화의료원 블로그·SNS에서 본 것",y:["24"]},
+{c:"지원동기·이화",q:"본인이 이화의료원 관리자라면 — 병원 마케팅 해보기",y:["23"]},
+{c:"지원동기·이화",q:"입사 후 누군가 이화의료원을 비방한다면",y:["24"]},
+{c:"지원동기·이화",q:"이화 지원한다고 했을 때 주변 반응은?",y:["23"]},
+{c:"지원동기·이화",q:"언제까지 이화에서 일할 건지 / 어느 정도 근무 가능한지",y:["23"]},
+{c:"지원동기·이화",q:"병원 선택 기준 / 타 병원과 비교하는 기준",y:["23"]},
+{c:"지원동기·이화",q:"오늘 이대병원에 어떻게 왔는지 / 집 위치·통근 계획",y:["23"]},
+/* 자기이해·경험 */
+{c:"자기이해·경험",q:"성격 장단점 + 단점을 고치면 업무에 도움 될 부분",y:["25"],a:"단점 → 개선 노력 → 업무 연결 3단 구조."},
+{c:"자기이해·경험",q:"본인의 약점 / 자신의 성격 중 간호업무에 도움·방해되는 부분",y:["25","23"]},
+{c:"자기이해·경험",q:"장단점이 간호사 업무에 미칠 영향",y:["23"]},
+{c:"자기이해·경험",q:"타인이 바라보는 나 / 타인이 보는 나의 이미지 / 주변에서 자주 듣는 말",y:["24","23"]},
+{c:"자기이해·경험",q:"동기들은 당신이 어떤 간호사가 될 거라고 말하는지",y:["25"]},
+{c:"자기이해·경험",q:"센스 있다는 말을 듣는 편인지 + 이유",y:["25","24"]},
+{c:"자기이해·경험",q:"본인을 한 단어로 / 별명 / 나를 캐릭터·동물로 표현하면",y:["23"]},
+{c:"자기이해·경험",q:"자신 세대의 특징은 무엇인지",y:["23"]},
+{c:"자기이해·경험",q:"리더형인가 팔로워형인가",y:["23"],a:"어느 쪽이든 근거 경험 1개 — 합격례: 팔로워형, 조별과제에서 맡은 몫+리더 보조로 성과."},
+{c:"자기이해·경험",q:"살면서 가장 몰두했던 경험",y:["25"]},
+{c:"자기이해·경험",q:"불가능해 보였는데 노력해서 성공한 경험 (+꼬리: 연구 제목·결과까지)",y:["25","23"]},
+{c:"자기이해·경험",q:"실패한 경험 / 열심히 노력했는데 실패한 경험",y:["25","24"]},
+{c:"자기이해·경험",q:"도전 경험 / 남들이 피하는 일을 기꺼이 한 경험 / 희생 경험",y:["24","23"]},
+{c:"자기이해·경험",q:"올바른 일을 행했는데 불이익 본 경험 / 가치관대로 행동해 손해 본 경험",y:["24","23"]},
+{c:"자기이해·경험",q:"가장 열심히 했는데 인정받지 못한 경험",y:["23"]},
+{c:"자기이해·경험",q:"적절한 판단력으로 칭찬받은 경험",y:["25"]},
+{c:"자기이해·경험",q:"실습 중 창의성을 발휘한 경험 / 창의적인 일을 한 적",y:["23"]},
+{c:"자기이해·경험",q:"인생에 가장 큰 영향을 준 사람과 사례 / 변화를 준 사람",y:["24","23"]},
+{c:"자기이해·경험",q:"인생 롤모델 / 인생 목표 / 단기·장기 목표",y:["25","23"]},
+{c:"자기이해·경험",q:"인생에서 가장 큰 실수",y:["23"]},
+{c:"자기이해·경험",q:"제일 기뻤던 일 / 제일 슬펐던 일",y:["23"]},
+{c:"자기이해·경험",q:"생활신조 중 가장 중요한 것",y:["23"]},
+{c:"자기이해·경험",q:"좋은 성적 유지 비결 / 성적·자격증 관련 질문",y:["23"]},
+{c:"자기이해·경험",q:"자기계발을 위해 한 것 / 팀 안에서 본인의 역할",y:["23"]},
+{c:"자기이해·경험",q:"감정 관리 어떻게 하는지 / 부정적 생각을 긍정으로 바꾸는 나만의 방법",y:["24","23"]},
+{c:"자기이해·경험",q:"스트레스 언제 받는지 + 해소법 / 최근 2~3개월 스트레스 경험",y:["24","23"]},
+{c:"자기이해·경험",q:"간호 외에 잘하는 것 / 최근 가장 집중하는 것",y:["23"],all:1},
+{c:"자기이해·경험",q:"잘한다고 생각하는 운동 있으면 말하기",y:["25"],all:1},
+{c:"자기이해·경험",q:"면접관 또래에게 추천할 책·영화·예능",y:["24","23"],a:"합격례: 유퀴즈 — 다양한 직업·삶을 간접 경험, 가족과 함께 보는 프로그램."},
+{c:"자기이해·경험",q:"20대 초반 친구들이 요즘 하는 걱정",y:["23"]},
+{c:"자기이해·경험",q:"처음 보는 사람과 친해지는 법 / 말 안 통하는 상대와 해결법 / 친구 사귈 때 중요하게 보는 것",y:["24","23"]},
+{c:"자기이해·경험",q:"봉사 경험 · 최근 봉사 · 기억에 남는 봉사와 느낀 점",y:["23"],all:1},
+{c:"자기이해·경험",q:"학교의 좋은 시스템 · 추천 프로그램 · 도움받은 프로그램",y:["23"]},
+{c:"자기이해·경험",q:"간호학과 커리큘럼에서 바뀌면 좋을 것 / 실습하며 개선했으면 했던 점",y:["24","23"]},
+{c:"자기이해·경험",q:"실습: 어디서 무엇을 배웠나 · 인상 깊었던 일 · 위기 순간 · 존경한 간호사 · 기억에 남는 환자 케이스와 내 수행",y:["23"]},
+{c:"자기이해·경험",q:"공백기에 무엇을 했는지 / 기졸자: 현재 근황·이직 결심 이유",y:["23"]},
+{c:"자기이해·경험",q:"간호사가 되기로 한 이유 / 진로 선택 후 기뻤던·후회한 일 / 달라진 점",y:["23"],all:1},
+{c:"자기이해·경험",q:"코로나로 얻은 교훈 / 코로나 없는 2박 3일이 주어진다면",y:["23"]},
+/* 갈등·선배·동료 */
+{c:"갈등·선배·동료",q:"선배간호사가 오해해서 나에게 화낼 때",y:["25","23"],a:"골격: 그 자리에서 변명 대신 경청 → 상황 정리 후 정중히 사실 설명 → 같은 오해 방지책."},
+{c:"갈등·선배·동료",q:"선배간호사한테 환자도 있는 복도에서 혼난다면",y:["23"]},
+{c:"갈등·선배·동료",q:"전임 간호사 실수로 내가 혼나게 되면 / 선배가 책임을 전가하면 / 내가 안 한 일로 억울하게 혼날 때",y:["24","23"]},
+{c:"갈등·선배·동료",q:"내가 하지 못한 일에 대해 지적을 받았다면",y:["23"]},
+{c:"갈등·선배·동료",q:"이론으로만 배운 술기를 선배가 설명 없이 그냥 하라고 하면",y:["25"],a:"환자안전 우선 — 솔직히 미숙련 고지, 지도·감독 요청, 스스로 학습해 다음엔 준비."},
+{c:"갈등·선배·동료",q:"잘 가르쳐주지 않고 화만 내는 프리셉터를 만났다면",y:["25","23"],a:"합격 실답: 스스로 공부하고 한 번 배운 건 복습해 지적받지 않도록 하겠다 — 짧고 담백하게."},
+{c:"갈등·선배·동료",q:"선배들이 가르쳐주는 방식이 달라 혼란스러울 때",y:["23"]},
+{c:"갈등·선배·동료",q:"사이 안 좋은 선배에게 부탁할 일이 생기면",y:["24"]},
+{c:"갈등·선배·동료",q:"동료 간 의견차로 갈등이 생기면 / 심한 의견충돌 경험과 해결",y:["24","23"]},
+{c:"갈등·선배·동료",q:"개인의 목표와 조직의 목표가 일치하지 않을 때",y:["25","23"]},
+{c:"갈등·선배·동료",q:"상사와 의견이 다를 때",y:["23"]},
+{c:"갈등·선배·동료",q:"동료가 실수하고 모른 척하려 할 때",y:["23"]},
+{c:"갈등·선배·동료",q:"2인 확인 약물을 한 명만 확인하고 투약하러 갈 때",y:["25","24","23"],a:"치명적 위해 가능성 상기 → 함께 재확인 제안, 아무리 바빠도 안전 절차는 지키자고 — 원칙 고수."},
+{c:"갈등·선배·동료",q:"선배의 간호윤리 위반·비윤리적 행동·잘못된 행동을 목격했다면 (솔직히)",y:["24","23"],all:1},
+{c:"갈등·선배·동료",q:"임상술기(지침)를 안 지키는 동료",y:["23"],a:"근거 기반 지침임을 상기시키고 조언, 어려움이 있다면 함께 해결."},
+{c:"갈등·선배·동료",q:"동료가 환자에게 반말하는 것을 봤을 때",y:["23"]},
+{c:"갈등·선배·동료",q:"동기가 태움당하는 걸 나만 아는 상황 / 직장 내 괴롭힘 목격 / 태움에 대한 생각",y:["24","23"],all:1,a:"공감·지지 → 공식 절차(관리자·고충 채널) 안내 — 병원 카드: 위드이화 감정신호등."},
+{c:"갈등·선배·동료",q:"선임이 이유 없이 괴롭혀 출근이 싫다면",y:["23"],a:"참기보다 상급 관리자 면담 — 내 컨디션 저하가 간호 질 저하로 이어지기 때문."},
+{c:"갈등·선배·동료",q:"선배가 동료를 태우면서 나에게 1:1로 '쟤 싫다'고 하면",y:["23"]},
+{c:"갈등·선배·동료",q:"동료가 후배에게 부적절한 언행으로 혼내는 것을 봤다면",y:["23"],a:"상황 파악 → 우리도 서툴렀던 때가 있었다며 완곡히 조언 — 존중 문화 강조."},
+{c:"갈등·선배·동료",q:"의사가 동료 간호사에게 부적절한 언행을 보이면",y:["23"],a:"상황 경청 → 어느 상황이든 부적절 언행은 옳지 않음을 전달, 상호 존중 강조."},
+{c:"갈등·선배·동료",q:"동료가 힘들다며 울면서 상담하면 / 힘들어하는 동료에게",y:["23"],a:"충분히 경청·공감 → 비슷한 경험과 극복법 공유 → 필요시 함께 도움 찾기."},
+{c:"갈등·선배·동료",q:"불만을 자주 표현하는 동료 / 무책임한 동료",y:["23"],a:"이유부터 묻기 — 미숙 때문이면 도와서 함께 성장."},
+{c:"갈등·선배·동료",q:"후배가 내 말을 수용하지 않을 때 / 시간이 지나도 안 고쳐질 때",y:["24","23"]},
+{c:"갈등·선배·동료",q:"나이 많은 신규 후배가 들어오면 / 학교 후배가 선배 간호사로 있는 병동에 배치되면 / 학교 후배(선배)에게 혼나면",y:["23"]},
+{c:"갈등·선배·동료",q:"어떤 성향의 사람과 일하기 싫은지 / 성격이 정반대인 사람과 일하게 된다면",y:["24","23"]},
+{c:"갈등·선배·동료",q:"같이 입사한 동기가 출근 안 한다고 하면 / 무단결근에 대한 생각",y:["24","23"]},
+/* 근무 현실·윤리 상황 */
+{c:"근무 현실·윤리 상황",q:"근무표가 불리하게 나오면",y:["23"]},
+{c:"근무 현실·윤리 상황",q:"내일 중요한 일정이 있는데 갑자기 출근을 부탁받으면",y:["23"]},
+{c:"근무 현실·윤리 상황",q:"내 업무는 끝났는데 다음 타임 동료 일이 많고 나는 약속이 있다면",y:["23"]},
+{c:"근무 현실·윤리 상황",q:"환자 악화로 다음 근무자 업무가 과중해졌을 때",y:["24"]},
+{c:"근무 현실·윤리 상황",q:"인수인계 전에 일을 못 끝냈다면 / 점심 거르고 일했는데 데이 미완료 업무 발견",y:["23"],a:"인계는 정확히, 내 몫은 끝까지 마치고 퇴근 — 책임 표명."},
+{c:"근무 현실·윤리 상황",q:"과잉업무로 힘든데 미완 업무로 혼남 — 감정 상태와 해결법",y:["23"],a:"기분은 상하겠지만 상대 입장 인정 → 끝까지 마치겠다 말씀드리고 완수."},
+{c:"근무 현실·윤리 상황",q:"업무가 밀리고 오버타임이 확정일 때",y:["25"],a:"합격례: 오버타임도 배우는 과정 — 3→2→1시간으로 줄어드는 성장을 동력으로."},
+{c:"근무 현실·윤리 상황",q:"여러 업무 중 중요한 업무를 놓쳐 지적받았다",y:["23"],a:"인정·사과 → 우선순위 재학습, 재발 방지."},
+{c:"근무 현실·윤리 상황",q:"다른 동료보다 업무량이 많다고 느껴지면 / 한꺼번에 일이 몰리면",y:["23"]},
+{c:"근무 현실·윤리 상황",q:"기피부서 발령 시 / 원치 않는 부서에 배치되면",y:["24","23"]},
+{c:"근무 현실·윤리 상황",q:"코로나(감염) 병동 배치받으면 / 지원자가 아무도 없다면 / 관리자로서 감염 환자를 받을 것인가",y:["23"],a:"환자를 가려 받는 것은 윤리에 어긋남 — 감염관리 지침 준수하며 간호."},
+{c:"근무 현실·윤리 상황",q:"신규 1년, 신체적·정신적으로 힘들 텐데 어떻게 버틸지 / 업무가 힘들 때",y:["24","23"]},
+{c:"근무 현실·윤리 상황",q:"입사 후 가장 어려울 것 같은 부분 / 힘든 순간 누구에게 이야기할지",y:["25"],a:"합격례: 간호사인 친언니 — 지지체계 실명 제시."},
+{c:"근무 현실·윤리 상황",q:"입사했는데 너무 힘들면 / 간호사가 나와 안 맞는다고 느껴지면 / 출근하기 싫으면",y:["23"],a:"초심 회복 — 왜 간호사가 되고 싶었는지로 돌아간다."},
+{c:"근무 현실·윤리 상황",q:"체력·감정 소진이 오면 / 워라밸 유지법",y:["23"],a:"내가 건강해야 질 높은 간호 — 운동·적절한 휴식으로 관리."},
+{c:"근무 현실·윤리 상황",q:"간호사로 일하며 자존감이 저하되면",y:["24"]},
+{c:"근무 현실·윤리 상황",q:"3교대에 대한 생각 / 유연근무제에 대한 생각",y:["23"]},
+{c:"근무 현실·윤리 상황",q:"신규·간호사 이직률이 높은 이유 / 신규 이탈 이유와 방안 (+꼬리: 병원이 신규교육에 큰돈 투자하는 이유)",y:["23"],a:"원인(현실충격·지지 부족) + 방안(교육·멘토링) — 이화의 입문~쉐도잉 1년 교육체계·감정신호등을 근거로."},
+{c:"근무 현실·윤리 상황",q:"신규간호사에게 어떤 제도를 도입하면 좋을지",y:["24"]},
+{c:"근무 현실·윤리 상황",q:"첫 월급 사용처",y:["24"]},
+{c:"근무 현실·윤리 상황",q:"혼자 있을 때 투약오류를 냈다면 / 5R 미준수 투약사고 시 대처",y:["23"],a:"은폐 절대 금지 — 환자 상태 확인, 즉시 보고, 지침 따른 조치·기록."},
+{c:"근무 현실·윤리 상황",q:"부정확한 처방을 확신하는데 의사가 '졸리니 나중에' 한다 — 투약할 건가",y:["23"],a:"절대 투약하지 않음 — 상태 재설명·정확한 처방 요구, 회피 지속 시 상급 관리자 보고."},
+{c:"근무 현실·윤리 상황",q:"처방 확인 전화에 의사가 '그대로 하세요'라고 하면 / 전화처방을 부정확하게 내리고 끊으려 하면",y:["23"],a:"환자 상태 재설명 후 재확인(2중 확인) — 투약은 환자안전 직결."},
+{c:"근무 현실·윤리 상황",q:"노티해야 하는데 의사가 전화를 안 받으면",y:["24","23"],a:"지속 연락 → 안 되면 상급 관리자 보고, 다른 경로 확보."},
+{c:"근무 현실·윤리 상황",q:"간호사가 간호조무사에게 위임할 수 있는 업무와 이유",y:["24"]},
+{c:"근무 현실·윤리 상황",q:"본인이 수간호사 — 환자는 후배에게 화내고 후배는 억울하다 할 때",y:["23"]},
+{c:"근무 현실·윤리 상황",q:"인증평가 때 신규간호사로서 할 수 있는 역할",y:["23"]},
+{c:"근무 현실·윤리 상황",q:"의료지원(파견) 갈 수 있는지",y:["23"],all:1},
+{c:"근무 현실·윤리 상황",q:"면회 금지에 대한 생각과 보호자 불만 해결",y:["23"]},
+{c:"근무 현실·윤리 상황",q:"조별과제 중 독감에 걸리면",y:["23"],a:"내 몫은 책임 — 약 먹고 맡은 업무는 끝까지."},
+/* 환자·보호자 응대 */
+{c:"환자·보호자 응대",q:"환자 컴플레인 대응 / 출근했더니 민원 환자가 내 담당",y:["23"],a:"다가가 불편 경청 → 해결 가능한 건 즉시 → 불가하면 관리자 보고·함께 개선."},
+{c:"환자·보호자 응대",q:"언성 높이는 환자 / 환자가 반말할 때",y:["23"],a:"불편의 원인 경청·공감 먼저 — 감정 대응 금지."},
+{c:"환자·보호자 응대",q:"환자·보호자가 간호사 바꿔달라고 하면 / 처치 후 트집 잡고 계속 화낼 때",y:["24","23"],a:"경청 → 내 잘못이면 충분히 사과, 오해면 이해하기 쉽게 설명."},
+{c:"환자·보호자 응대",q:"검사를 거부하는 환자",y:["23"]},
+{c:"환자·보호자 응대",q:"IV 겨우 성공했는데 환자가 통증 호소",y:["23"],a:"즉시 제거·부위 확인 → 환자가 불편하면 다른 부위 재시도 — 환자 안위 우선."},
+{c:"환자·보호자 응대",q:"무통주사를 맞는데 아프다고 화내는 환자",y:["23"]},
+{c:"환자·보호자 응대",q:"보호자가 전화로 환자 혈액검사 결과를 요구하면",y:["23"],a:"불가 고지 — 의료법상 본인 동의·증빙 갖춘 요청만 열람 가능함을 안내."},
+{c:"환자·보호자 응대",q:"환자의 간호 만족도를 높이는 방법 / 친절 간호사가 되려면 / 서비스 마인드",y:["23"],a:"눈높이 설명, 모든 처치 전 목적·절차 설명, 수시로 안위 확인."},
+{c:"환자·보호자 응대",q:"좋은 환자와 힘든 환자는 어떤 환자인가",y:["23"],all:1},
+/* 간호관·포부·부서 */
+{c:"간호관·포부·부서",q:"간호사에게 필요한 덕목 (3가지 + 자신에게 강한 덕목)",y:["25","24","23"],a:"합격례: 책임·전문성·협력 — 강한 덕목은 근거 수치(개근·석차·장학금)로 증명."},
+{c:"간호관·포부·부서",q:"간호사에게 필요한 역량 / 병원 핵심가치와 내 가치관 비교",y:["23"],all:1},
+{c:"간호관·포부·부서",q:"간호 직무에서 가장 중요하다고 생각하는 것 / 실력 vs 인성 / 결과 vs 과정",y:["23"]},
+{c:"간호관·포부·부서",q:"어떤 간호사가 되고 싶은가 + 그러기 위한 보완점",y:["23"],all:1},
+{c:"간호관·포부·부서",q:"롤모델 간호사 / 닮고 싶지 않은 간호사",y:["23"]},
+{c:"간호관·포부·부서",q:"학생간호사와 임상간호사의 차이 / 학교와 병원의 차이",y:["25","23"]},
+{c:"간호관·포부·부서",q:"3년·10년·20년 후의 나와 이화에의 기여 / 입사 후 장단기 목표",y:["23"]},
+{c:"간호관·포부·부서",q:"입사 후 전문 역량을 어떻게 키울지 (+꼬리: 본인의 가장 뛰어난 역량)",y:["25"]},
+{c:"간호관·포부·부서",q:"원티드 부서와 이유 (+꼬리: 그 부서 간호사에게 가장 중요한 것 / 배치 안 되면?) · 기피 부서",y:["25","24","23"],all:1,a:"부서 특성 × 본인 강점 연결. 기피 부서도 '이유+그래도 배치되면 배우겠다' 이중 구조."},
+{c:"간호관·포부·부서",q:"간호사로서 어떤 마음가짐·계획으로 직무를 수행할지 / 전공을 어떻게 활용할지",y:["23"],all:1},
+{c:"간호관·포부·부서",q:"환자 상태 평가 시 가장 중요하게 볼 것",y:["24"]},
+{c:"간호관·포부·부서",q:"신규간호사에게 VR 교육이 주는 효과",y:["23"]},
+{c:"간호관·포부·부서",q:"의료사고에서 간호사 책임 관련 전반",y:["23"]},
+{c:"간호관·포부·부서",q:"조직을 성장시킬 수 있는 방법",y:["23"]},
+{c:"간호관·포부·부서",q:"면접관이 신규를 뽑을 때 가장 중요하게 볼 것은?",y:["23"],a:"병원에 대한 관심, 성실성, 입사 후 포부."},
+{c:"간호관·포부·부서",q:"마지막으로 하고 싶은 말 / 준비했는데 못 한 말",y:["25","24","23"],all:1,a:"먼저 손 들기 — 기회 감사 + 준비하며 성장 + 정년까지 포부, 짧고 담담하게."},
+/* ===== 추가 발견 인성·상황 문항 ===== */
+{c:"갈등·선배·동료",q:"아픈 동료가 대신 근무해달라고 하면",y:["25"],a:"합격례: 고민 없이 돕는다 — 도움이 필요한 사람을 돕는 게 생활신조이자 협력 분위기를 위해."},
+{c:"자기이해·경험",q:"중요한 것을 결정할 때 어떻게 결정하는 편인지",y:["25"],a:"합격례: 스스로에게 질문(정말 원하는가·나에게 도움이 되는가)을 던져 본인에게 도움되는 결정."},
+{c:"자기이해·경험",q:"슬럼프 극복 방법",y:["25"],a:"합격례: 슬럼프를 인정하고 받아들인 뒤 하던 대로 최선 — 포기하지 않으면 성장."},
+{c:"자기이해·경험",q:"본인이 특별하다고 생각하는 점",y:["25"],a:"근거 있는 강점 1개(예: 손재주 → 정성 담은 선물로 관계). 구체 일화로."},
+{c:"자기이해·경험",q:"경험 중 좋았거나 힘들었거나 인상 깊었던 경험",y:["25"]},
+{c:"환자·보호자 응대",q:"해열제 투여 10분 만에 열이 안 내린다고 항의하는 보호자",y:["23"],a:"불안 공감·경청 → 해열제 작용시간(30분~1시간) 설명 → V/S·상태 재확인하며 안심."},
+{c:"근무 현실·윤리 상황",q:"호흡곤란 vs CT 대기 vs 급한 약물 — 무엇부터 처리?",y:["23"],a:"생명 직결 호흡곤란 우선(산소·보고) → CT 지연 우려 이송 → 약물은 긴급성 확인 후. 우선순위 판단력을 봄."},
+{c:"간호관·포부·부서",q:"실습 중 근접오류(near miss)를 관찰한 경험",y:["25"],a:"합격례: 이름 같고 생년월일 다른 환자를 투약 직전 발견·예방 — 확인절차 하나가 위해사건을 막는다는 교훈."}
+];
+
+/* ---------- 직무 은행 (C) ---------- */
+var C=[
+{s:"심혈관",q:"협심증 vs 심근경색 차이",y:["25","24","23"],a:"허혈의 가역성 — 협심증은 일시적 허혈(휴식·NTG로 완화, 보통 15분↓), MI는 괴사(30분↑ 지속, NTG 무효, 효소 상승)."},
+{s:"심혈관",q:"니트로글리세린 기전",y:["24"],a:"혈관 평활근 이완(정맥확장 위주) → 전부하↓·관상동맥 확장 → 심근 산소요구↓."},
+{s:"심혈관",q:"디곡신 투여 시 주의사항 + 디곡신 독성",y:["25"],a:"투여 전 심첨맥박 1분(60↓ 보류·보고), 혈중농도·K+ 확인. 독성: 오심·구토, 서맥·부정맥, 시야 황시."},
+{s:"심혈관",q:"흉통 호소 환자 대처 / MI 통증 환자 대처",y:["23"],a:"산소·반좌위, NTG·모르핀, V/S·EKG 모니터, 두통 시 아세트아미노펜, 베타차단제 고려."},
+{s:"심혈관",q:"MI 환자가 소화불량이라며 소화제를 달라고 하면",y:["25","23"],a:"MI 방사통일 수 있음 — 임의 투약 금지, 통증 양상·V/S·EKG 사정 후 즉시 보고."},
+{s:"심혈관",q:"심근경색 환자 간호중재",y:["25"]},
+{s:"심혈관",q:"기저질환이 없는데 혈압이 낮을 때",y:["25"],a:"재측정·양팔 비교, 증상(어지럼·의식) 사정, 출혈·탈수 등 원인 탐색, 이상 시 보고."},
+{s:"심혈관",q:"제세동기 사용법",y:["23"]},
+{s:"심혈관",q:"CVP 정의·정상치",y:["23"],a:"중심정맥압=우심방압, 정상 5~10cmH2O. 상승: 과혈량·우심부전 / 감소: 탈수·출혈."},
+{s:"심혈관",q:"와파린 투여 환자 간호",y:["23"],a:"PT/INR 정기 확인, 출혈 징후 사정, 부드러운 칫솔·전기면도기, Vit.K 음식(시금치 등) 제한."},
+{s:"심혈관",q:"32도 날씨에 옆사람이 쓰러졌다 — 원인은? (+심장은 뛰고 있다면)",y:["23"],a:"열사병·열실신·탈수 의심 — 의식·호흡 확인, 그늘 이동·냉각, 의식 있으면 수분."},
+{s:"신경계",q:"의식수준 5단계 사정 (+꼬리: 갑자기 혼미해지면?)",y:["25","23"],a:"Alert–Drowsy–Stupor–Semicoma–Coma. 악화 시: V/S·동공·혈당 즉시 확인, 기도 확보, 즉시 보고."},
+{s:"신경계",q:"GCS (full term 포함)",y:["23"],a:"Glasgow Coma Scale — 개안(E4)·언어(V5)·운동(M6), 3~15점."},
+{s:"신경계",q:"의식저하 환자에게 기도삽관을 하는 이유",y:["23"],a:"기도 보호반사 소실 → 흡인·기도폐색 예방, 산소화 유지."},
+{s:"신경계",q:"seizure 환자 간호 + 침상 옆 준비 물품",y:["24","23"],a:"측위·기도 확보, 억지로 잡지 않기, 발작 양상·시간 기록. 물품: 산소·흡인기, 설압자 대신 airway, 침상난간 패드."},
+{s:"신경계",q:"두개내압(뇌압) 상승 환자 간호",y:["24","23"],a:"HOB 30도, 목 중립, 자극 최소화, 과호흡·배변 힘주기 방지, V/S·의식 모니터."},
+{s:"신경계",q:"뇌경색 발생 기전과 간호",y:["23"],a:"혈전·색전으로 뇌혈관 폐색 → 신경학적 결손. 혈전용해 시 출혈 모니터, V/S·의식 지속 확인."},
+{s:"신경계",q:"뇌졸중 응급처치",y:["23"],a:"FAST(Face·Arm·Speech·Time) — 즉시 신고, 안전 체위, 골든타임."},
+{s:"신경계",q:"요추천자 후 간호",y:["24"],a:"머리 들지 않고 앙와위 안정, 수분 격려, 두통·하지감각 사정."},
+{s:"신경계",q:"지남력을 실제 사정하듯 해보기",y:["23"],a:"사람·장소·시간 — '성함이? 여기가 어디죠? 오늘 며칠이죠?'"},
+{s:"신경계",q:"무의식 환자 간호 / 무의식 환자 피부 간호",y:["23"],a:"기도·흡인 예방(측위), 2시간 체위변경, 피부·욕창 사정, 눈·구강 간호."},
+{s:"소화기·간",q:"LC 환자 복수 시 중재 / LC 관리",y:["25","24","23"],a:"저염·수분 제한, 복위·체중·I/O 매일, 이뇨제, 복수천자 보조, 호흡곤란 시 반좌위."},
+{s:"소화기·간",q:"LC 환자에게 락툴로오스 관장을 하는 이유",y:["23"],a:"간성뇌증 예방 — 장내 산도 변화로 암모니아 배설 촉진."},
+{s:"소화기·간",q:"melena 환자가 화장실 다녀와서 어지럽다고 하면",y:["24"],a:"출혈·저혈량 의심 — 침상안정, V/S·의식, IV 확보 준비, 즉시 보고."},
+{s:"소화기·간",q:"멜레나 환자가 화장실 갔다가 토혈하고 있다면",y:["23"],a:"기도 확보·측위, V/S, 금식, 굵은 IV 2개·수혈 준비, 즉시 보고."},
+{s:"소화기·간",q:"hematochezia vs melena",y:["23"],a:"선혈변=하부 위장관 / 흑색변=상부 위장관 출혈."},
+{s:"소화기·간",q:"급성 위출혈 환자 사정 / 간호정보조사 시 물어볼 것",y:["25","23"],a:"V/S, 과거력·현병력, NSAIDs·항응고제 등 약물력, 음주, 출혈 양상."},
+{s:"소화기·간",q:"과거 위출혈 경험 환자 입원 시 사정과 간호",y:["23"],a:"V/S·의식, 유발 약물 확인, 내시경 준비, 지혈·수혈, 불안 완화."},
+{s:"소화기·간",q:"관장의 목적과 종류",y:["24","23"],a:"배변 촉진·검사 전 준비·약물 투여 등. 청결(배출)·정체·구풍·투약 관장."},
+{s:"소화기·간",q:"위절제술 후 합병증과 간호",y:["25"],a:"덤핑증후군 — 소량씩 자주, 저탄수·고단백, 식후 눕기, 식사 중 수분 제한."},
+{s:"소화기·간",q:"L-tube 삽입 전·후 간호 (프리셉티 교육하듯)",y:["23"],a:"전: 좌위, 코끝~귓불~검상돌기 길이, 수용성 윤활제. 후: 위액 흡인 산도 확인·공기 청진, 고정·기록."},
+{s:"호흡기·기도",q:"COPD 환자에게 저농도 산소를 주는 이유",y:["24","23"],a:"만성 고탄산혈증 → 저산소 자극으로 호흡 유지 — 고농도 시 호흡억제 위험."},
+{s:"호흡기·기도",q:"intubation의 목적·적응증",y:["25"],a:"기도 확보·유지, 흡인 방지, 기계환기·분비물 제거 통로."},
+{s:"호흡기·기도",q:"인공호흡기 적용 환자 간호",y:["24","23"],a:"기도 흡인, 세팅·알람 확인, VAP 예방(HOB 30도·구강간호), 억제대·피부 사정."},
+{s:"호흡기·기도",q:"산소요법의 목적 / 캐뉼라 vs 마스크 / 가습 산소를 주는 이유",y:["24","23"],a:"저산소증 교정. 캐뉼라 1~6L 저농도·식사 가능 / 마스크 고농도. 가습: 점막 건조·손상 예방."},
+{s:"호흡기·기도",q:"흡인(suction)의 목적과 주의사항",y:["25"],a:"분비물 제거·기도 개방 — 10~15초 이내, 삽입 시 음압 금지, 전후 산소화."},
+{s:"호흡기·기도",q:"기관절개관 석션 vs 기관내관 석션",y:["23"],a:"삽입 길이 차이 — E-tube 30~35cm, T-tube 10~12cm."},
+{s:"호흡기·기도",q:"무의식 환자의 기관절개관이 빠진 것을 목격했다면",y:["23"],a:"SpO2 확인·산소, 도움 요청·주치의 보고, 동일+한 사이즈 작은 관 준비해 재삽입 보조, 지속 모니터."},
+{s:"호흡기·기도",q:"캐뉼라 적용 중 SpO2 85%인데 주치의 연락 두절",y:["23"],a:"재연락 지속 + 상급 관리자 보고로 처치 지연 방지(지침 내 산소 조정)."},
+{s:"호흡기·기도",q:"COPD 환자가 호흡곤란을 호소하면",y:["23"],a:"좌위·입술오므리기 호흡, 처방 산소·기관지확장제, SpO2 모니터."},
+{s:"호흡기·기도",q:"흉막마찰음이란",y:["23"],a:"흉막 염증으로 마찰하며 삐걱거리는 소리."},
+{s:"투약·수혈·항암",q:"5 Rights",y:["23"],a:"정확한 대상자·약물·용량·경로·시간 (+기록·교육)."},
+{s:"투약·수혈·항암",q:"투약 시 확인사항 / 투약오류 시 대처",y:["24"],a:"오류 시 은폐 금지 — 환자 사정, 즉시 보고, 처방 따라 조치·기록."},
+{s:"투약·수혈·항암",q:"팔찌와 오더지가 일치하지 않을 때",y:["24"],a:"투약 중단 — 개방형 질문으로 재확인, 원인 확인 전까지 절대 투여 금지."},
+{s:"투약·수혈·항암",q:"수혈 절차 (풀버전)",y:["24"],a:"처방·동의서 → 2인 대조·서명 → 목적 설명·V/S → N/S 개통 → 첫 15분 천천히+부작용 관찰·V/S → 이상 없으면 속도 조절, 타 약물 병용 금지, 종료 후 N/S·기록."},
+{s:"투약·수혈·항암",q:"수혈 부작용 종류와 대처",y:["24","23"],a:"발열·알레르기·용혈 등 — 즉시 중단, N/S 유지, V/S, 보고, 혈액백·세트 보존."},
+{s:"투약·수혈·항암",q:"수혈 직전 환자 열이 38도 (+이미 혈액을 수령했다면)",y:["23"],a:"보류·보고 — 발열은 부작용 감별 방해. 수령분은 반납 규정 준수(30분 내 등 지침 확인)."},
+{s:"투약·수혈·항암",q:"수혈의 목적·적응증",y:["25","24"]},
+{s:"투약·수혈·항암",q:"인슐린 투약 시 주의사항",y:["25"],a:"용량·종류·식사시간 연계, 부위 교대, 주사 후 비비지 않기(저혈당 위험), 저혈당 증상 교육."},
+{s:"투약·수혈·항암",q:"항응고제 투약 시 주의사항",y:["25"],a:"출혈 징후 사정, 채혈·주사 후 압박, 낙상 주의, 검사수치(PT/aPTT) 확인."},
+{s:"투약·수혈·항암",q:"모르핀 — 기전 · 투여 전 사정 · 부작용 · 주의",y:["25","23"],a:"아편계 수용체 작용 진통. 전: 호흡수(12↓ 보류)·의식·BP. 부작용: 호흡억제·저혈압·변비·오심. 길항제 날록손."},
+{s:"투약·수혈·항암",q:"흉곽수술 환자에게 모르핀을 쓰지 않는 이유",y:["25"],a:"호흡억제·기침 억제 → 분비물 저류·무기폐 위험."},
+{s:"투약·수혈·항암",q:"PCA 기전과 환자 교육 / 무통주사 통증 해소 시점 질문 대응",y:["25","23"],a:"환자 스스로 버튼 — lockout으로 과량 방지, 아플 때 미리 누르기, 보호자 대리 금지."},
+{s:"투약·수혈·항암",q:"인퓨전 펌프 적응증 / 사용하는 약물·수액",y:["23"],a:"일정 속도 정밀 주입 필요 시 — 승압제·인슐린·헤파린·항암제 등."},
+{s:"투약·수혈·항암",q:"일혈 — 정의 · 유발 약물 · 증상 · 간호",y:["25","23"],a:"발포성 약물의 혈관 외 유출로 조직괴사 위험(항암제·조영제 등). 즉시 주입 중단→카테터 유지한 채 잔여약 흡인→해독제→제거, 부위 거상."},
+{s:"투약·수혈·항암",q:"항암요법 절차 / 항암제 투여 시 확인 / 전후 주의 / 항암화학요법 환자 간호",y:["24","23"],a:"2인 확인·보호구, 일혈 감시, 오심·골수억제(감염 예방) 간호."},
+{s:"투약·수혈·항암",q:"항암제를 쏟았을 때 대처",y:["25"],a:"Spill kit — 접근 통제, 보호구 착용 후 지침대로 처리·보고."},
+{s:"투약·수혈·항암",q:"항생제를 다량 사용하면 안 되는 이유",y:["23"],a:"내성균 발생·정상균총 파괴."},
+{s:"투약·수혈·항암",q:"근육·피하주사 후 문지르면 안 되는 약물",y:["23"],a:"인슐린(흡수 급증→저혈당), 헤파린 등."},
+{s:"투약·수혈·항암",q:"투여 시 I/O가 중요한 약물",y:["23"],a:"이뇨제·디곡신·신독성 약물 등."},
+{s:"투약·수혈·항암",q:"정맥 수액요법 적응증",y:["23"]},
+{s:"투약·수혈·항암",q:"수술 전 중단해야 하는 약물",y:["25"],a:"항응고제·항혈소판제, 인슐린·경구혈당제 조정, 일부 혈압약 — 처방 확인."},
+{s:"감염·안전·기본간호",q:"내과적 vs 외과적 손씻기 / 손씻기 6단계·시점",y:["24","23"],a:"내과적: 일반 처치, 손끝 아래 / 외과적: 수술 전, 팔꿈치까지·손끝 위. 6단계 순서 암기."},
+{s:"감염·안전·기본간호",q:"격리 vs 역격리 (+역격리 환자 간호·보호장구 착용 순서·손씻기 시점)",y:["23"],a:"격리=감염원 차단(환자→외부) / 역격리=면역저하자 보호(외부→환자). 착용: 손위생→가운→마스크→고글→장갑."},
+{s:"감염·안전·기본간호",q:"음압병실 vs 양압병실",y:["25","23"],a:"음압: 내부 기압↓, 공기 유입 — 감염병 전파 차단 / 양압: 내부 기압↑ — 역격리용."},
+{s:"감염·안전·기본간호",q:"격리 병실에서 나올 때 순서",y:["23"],a:"장갑→고글→가운→마스크 순 탈의, 단계마다 손위생."},
+{s:"감염·안전·기본간호",q:"낙상 간호 (+소아/노인 구분 교육 · 창의적인 낙상예방)",y:["23"],a:"MORSE 사정, 침상난간·콜벨, 고위험 표식, 야간 조명. 소아: 보호자 상주·난간 / 노인: 기립성 저혈압·미끄럼 방지."},
+{s:"감염·안전·기본간호",q:"억제대 적응증·적용 방법·간호 / 신체보호대 중재",y:["24","23"],a:"자·타해 위험, 치료기구 제거 위험 시 — 처방·동의, 2시간마다 순환·피부 확인·풀어주기."},
+{s:"감염·안전·기본간호",q:"욕창 간호·예방 / 응전력(전단력)이 생기지 않게 하는 법",y:["25","23"],a:"2시간 체위변경, 들어서 이동(끌지 않기), HOB 30도 이하, 압력분산 매트리스, 습윤 드레싱."},
+{s:"감염·안전·기본간호",q:"유치도뇨관 간호·주의점·환자 교육 / 유치도뇨 목적",y:["24","23"],a:"소변백은 방광 아래·바닥에 닿지 않게, 폐쇄체계 유지, 꼬임 방지, 회음부 간호, 물 충분히."},
+{s:"감염·안전·기본간호",q:"잔뇨량 측정 목적과 정상범위",y:["23"],a:"배뇨 후 잔뇨 확인(요정체 평가) — 정상 50mL 이하."},
+{s:"감염·안전·기본간호",q:"I/O 측정 목적",y:["23"],a:"체액 균형 평가 — 심부전·신부전·수술 후 등."},
+{s:"감염·안전·기본간호",q:"주삿바늘 자상 예방법 (+찔렸을 때 대처)",y:["23"],a:"리캡 금지·전용용기 즉시 폐기. 자상 시: 짜내며 흐르는 물 세척 → 보고 → 감염관리실 지침(혈액검사 등)."},
+{s:"감염·안전·기본간호",q:"병원 내 위해(안전)사고 종류 · 관찰 경험",y:["24","23"],a:"낙상·투약오류·자상·수혈사고·환자확인 오류 등."},
+{s:"감염·안전·기본간호",q:"정맥주사 하면 안 되는 부위 / 활력징후 측정하면 안 되는 부위",y:["23"],a:"IV: 마비측·유방수술측(림프절제)·투석 shunt·감염 부위. V/S 동일 원칙."},
+{s:"감염·안전·기본간호",q:"성인과 아동의 고막체온 측정 차이와 이유",y:["23"],a:"성인 후상방·아동 후하방 — 이도 구조 차이로 일직선화."},
+{s:"수술·마취·배액",q:"수술 전 간호 / 수술 전후 간호 (+대수술 아닌데 왜 금식하냐고 물으면)",y:["24","23"],a:"금식은 마취 중 구토·흡인 예방 — 수술 크기와 무관하게 마취 안전 문제로 설명."},
+{s:"수술·마취·배액",q:"수술 후 출혈 — 봐야 할 증상과 중재",y:["25","24"],a:"드레싱·배액 양상, V/S(빈맥→저혈압), 소변량 — 압박·보고, 수액·수혈 준비."},
+{s:"수술·마취·배액",q:"수술 후 조기이상을 격려하는 이유",y:["23"],a:"무기폐·폐렴·혈전·장마비 예방, 회복 촉진."},
+{s:"수술·마취·배액",q:"전신마취 환자 간호 / 전신마취 전 교육 시연",y:["23"],a:"측위로 흡인 예방, 심호흡·기침(무기폐 예방), 구개반사 회복 후 경구 섭취."},
+{s:"수술·마취·배액",q:"석고붕대 환자 간호",y:["23"],a:"CMS(순환·운동·감각) 사정, 거상, 조이는 증상·냄새 관찰, 젖지 않게."},
+{s:"수술·마취·배액",q:"chest tube 제거 시점 / 연결부위가 빠졌을 때 최우선 중재",y:["24","23"],a:"배액량 감소·폐 재팽창 확인 후 제거. 빠짐: 멸균 거즈 3면 폐쇄(개방창) 또는 원위부 물속 — 즉시 보고."},
+{s:"신장·내분비·대사",q:"혈액투석 vs 복막투석",y:["24"]},
+{s:"신장·내분비·대사",q:"만성신부전 환자 식이",y:["23"],a:"저염·저칼륨·저인, 수분 제한, 저단백·고열량(필수아미노산 포함)."},
+{s:"신장·내분비·대사",q:"당뇨 진단기준 / 당화혈색소 정의·정상범위",y:["24","23"],a:"HbA1c 2~3개월 평균 혈당 — 정상 5.7% 미만, 당뇨 6.5% 이상."},
+{s:"신장·내분비·대사",q:"당뇨 환자 발 간호",y:["23"],a:"매일 관찰, 건조 유지(발가락 사이), 꽉 끼지 않는 신발, 발톱 일자, 맨발·꼬기 금지."},
+{s:"신장·내분비·대사",q:"어지럼 호소하는 DM 환자 / 기저질환 없는데 혈당이 낮게 나오면",y:["23"],a:"의식 있으면 단순당 섭취 → 15분 후 재측정 / 무의식이면 IV 포도당 — 보고."},
+{s:"신장·내분비·대사",q:"DKA 간호 목표",y:["25"],a:"수액으로 탈수 교정, 인슐린으로 케톤 정상화, K+ 등 전해질 교정."},
+{s:"신장·내분비·대사",q:"저혈당으로 의식 없는 환자 간호",y:["23"],a:"IV 포도당 주입 → 혈당 재확인."},
+{s:"응급·상황판단",q:"응급실에 의식 없는 환자가 왔다 — 의심 질환과 해결",y:["23"],a:"저혈당·뇌졸중·약물중독·쇼크 등 — ABC 확보, V/S·혈당, 즉시 보고."},
+{s:"응급·상황판단",q:"쇼크의 증상과 간호",y:["24","23"],a:"차고 축축한 피부·빈맥·저혈압·핍뇨·의식저하 — 다리 거상, 보온, 굵은 IV 2개, 산소, V/S 지속."},
+{s:"응급·상황판단",q:"출혈 환자 간호",y:["25"],a:"직접 압박, V/S, IV 확보·수혈 준비, 쇼크 징후 감시."},
+{s:"응급·상황판단",q:"중심정맥관 삽입 환자 간호",y:["25","24"],a:"무균 드레싱, 삽입부 감염 징후, 개방성 확인, 공기색전 주의."},
+{s:"응급·상황판단",q:"ANC 수치·계산법",y:["24"],a:"WBC × (seg% + band%) — 500 미만 시 역격리 수준 감염 예방."},
+{s:"응급·상황판단",q:"고혈압 정의와 환자 교육 (직접 교육하듯)",y:["24","23"],a:"140/90 이상 — 저염식·운동·금연·절주·약 임의중단 금지·가정혈압."},
+{s:"응급·상황판단",q:"통증 간호 / 통증 사정법(NRS 등)",y:["24"]},
+{s:"응급·상황판단",q:"자신 있는 술기 하나",y:["24"]},
+{s:"여성·기타",q:"유방암 수술 환자 간호",y:["23"],a:"환측 팔 IV·혈압 금지, 거상·팔운동 격려, 림프부종 예방."},
+{s:"여성·기타",q:"태반조기박리 vs 전치태반",y:["23"],a:"조기박리: 착상 정상, 조기 분리·통증성 출혈 / 전치태반: 태반이 자궁하부·내구 덮음, 무통성 출혈."},
+{s:"여성·기타",q:"호스피스 간호 (자소서 봉사 기재자 출제)",y:["25"],a:"통증·증상 완화, 존엄, 환자·가족 정서 지지 — 자소서 소재는 방어 필수."},
+{s:"여성·기타",q:"ABR vs BR",y:["25"],a:"절대침상안정(배변까지 침상) vs 침상안정(화장실 등 최소 활동 가능)."},
+{s:"여성·기타",q:"폐농양 환자에게 아미노필린을 주는 이유",y:["25"],a:"기관지 확장 → 기도저항↓·객담 배출·호흡 개선."},
+{s:"여성·기타",q:"기억에 남는 환자의 질병 설명해보기 (실습 연계)",y:["23"]},
+/* ===== 추가 발견 문항 (자료 정리 답안 수록분) ===== */
+{s:"심혈관",q:"CPR ABC 순서와 뜻 (실제 순서는?)",y:["25"],a:"현재 순서는 C-A-B. C=Compression(가슴압박), A=Airway(기도유지), B=Breathing(인공호흡)."},
+{s:"심혈관",q:"제세동기 작동 방법 (패들 위치 포함)",y:["25","23"],a:"전원 ON→EKG lead 연결→에너지(J) 선택·충전→젤 도포→패들: 우쇄골하+심첨부→'모두 물러서세요' 확인→shock→EKG 재확인. 적응증: 심실세동·무맥성 심실빈맥."},
+{s:"심혈관",q:"급성심근경색 의심 환자가 왔을 때 처음 시행해야 하는 것",y:["25"],a:"즉시 EKG — 심근효소(myoglobin·CK-MB) 확인. 통증 심하면 NTG·모르핀, 반좌위로 호흡 도움."},
+{s:"심혈관",q:"맥박 촉지 부위를 말해보세요",y:["25"],a:"측두·경·상완·요골·대퇴·슬와·후경골 동맥 등."},
+{s:"신경계",q:"뇌수술 환자 간호",y:["25"],a:"V/S 모니터, 조용한 환경, 통증관리, 감염예방, HOB 상승, 신경학적 상태 지속 사정."},
+{s:"신경계",q:"척추손상 대상자 간호 (+꼬리: 경추 C vs 요추 L 다른가?)",y:["25"],a:"추가 손상 방지·통나무 굴리기(log rolling)·보조기. 경추: 호흡·상지 기능 영향, 턱밀어올리기로 기도 유지 / 요추: 하지 운동·감각 영향, 등근육 운동. 척수신경은 L1~L2 사이에서 끝남."},
+{s:"신경계",q:"뇌신경 (+꼬리: 손상 시 가장 생명이 위험한 신경은?)",y:["25"],a:"12쌍(후·시·동안·활차·삼차·외전·안면·청·설인·미주·부신경·설하). 미주신경 — 호흡·심박·순환 조절 → 손상 시 생명 위협."},
+{s:"신경계",q:"뇌압 상승 시 머리를 30도 높이는 이유",y:["25"],a:"정맥 환류 촉진 → 뇌부종·뇌압 감소, 뇌순환 유지."},
+{s:"소화기·간",q:"위내시경 후 금식 교육 / 내시경 검사 전후 간호",y:["23"],a:"국소마취 풀릴 때까지(약 30분~1시간) 물 포함 금식 — 흡인 예방. 구역반사 확인 후 부드러운 죽부터. 검사 전: 동의서·금식·복용약 확인, 당일 자가운전 금지."},
+{s:"소화기·간",q:"비위관(L-tube) 제거 시 환자에게 어떻게 하라고 하나",y:["25"],a:"심호흡 후 숨 참게 함 — 후두덮개를 막아 위액이 기도로 흘러드는 것 방지."},
+{s:"소화기·간",q:"위루술을 적용해야 하는 환자는?",y:["25"],a:"경구섭취 불가·장기 영양 필요 환자(연하곤란·의식저하 등)에게 위 직접 영양 통로 확보 목적."},
+{s:"호흡기·기도",q:"저산소증(hypoxia) 증상 / 저산소증 vs 저산소혈증",y:["25"],a:"증상: 호흡곤란·빈호흡·피로·두통·흉통·혼란·청색증. hypoxia=조직 산소부족(SpO2 95↑ 정상) / hypoxemia=동맥혈 산소분압 저하(PaO2 80~100 정상)."},
+{s:"호흡기·기도",q:"폐렴 환자가 청색증을 보일 때 간호",y:["25"],a:"즉시 산소 공급·흡인 준비, SpO2 사정, 객담 제거, 심호흡·기침·반좌위·체위배액으로 가스교환 증진."},
+{s:"호흡기·기도",q:"폐(암) 절제술 후 간호",y:["25"],a:"V/S 모니터, 통증관리, 호흡훈련(합병증 예방), 안전한 조기이상, 폐기능 추적, 감염예방·정서지지."},
+{s:"호흡기·기도",q:"흉강천자 환자 간호 (전·후 체위)",y:["25"],a:"전: 앉아 테이블에 팔 올리고 엎드린 자세 / 후: 천자부위 위로 향하게. 시술 중 움직이지 않게, 후 압박드레싱·V/S·이상증상 확인. 목적: 흉수 제거·배양검사."},
+{s:"호흡기·기도",q:"Nasal cannula 4~5L 환자 알람이 울려 의사에게 알린 뒤 남은 시간엔?",y:["25"],a:"환자 상태 지속 모니터, 진행 중 치료 유지, 소통, 추가 조치 대기하며 의사 판단 기다림."},
+{s:"투약·수혈·항암",q:"근육주사 관련 합병증",y:["25"],a:"신경·혈관 손상, 통증·불안, 감염, 공기색전, 조직손상 — 경구보다 부작용이 빨리 나타남."},
+{s:"투약·수혈·항암",q:"수술 후 배액관 간호",y:["25"],a:"삽입부위보다 항상 아래 위치, 당겨지거나 빠지지 않게 고정, 빠지거나 이상징후 시 즉시 의료진 보고."},
+{s:"감염·안전·기본간호",q:"체위별 적용 상황(반좌위·심스·쇄석위·배횡와위·트렌델렌버그 등)",y:["25"],a:"앙와위(침상안정·요추천자 후)·측위(흡인 예방)·복위(등근육 이완)·반좌위·좌위(호흡곤란·IICP)·배횡와위(도뇨)·심스(관장)·슬흉위(월경통·산후 자궁후굴)·쇄석위(분만·회음 사정)·트렌델렌버그(쇼크)."},
+{s:"감염·안전·기본간호",q:"세미파울러(상체 30도) vs 트렌델렌버그(하체 30도) 체위",y:["23"],a:"상체 30도=세미파울러(호흡·IICP) / 하체 거상=트렌델렌버그(쇼크 시 정맥환류·뇌관류)."},
+{s:"감염·안전·기본간호",q:"낙상 예방을 '창의적으로' 제안해보세요",y:["25"],a:"합격례: '맞춤형 낙상예방 운동' — 신체상태 맞춘 짧은 운동영상을 매일 휴대폰 전송, 시공간 제약 없이 실천율↑·근력 강화, 간호사는 실천 유도·근력 확인 역할."},
+{s:"감염·안전·기본간호",q:"억제대 재사용 시 예방적 간호(피부손상 방지)",y:["25"],a:"재사용 전 ROM, 돌출부 패드, 난간·침대틀에 고정, 손가락 하나 여유로 고정, 2시간마다 순환·피부 확인."},
+{s:"수술·마취·배액",q:"갑상선 절제술 후 간호 (+테타니)",y:["25"],a:"반좌위·호흡부전 관찰, 침상 옆 기관절개세트·산소·흡인기, 부갑상샘 손상 대비 calcium gluconate 준비. 테타니: 크보스테크·트루소 징후 — 저칼슘혈증 신호."},
+{s:"수술·마취·배액",q:"화상 환자 간호",y:["25"],a:"기도 확보(흡입화상 시 호흡곤란)·저혈량성 쇼크 예방(수액), 감염관리·통증관리·체온유지."},
+{s:"신장·내분비·대사",q:"당뇨 인슐린 부작용 — 소모기 현상 vs 새벽 현상",y:["25"],a:"소모기: 야간 과다 인슐린 → 저혈당 후 반동 고혈당(용량↓·취침 전 간식) / 새벽: 새벽 성장호르몬으로 인슐린 요구↑(용량↑·새벽 3시 혈당측정)."},
+{s:"신장·내분비·대사",q:"칼슘 유리(골 소실) 방지 간호",y:["25"],a:"칼슘 함량 높은 식이(유제품), 저염식(칼슘 배설 방지), 카페인·과량 인 제한, 금주, 체중부하 운동."},
+{s:"신장·내분비·대사",q:"기저질환 없는데 혈당이 낮게 측정되면 (기계적 요인 포함)",y:["25"],a:"먼저 기계적 요인(손가락 당분·알코올 미건조·검사지 상태) 확인 → 반복 측정 → 70mg/dL↓ 또는 증상 동반 시 즉시 보고·재검."},
+{s:"응급·상황판단",q:"여러 환자가 동시에 응급실에 왔을 때 우선순위(KTAS)",y:["25"],a:"KTAS 1~5: 1 즉각 소생(생명위협)·2 긴급·3 응급(SpO2 90↑)·4 준응급(1~2시간)·5 비응급. 생명 위협 순으로."},
+{s:"응급·상황판단",q:"외상 없는 무의식 환자 — 어떤 문제? (실신 상황)",y:["23"],a:"심정지 의심 — 호흡·맥박 10초 내 확인, 없으면 즉시 가슴압박. 저혈당·뇌졸중 등도 배제."},
+{s:"응급·상황판단",q:"복통 호소 환자 대처",y:["25"],a:"부위·양상·기간 사정 → 임의 진통제 금지, 주치의 보고, 편안한 환경 제공."},
+{s:"응급·상황판단",q:"우선순위: 호흡곤란 vs CT 대기 vs 급한 약물 처리 중 무엇 먼저?",y:["23"],a:"호흡곤란(생명 직결) 즉시 산소·보고 → CT 지연 우려 환자 이송 → 약물은 종류·긴급성 확인 후 투여."},
+{s:"응급·상황판단",q:"해열제 투여 10분 만에 열이 안 내린다고 항의하는 보호자",y:["23"],a:"불안 공감·경청 → 해열제 작용시간(30분~1시간) 설명 → 현재 V/S·전신상태 확인하며 안심."},
+{s:"응급·상황판단",q:"저산소증/저혈당 등 감별하며 응급조치 (열사병 상황 심화)",y:["23"],a:"열사병 우선 의심하되 저혈당 등 배제 — 의식·체온 즉시 확인, 시원한 곳 이동, 119·응급처치 준비."},
+{s:"기본간호·불안",q:"불안 완화 간호",y:["25"],a:"정서·신체 증상 조기 인지, 검사·치료 정보 제공, 이유 경청, 눈맞춤하며 차분히 접근."},
+{s:"기본간호·불안",q:"환자 확인이 필요한 상황과 방법",y:["25"],a:"모든 중재 전 — 이름·등록번호를 개방형 질문으로 물어 처방과 대조."},
+{s:"여성·기타",q:"신생아 황달이 생기는 이유",y:["25"],a:"생리적 황달 — 적혈구 수명 짧아 빌리루빈 과다 + 간 미숙으로 배설 저하. 대개 생후 3일경 발생, 1주 내 소실."},
+{s:"여성·기타",q:"아토피 아동 소양증 완화 간호",y:["25"],a:"피부 수화 유지·서늘한 환경, 중성비누·미온수 목욕, 부드러운 면제품 착용."},
+{s:"여성·기타",q:"성인 SLE에서 생명을 위협하는 증상",y:["25"],a:"신장 침범(신부전)·심혈관 합병증이 가장 치명적."}
+];
+
+/* ---------- 시사 (I) ---------- */
+var I=[
+{q:"의사 파업 상황에서 간호사의 역할",y:["24"],a:"환자 곁을 지키는 최후의 안전망 — 상태 감시·안전 유지, 법적 업무범위 내 협력, 불안 완화. 여러 방 공통 출제."},
+{q:"간호법이 필요한 이유 / 제정되면 기대되는 변화",y:["23"],a:"업무범위 명확화·근무환경 개선 → 숙련 간호사 유지 → 환자안전."},
+{q:"간호법에서 빠진 조항에 대한 생각",y:["25"],a:"쟁점(업무범위·처우 등)을 아는지 확인 — 최신 개정 내용 검색 후 본인 입장+근거 준비."},
+{q:"간호수가로 매길 수 있는 간호사의 업무",y:["25"],a:"교육·상담, 욕창·낙상 예방활동, 전문 처치 등 — 간호의 독자적 가치 언어화."},
+{q:"간호사는 전문직인가 (+꼬리: 호흡곤란 환자에게 독자적으로 할 수 있는 것)",y:["25"],a:"전문직 — 독자 판단 예시로 응수: 체위(좌위), 호흡법 교육, 산소포화도 사정, 환경 조절, 우선순위 판단·보고."},
+{q:"간호간병통합서비스란 / 장단점 / 무한정 확대 못 하는 이유",y:["25","23"],a:"보호자 없는 병동 — 감염↓·전문 간호↑ vs 인력·비용 한계. 병원 카드: 이화 간호간병병동 운영."},
+{q:"PA(진료지원)간호사에 대한 생각 / 확대 시 가장 필요한 것",y:["23"],a:"체계적 교육 + 명확한 업무범위 규정."},
+{q:"AI가 의료에 미친 영향(긍·부정) / AI를 간호에 적용한다면 (+AI가 일을 뺏으면?)",y:["23"],a:"기록·모니터링 보조로 직접간호 시간 확보 — 공감·판단은 대체 불가. 병원 카드: 이화 AI 보이스봇·임상통합상황실."},
+{q:"수술실 CCTV에 대한 생각",y:["23"],a:"합격례: 찬성 — 환자 입장에서 신뢰. 반대 논거(위축·유출)도 인지한 균형 답변."},
+{q:"지역간호사제(공공 의무복무)에 대한 생각",y:["23"]},
+{q:"노조에 대한 생각",y:["23"],a:"이화는 노조 존재 — 건강한 노사 소통 관점으로."},
+{q:"매스컴 속 간호사 이미지에 대한 생각",y:["23"]},
+{q:"중증·필수의료 체계에 대한 생각",y:["24"]},
+{q:"간호사가 SNS·유튜브에 근무환경을 올리는 것",y:["24"],a:"환자 정보·병원 보안이 기준 — 표현의 자유와 직업윤리 균형."},
+{q:"물가상승률에 대해 어떻게 생각하는지 (돌발)",y:["23"],a:"돌발 비전공 질문도 나옴 — 당황하지 않고 상식선 답변이면 충분."}
+];
+
+/* ---------- 체크리스트 ---------- */
+var CK={
+a:["수험표 잘라서 + 핀으로 부착","신분증","대기용 자료 전부 종이 프린트(전자기기 제출됨)","물(현장 비치 없음)","안내 메일의 지참 서류 재확인"],
+b:["약 10분 전 도착(지하 2층 컨벤션센터)","짐 최소화 · 보관 안내 따르기","대기 중 인사 리드 정하기 — 내가 자원한다","전자기기 제출 전 마지막 확인","크고 또박또박 + 미소","옆 답변 때 끄덕임(면접관과 계속 눈 마주침)","옆 지원자가 잘해도 안 말리기","마지막 할 말 — 먼저 손 들 준비"],
+c:["자기소개 2버전(단독/지원동기 포함) 소리 내어 완성","뽑기·인성 은행 체크율 100% 확인","자소서 전 문장 꼬리질문 매핑","원티드·기피 부서 + 타병원 지원현황 답변 확정","간호부 핵심가치 현행 버전 홈페이지 확인","면접일 순번·오시는 길·소요시간 확인"]};
+
+/* ---------- 렌더 ---------- */
+var DONE=sget("eumc-done");
+function esc(t){return t.replace(/&/g,"&amp;").replace(/</g,"&lt;")}
+function yrChips(y,all){var h="";(y||[]).forEach(function(v){h+='<span class="yr y'+v+'">\u2019'+v+"</span>"});if(all)h+='<span class="yr all">전체</span>';return h}
+function buildBank(elId,items,groupKey,pref){
+  var groups={},order=[];
+  items.forEach(function(it,i){var g=it[groupKey];if(!groups[g]){groups[g]=[];order.push(g)}groups[g].push(i)});
+  var html="";
+  order.forEach(function(g){
+    html+='<details class="sys" open><summary>'+esc(g)+'<span class="cnt">'+groups[g].length+'문항</span></summary><div class="sys-body">';
+    groups[g].forEach(function(i){
+      var it=items[i],id=pref+i,chk=DONE[id]?" checked":"",dn=DONE[id]?" done":"";
+      html+='<div class="qitem'+dn+'"><input type="checkbox" id="'+id+'" data-b="'+pref+'"'+chk+'><label for="'+id+'">'+esc(it.q)+" "+yrChips(it.y,it.all)+"</label>";
+      if(it.a)html+='<button class="a-toggle" data-t="'+id+'-a">답변 보기</button>';
+      html+="</div>";
+      if(it.a)html+='<div class="q-ans" id="'+id+'-a">'+esc(it.a)+"</div>";
+    });
+    html+="</div></details>";
+  });
+  document.getElementById(elId).innerHTML=html;
+}
+buildBank("pbank",P,"c","p");buildBank("cbank",C,"s","c");
+/* 시사는 그룹 없이 하나로 */
+(function(){var el=document.getElementById("ibank");var html='<details class="sys" open><summary>시사·이슈 전체<span class="cnt">'+I.length+'문항</span></summary><div class="sys-body">';I.forEach(function(it,i){var id="i"+i,chk=DONE[id]?" checked":"",dn=DONE[id]?" done":"";html+='<div class="qitem'+dn+'"><input type="checkbox" id="'+id+'" data-b="i"'+chk+'><label for="'+id+'">'+esc(it.q)+" "+yrChips(it.y)+"</label>";if(it.a)html+='<button class="a-toggle" data-t="'+id+'-a">답변 보기</button>';html+="</div>";if(it.a)html+='<div class="q-ans" id="'+id+'-a">'+esc(it.a)+"</div>"});html+="</div></details>";el.innerHTML=html})();
+
+function prog(pref,total){var n=0;for(var k in DONE){if(k.charAt(0)===pref&&k.indexOf("-")<0&&DONE[k])n++}
+  var el=document.getElementById(pref+"-prog"),tx=document.getElementById(pref+"-progtxt");
+  if(el){el.style.width=(total?Math.round(n/total*100):0)+"%";tx.textContent=n+" / "+total}}
+function progAll(){prog("p",P.length);prog("c",C.length);prog("i",I.length)}
+progAll();
+document.getElementById("st-p").innerHTML=P.length+'<span class="u">문항</span>';
+document.getElementById("st-c").innerHTML=C.length+'<span class="u">문항</span>';
+document.getElementById("st-i").innerHTML=I.length+'<span class="u">문항</span>';
+
+document.body.addEventListener("change",function(e){
+  if(e.target.matches(".qitem input")){DONE[e.target.id]=e.target.checked;if(!e.target.checked)delete DONE[e.target.id];sset("eumc-done",DONE);e.target.closest(".qitem").classList.toggle("done",e.target.checked);progAll()}
+  if(e.target.matches(".dditem input")){var d=sget("eumc-dday");d[e.target.id]=e.target.checked;if(!e.target.checked)delete d[e.target.id];sset("eumc-dday",d);e.target.closest(".dditem").classList.toggle("done",e.target.checked)}
+});
+document.body.addEventListener("click",function(e){
+  if(e.target.matches(".a-toggle")){var a=document.getElementById(e.target.getAttribute("data-t"));a.classList.toggle("show");e.target.textContent=a.classList.contains("show")?"답변 접기":"답변 보기"}
+  if(e.target.matches("[data-open]"))document.querySelectorAll("#"+e.target.getAttribute("data-open")+" details").forEach(function(d){d.open=true});
+  if(e.target.matches("[data-close]"))document.querySelectorAll("#"+e.target.getAttribute("data-close")+" details").forEach(function(d){d.open=false});
+});
+
+/* 체크리스트 렌더 */
+(function(){var saved=sget("eumc-dday");["a","b","c"].forEach(function(k){var h="";CK[k].forEach(function(t,i){var id="ck-"+k+i,chk=saved[id]?" checked":"",dn=saved[id]?" done":"";h+='<div class="dditem'+dn+'"><input type="checkbox" id="'+id+'"'+chk+'><label for="'+id+'">'+esc(t)+"</label></div>"});document.getElementById("ck-"+k).innerHTML=h})})();
+
+/* ---------- 뽑기 시뮬레이터 ---------- */
+var poolMode="p",yrMode="all",lastIdx=-1;
+function poolItems(){
+  var arr=[];
+  function add(list,cat){list.forEach(function(it,i){arr.push({n:i+1,cat:cat+(it.c?" · "+it.c:it.s?" · "+it.s:""),q:it.q,a:it.a,y:it.y||[]})})}
+  if(poolMode==="p"||poolMode==="all")add(P,"인성·뽑기");
+  if(poolMode==="c"||poolMode==="all")add(C,"직무");
+  if(poolMode==="i"||poolMode==="all")add(I,"시사");
+  if(yrMode==="25")arr=arr.filter(function(x){return x.y.indexOf("25")>=0});
+  return arr;
+}
+function updateCount(){document.getElementById("pool-count").textContent=poolItems().length}
+updateCount();
+document.getElementById("draw-seg").addEventListener("click",function(e){if(!e.target.dataset.pool)return;this.querySelectorAll("button").forEach(function(b){b.classList.remove("on")});e.target.classList.add("on");poolMode=e.target.dataset.pool;updateCount()});
+document.getElementById("draw-yr").addEventListener("click",function(e){if(!e.target.dataset.yr)return;this.querySelectorAll("button").forEach(function(b){b.classList.remove("on")});e.target.classList.add("on");yrMode=e.target.dataset.yr;updateCount()});
+function draw(){
+  var arr=poolItems();if(!arr.length)return;
+  var i;do{i=Math.floor(Math.random()*arr.length)}while(arr.length>1&&i===lastIdx);lastIdx=i;
+  var it=arr[i];
+  document.getElementById("stage-empty").hidden=true;
+  document.getElementById("stage-live").hidden=false;
+  document.getElementById("s-num").textContent=String(it.n).padStart(2,"0")+"번";
+  document.getElementById("s-cat").textContent=it.cat;
+  document.getElementById("s-q").textContent=it.q;
+  var ap=document.getElementById("s-apoint");
+  if(it.a){ap.className="apoint";ap.textContent=it.a}else{ap.className="apoint none";ap.textContent="자료에 정리 답안 없음 — 소리 내어 직접 답한 뒤, 위 은행에서 이 문항에 내 답변을 달고 체크할 것."}
+  document.getElementById("s-answer").hidden=true;
+  document.getElementById("s-reveal").textContent="답변 포인트 보기";
+}
+document.getElementById("draw-go").addEventListener("click",draw);
+document.getElementById("s-next").addEventListener("click",draw);
+document.getElementById("s-reveal").addEventListener("click",function(){var a=document.getElementById("s-answer");a.hidden=!a.hidden;this.textContent=a.hidden?"답변 포인트 보기":"답변 포인트 접기"});
+</script>
+</body>
+</html>
