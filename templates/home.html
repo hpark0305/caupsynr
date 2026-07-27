@@ -266,33 +266,6 @@
 </section>
 {% endif %}
 
-<!-- ── TESTIMONIALS ── -->
-{% if testimonials %}
-<section class="tmo-sec" data-testimonials>
-  <div class="container">
-    <div class="section-header">
-      <span class="label">Voices</span>
-      <h2>What people take away</h2>
-    </div>
-    <div class="tmo-viewport">
-      <div class="tmo-track">
-        {% for t in testimonials %}
-        <figure class="tmo-card">
-          <svg class="tmo-quote" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6C6.5 7.2 5 9.6 5 13v5h6v-6H8c0-2 .6-3.4 1.9-4.2L9.5 6Zm9 0c-3 1.2-4.5 3.6-4.5 7v5h6v-6h-3c0-2 .6-3.4 1.9-4.2L18.5 6Z" fill="currentColor"/></svg>
-          <blockquote>{{ t.quote }}</blockquote>
-          <figcaption>
-            <span class="tmo-role">{{ t.role }}</span>
-            <span class="tmo-context">{{ t.context }}</span>
-          </figcaption>
-        </figure>
-        {% endfor %}
-      </div>
-    </div>
-    <div class="tmo-dots" data-tmo-dots></div>
-  </div>
-</section>
-{% endif %}
-
 {% if lab_events %}
 <!-- ── FROM THE LAB (blog-style cards) ── -->
 <section class="notes-sec">
@@ -386,7 +359,7 @@
 {% endif %}
 
 <!-- ── APPS CTA ── -->
-<section class="cta-spotlight" style="background:var(--dark);position:relative;overflow:hidden;">
+<section class="cta-spotlight" style="background:#15132c;position:relative;overflow:hidden;">
   <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 60% 50%,rgba(15,107,107,.4) 0%,transparent 60%);pointer-events:none;"></div>
   <div class="cta-glow" aria-hidden="true"></div>
   <div class="container" style="position:relative;text-align:center;">

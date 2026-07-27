@@ -48,11 +48,6 @@
   })();
 </script>
 
-<!-- Custom cursor (built/activated by cursor.js on fine-pointer devices) -->
-<div class="cursor-ring" id="cursor-ring" aria-hidden="true"></div>
-<div class="cursor-dot" id="cursor-dot" aria-hidden="true"></div>
-<div class="cursor-label" id="cursor-label" aria-hidden="true">View</div>
-
 <!-- Scroll progress gauge + page-transition curtain -->
 <div class="scroll-progress" id="scroll-progress" aria-hidden="true"></div>
 <div class="page-curtain" id="page-curtain" aria-hidden="true"></div>
@@ -209,7 +204,6 @@
     }
   })();
 </script>
-<script src="{{ url_for('static', filename='js/cursor.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/ui-extras.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/interactions.js') }}" defer></script>
 {% block scripts %}{% endblock %}
