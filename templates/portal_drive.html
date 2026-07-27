@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}Google Drive · 연구자 포털{% endblock %}
+{% block head %}
+<style>
+.lin-wrap{display:flex;height:calc(100vh - var(--nav-h,72px));overflow:hidden;background:var(--bg);}
+.lin-sidebar{width:232px;min-width:232px;height:100%;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;}
+.lin-sidebar-top{padding:14px 10px 10px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.lin-workspace{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:9px;}
+.lin-workspace-icon{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--violet,#7c6fe0),#4fc3f7);display:flex;align-items:center;justify-content:center;font-size:.9rem;color:#fff;font-weight:900;flex-shrink:0;}
+.lin-workspace-name{font-size:.84rem;font-weight:700;color:var(--fg-1,#fff);line-height:1.2;}
+.lin-workspace-user{font-size:.7rem;color:var(--fg-4,rgba(255,255,255,.35));overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px;}
+.lin-sidebar-scroll{flex:1;overflow-y:auto;padding:8px 0 0;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+.lin-sidebar-bottom{padding:8px;border-top:1px solid var(--border);flex-shrink:0;}
+.lin-nav-section{margin-bottom:4px;}
+.lin-nav-item{display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:.81rem;color:var(--fg-3,rgba(255,255,255,.6));text-decoration:none;border-radius:8px;margin:1px 6px;cursor:pointer;transition:background .12s,color .12s;user-select:none;}
+.lin-nav-item:hover{background:rgba(124,111,224,.09);color:var(--fg-1);}
+.lin-nav-item.active{background:rgba(124,111,224,.16);color:var(--violet-soft,#a89af0);font-weight:600;}
+.lin-nav-icon{font-size:.82rem;width:18px;text-align:center;flex-shrink:0;}
+.lin-nav-arrow{margin-left:auto;font-size:.58rem;color:var(--fg-4);transition:transform .2s;}
+.lin-nav-item.expanded .lin-nav-arrow{transform:rotate(90deg);}
+.lin-sub-group{display:none;}
+.lin-sub-group.open{display:block;}
+.lin-nav-sub{display:flex;align-items:center;gap:8px;padding:5px 10px 5px 36px;font-size:.78rem;color:var(--fg-3);text-decoration:none;border-radius:7px;margin:1px 6px;cursor:pointer;transition:background .12s,color .12s;}
+.lin-nav-sub:hover{background:rgba(124,111,224,.08);color:var(--fg-1);}
+.lin-nav-sub.active{background:rgba(124,111,224,.12);color:var(--violet-soft,#a89af0);font-weight:600;}
+.lin-main{flex:1;overflow-y:auto;min-width:0;}
+@media(max-width:640px){.lin-sidebar{display:none;}}
+.drv-folder{margin-bottom:34px;}
+.drv-folder-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+.drv-folder-name{font-size:1.05rem;font-weight:700;color:var(--fg-1);}
+.drv-folder-count{font-size:.75rem;color:var(--muted);background:var(--accent-light);color:var(--accent);padding:2px 9px;border-radius:100px;font-weight:600;}
+.file-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;}
+.file-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;transition:box-shadow .2s,transform .2s;}
+.file-card:hover{box-shadow:0 4px 20px rgba(0,0,0,.1);transform:translateY(-2px);}
+.file-icon{font-size:2.3rem;line-height:1;}
+.file-name{font-size:.82rem;font-weight:600;color:var(--dark);word-break:break-all;line-height:1.3;}
+.file-size{font-size:.72rem;color:var(--muted);}
+.file-actions{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;justify-content:center;}
+.drv-banner{background:var(--accent-light);border:1px solid var(--line-violet,rgba(124,111,224,.3));border-radius:12px;padding:14px 18px;font-size:.85rem;color:var(--fg-2);margin-bottom:24px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.drv-error{background:rgba(239,68,68,.10);border:1px solid rgba(239,68,68,.35);color:#e06a6a;border-radius:12px;padding:18px 20px;font-size:.88rem;line-height:1.6;}
+.drv-empty{color:var(--muted);font-size:.85rem;padding:8px 2px;}
+</style>
+{% endblock %}
+{% block content %}
+<div class="lin-wrap">
+  <aside class="lin-sidebar">
+    <div class="lin-sidebar-top">
+      <div class="lin-workspace">
+        <div class="lin-workspace-icon">T</div>
+        <div style="min-width:0;"><div class="lin-workspace-name">TSL Portal</div><div class="lin-workspace-user">{{ researcher }}</div></div>
+      </div>
+    </div>
+    <div class="lin-sidebar-scroll">
+      <div class="lin-nav-section" style="padding-top:4px;">
+        <a href="{{ url_for('portal') }}" class="lin-nav-item"><span class="lin-nav-icon">🗂</span><span>프로젝트</span></a>
+        <div class="lin-nav-item expanded" id="nav-data" onclick="toggleNav('data')"><span class="lin-nav-icon">📊</span><span>데이터</span><span class="lin-nav-arrow">▶</span></div>
+        <div class="lin-sub-group open" id="sub-data">
+          <a href="{{ url_for('portal_all_participants') }}" class="lin-nav-sub">전체 참여자</a>
+          <a href="{{ url_for('portal_all_sessions') }}" class="lin-nav-sub">전체 세션</a>
+          <a href="{{ url_for('portal_merge') }}" class="lin-nav-sub">프로젝트 병합</a>
+          <a href="{{ url_for('portal_files') }}" class="lin-nav-sub">📁 파일 관리</a>
+          <a href="{{ url_for('portal_drive') }}" class="lin-nav-sub active">☁️ Google Drive</a>
+          <a href="{{ url_for('portal_analytics') }}" class="lin-nav-sub">📈 분석</a>
+        </div>
+        <a href="{{ url_for('portal_tasks') }}" class="lin-nav-item"><span class="lin-nav-icon">📅</span><span>일정</span></a>
+        <div class="lin-nav-item" id="nav-app" onclick="toggleNav('app')"><span class="lin-nav-icon">📱</span><span>App 로그</span><span class="lin-nav-arrow">▶</span></div>
+        <div class="lin-sub-group" id="sub-app">
+          <a href="{{ url_for('portal_wardy') }}" class="lin-nav-sub">🎮 Wardy</a>
+          <a href="{{ url_for('portal_neurobreeze') }}" class="lin-nav-sub">🧠 NeuroBreeze</a>
+        </div>
+        <div class="lin-nav-item" id="nav-admin" onclick="toggleNav('admin')"><span class="lin-nav-icon">⚙️</span><span>관리</span><span class="lin-nav-arrow">▶</span></div>
+        <div class="lin-sub-group" id="sub-admin">
+          <a href="{{ url_for('portal_news') }}" class="lin-nav-sub">📣 공지 관리</a>
+          <a href="{{ url_for('portal_contacts') }}" class="lin-nav-sub">✉ 문의 수신함</a>
+          <a href="{{ url_for('portal_settings') }}" class="lin-nav-sub">설정</a>
+          <a href="{{ url_for('portal_audit') }}" class="lin-nav-sub">🗒 감사 로그</a>
+          <a href="{{ url_for('api_docs') }}" class="lin-nav-sub">📖 API 문서</a>
+        </div>
+      </div>
+    </div>
+    <div class="lin-sidebar-bottom">
+      <a href="{{ url_for('logout') }}" class="lin-nav-item" style="margin:0;"><span class="lin-nav-icon" style="font-size:.8rem;">↩</span><span style="font-size:.79rem;">로그아웃</span></a>
+    </div>
+  </aside>
+  <div class="lin-main">
+  <div class="container" style="padding-top:32px;padding-bottom:60px;">
+
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;margin-bottom:18px;">
+      <div>
+        <h2 style="margin:0;font-size:1.5rem;">☁️ Google Drive</h2>
+        <p style="color:var(--muted);font-size:.86rem;margin-top:4px;">랩 드라이브의 공유 폴더 · 읽기 전용 · 항상 최신</p>
+      </div>
+      <button type="button" class="btn btn-outline" style="font-size:.82rem;" onclick="location.reload()">↻ 새로고침</button>
+    </div>
+
+    {% if error %}
+    <div class="drv-error">{{ error }}</div>
+    {% else %}
+    <div class="drv-banner">
+      <span style="font-size:1.1rem;">💡</span>
+      <span>드라이브에서 작업한 내용이 여기 그대로 보입니다. 새 파일을 만들면 <strong>새로고침</strong> 시 바로 반영돼요. 파일을 열거나 내려받을 수 있어요.</span>
+    </div>
+
+    {% for fol in folders %}
+    <div class="drv-folder">
+      <div class="drv-folder-head">
+        <span style="font-size:1.2rem;">📂</span>
+        <span class="drv-folder-name">{{ fol.name }}</span>
+        {% if not fol.error %}<span class="drv-folder-count">{{ fol.files|length }}개</span>{% endif %}
+      </div>
+      {% if fol.error %}
+      <div class="drv-empty" style="color:#e06a6a;">이 폴더를 불러오지 못했어요: {{ fol.error }}<br><small>서비스 계정에 이 폴더가 공유됐는지 확인해주세요.</small></div>
+      {% elif fol.files %}
+      <div class="file-grid">
+        {% for f in fol.files %}
+        {% set m = f.mimeType %}
+        {% set is_folder = (m == 'application/vnd.google-apps.folder') %}
+        {% set icon = '📁' if is_folder else ('📊' if ('spreadsheet' in m or m.endswith('sheet')) else ('📝' if 'document' in m else ('📽️' if 'presentation' in m else ('📄' if 'pdf' in m else ('🖼️' if m.startswith('image/') else ('🎬' if m.startswith('video/') else ('🎵' if m.startswith('audio/') else '📎'))))))) %}
+        <div class="file-card">
+          <div class="file-icon">{{ icon }}</div>
+          <div class="file-name" title="{{ f.name }}">{{ f.name[:34] }}{% if f.name|length > 34 %}…{% endif %}</div>
+          <div class="file-size">{% if f.modifiedTime %}{{ f.modifiedTime[:10] }}{% endif %}{% if f.size %} · {{ "%.0f"|format(f.size|int / 1024) }} KB{% endif %}</div>
+          <div class="file-actions">
+            {% if not is_folder %}
+            <a href="{{ url_for('portal_drive_file', file_id=f.id) }}" class="btn btn-primary" style="font-size:.72rem;padding:4px 10px;">↓ 다운로드</a>
+            {% endif %}
+            {% if f.webViewLink %}
+            <a href="{{ f.webViewLink }}" target="_blank" rel="noopener" class="btn btn-outline" style="font-size:.72rem;padding:4px 10px;">↗ 드라이브에서 열기</a>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="drv-empty">(비어 있음)</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+    {% endif %}
+
+  </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function toggleNav(key){const btn=document.getElementById('nav-'+key),group=document.getElementById('sub-'+key);if(!btn||!group)return;const open=group.classList.contains('open');group.classList.toggle('open',!open);btn.classList.toggle('expanded',!open);}
+</script>
+{% endblock %}

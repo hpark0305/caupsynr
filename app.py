@@ -4,6 +4,7 @@ from functools import wraps
 from dotenv import load_dotenv
 import os, sqlite3, uuid as _uuid, json, csv, io, re
 import requests as _requests
+import drive_sync
 from scipy import stats as _scipy_stats
 import numpy as _np
 from datetime import datetime, timedelta
@@ -2059,6 +2060,54 @@ def portal_files_delete(file_id):
         sb("DELETE", "portal_files", params=f"?id=eq.{file_id}")
         flash("파일이 삭제됐어요.")
     return redirect(url_for("portal_files"))
+
+# ─── Google Drive (lab shared folders → portal, read-only live view) ─────────
+_DEFAULT_DRIVE_FOLDERS = [
+    "1TdiJdGppW8x_DpexRbxY0swSEf0NuYCw",
+    "1e2cbXgiAaGRbM6_Z-BCT3EEpH577DXb7",
+    "1-nF47M31C0DBbf9_P3-JKopn7P5bGEot",
+    "1jNPjLHeEgkf4eb2JcbZ7nCdaR_VsruaN",
+    "1ZIuZqQoQx7CaeQ0WVlN6ASdux9dj6qDR",
+    "1tXWy8_7ctRG5-tsdLwD0SSe4SrqrTzUB",
+    "1Qjqi-RnxuHXyNDLKUHbdM_yccFrBCsQA",
+    "1mHpfo4qOlOJ3NfACSQVetC5-pXPw_OGq",
+]
+_env_folders = os.getenv("GOOGLE_DRIVE_FOLDER_IDS", "").strip()
+DRIVE_FOLDER_IDS = [f.strip() for f in _env_folders.split(",") if f.strip()] if _env_folders else _DEFAULT_DRIVE_FOLDERS
+
+@app.route("/portal/drive")
+@login_required
+def portal_drive():
+    error, folders = None, []
+    if not drive_sync.is_configured():
+        error = ("Google Drive가 아직 연결되지 않았어요. "
+                 "Render 환경변수 GOOGLE_SERVICE_ACCOUNT_JSON을 설정하면 자동으로 연결됩니다.")
+    else:
+        try:
+            folders = drive_sync.list_all(DRIVE_FOLDER_IDS)
+        except drive_sync.DriveNotConfigured as e:
+            error = str(e)
+        except Exception as e:
+            error = "드라이브를 불러오지 못했어요: " + str(e)
+    return render_template("portal_drive.html",
+                           researcher=session.get("researcher", ""),
+                           folders=folders, error=error)
+
+@app.route("/portal/drive/file/<file_id>")
+@login_required
+def portal_drive_file(file_id):
+    if not re.match(r"^[A-Za-z0-9_-]+$", file_id or ""):
+        flash("잘못된 파일 ID예요.", "error")
+        return redirect(url_for("portal_drive"))
+    try:
+        data, mime, name = drive_sync.get_file(file_id)
+    except Exception as e:
+        flash("파일을 불러오지 못했어요: " + str(e), "error")
+        return redirect(url_for("portal_drive"))
+    from urllib.parse import quote
+    resp = Response(data, mimetype=mime or "application/octet-stream")
+    resp.headers["Content-Disposition"] = "attachment; filename*=UTF-8''" + quote(name)
+    return resp
 
 @app.route("/portal/settings")
 @login_required
