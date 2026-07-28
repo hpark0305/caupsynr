@@ -43,45 +43,7 @@
 {% endblock %}
 {% block content %}
 <div class="lin-wrap">
-  <aside class="lin-sidebar">
-    <div class="lin-sidebar-top">
-      <div class="lin-workspace">
-        <div class="lin-workspace-icon">T</div>
-        <div style="min-width:0;"><div class="lin-workspace-name">TSL Portal</div><div class="lin-workspace-user">{{ researcher }}</div></div>
-      </div>
-    </div>
-    <div class="lin-sidebar-scroll">
-      <div class="lin-nav-section" style="padding-top:4px;">
-        <a href="{{ url_for('portal') }}" class="lin-nav-item"><span class="lin-nav-icon">🗂</span><span>프로젝트</span></a>
-        <div class="lin-nav-item expanded" id="nav-data" onclick="toggleNav('data')"><span class="lin-nav-icon">📊</span><span>데이터</span><span class="lin-nav-arrow">▶</span></div>
-        <div class="lin-sub-group open" id="sub-data">
-          <a href="{{ url_for('portal_all_participants') }}" class="lin-nav-sub">전체 참여자</a>
-          <a href="{{ url_for('portal_all_sessions') }}" class="lin-nav-sub">전체 세션</a>
-          <a href="{{ url_for('portal_merge') }}" class="lin-nav-sub">프로젝트 병합</a>
-          <a href="{{ url_for('portal_files') }}" class="lin-nav-sub">📁 파일 관리</a>
-          <a href="{{ url_for('portal_drive') }}" class="lin-nav-sub active">☁️ Google Drive</a>
-          <a href="{{ url_for('portal_analytics') }}" class="lin-nav-sub">📈 분석</a>
-        </div>
-        <a href="{{ url_for('portal_tasks') }}" class="lin-nav-item"><span class="lin-nav-icon">📅</span><span>일정</span></a>
-        <div class="lin-nav-item" id="nav-app" onclick="toggleNav('app')"><span class="lin-nav-icon">📱</span><span>App 로그</span><span class="lin-nav-arrow">▶</span></div>
-        <div class="lin-sub-group" id="sub-app">
-          <a href="{{ url_for('portal_wardy') }}" class="lin-nav-sub">🎮 Wardy</a>
-          <a href="{{ url_for('portal_neurobreeze') }}" class="lin-nav-sub">🧠 NeuroBreeze</a>
-        </div>
-        <div class="lin-nav-item" id="nav-admin" onclick="toggleNav('admin')"><span class="lin-nav-icon">⚙️</span><span>관리</span><span class="lin-nav-arrow">▶</span></div>
-        <div class="lin-sub-group" id="sub-admin">
-          <a href="{{ url_for('portal_news') }}" class="lin-nav-sub">📣 공지 관리</a>
-          <a href="{{ url_for('portal_contacts') }}" class="lin-nav-sub">✉ 문의 수신함</a>
-          <a href="{{ url_for('portal_settings') }}" class="lin-nav-sub">설정</a>
-          <a href="{{ url_for('portal_audit') }}" class="lin-nav-sub">🗒 감사 로그</a>
-          <a href="{{ url_for('api_docs') }}" class="lin-nav-sub">📖 API 문서</a>
-        </div>
-      </div>
-    </div>
-    <div class="lin-sidebar-bottom">
-      <a href="{{ url_for('logout') }}" class="lin-nav-item" style="margin:0;"><span class="lin-nav-icon" style="font-size:.8rem;">↩</span><span style="font-size:.79rem;">로그아웃</span></a>
-    </div>
-  </aside>
+  {% include "_portal_sidebar.html" %}
   <div class="lin-main">
   <div class="container" style="padding-top:32px;padding-bottom:60px;">
 

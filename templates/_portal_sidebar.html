@@ -1,0 +1,40 @@
+<aside class="lin-sidebar">
+  <div class="lin-sidebar-top">
+    <div class="lin-workspace">
+      <div class="lin-workspace-icon">T</div>
+      <div style="min-width:0;"><div class="lin-workspace-name">TSL Portal</div><div class="lin-workspace-user">{{ researcher }}</div></div>
+    </div>
+  </div>
+  <div class="lin-sidebar-scroll">
+    <div class="lin-nav-section" style="padding-top:4px;">
+      <a href="{{ url_for('portal') }}" class="lin-nav-item {% if request.endpoint=='portal' %}active{% endif %}"><span class="lin-nav-icon">🗂</span><span>프로젝트</span></a>
+      <div class="lin-nav-item expanded" id="nav-data" onclick="toggleNav('data')"><span class="lin-nav-icon">📊</span><span>데이터</span><span class="lin-nav-arrow">▶</span></div>
+      <div class="lin-sub-group open" id="sub-data">
+        <a href="{{ url_for('portal_all_participants') }}" class="lin-nav-sub {% if request.endpoint=='portal_all_participants' %}active{% endif %}">전체 참여자</a>
+        <a href="{{ url_for('portal_all_sessions') }}" class="lin-nav-sub {% if request.endpoint=='portal_all_sessions' %}active{% endif %}">전체 세션</a>
+        <a href="{{ url_for('portal_merge') }}" class="lin-nav-sub {% if request.endpoint=='portal_merge' %}active{% endif %}">프로젝트 병합</a>
+        <a href="{{ url_for('portal_files') }}" class="lin-nav-sub {% if request.endpoint=='portal_files' %}active{% endif %}">📁 파일 관리</a>
+        <a href="{{ url_for('portal_drive') }}" class="lin-nav-sub {% if request.endpoint=='portal_drive' %}active{% endif %}">☁️ Google Drive</a>
+        <a href="{{ url_for('portal_analytics') }}" class="lin-nav-sub {% if request.endpoint=='portal_analytics' %}active{% endif %}">📈 분석</a>
+      </div>
+      <a href="{{ url_for('portal_tasks') }}" class="lin-nav-item {% if request.endpoint=='portal_tasks' %}active{% endif %}"><span class="lin-nav-icon">📅</span><span>일정</span></a>
+      <a href="{{ url_for('portal_forms') }}" class="lin-nav-item {% if request.endpoint in ['portal_forms','portal_form_edit','portal_form_responses'] %}active{% endif %}"><span class="lin-nav-icon">📝</span><span>설문</span></a>
+      <div class="lin-nav-item" id="nav-app" onclick="toggleNav('app')"><span class="lin-nav-icon">📱</span><span>App 로그</span><span class="lin-nav-arrow">▶</span></div>
+      <div class="lin-sub-group" id="sub-app">
+        <a href="{{ url_for('portal_wardy') }}" class="lin-nav-sub {% if request.endpoint=='portal_wardy' %}active{% endif %}">🎮 Wardy</a>
+        <a href="{{ url_for('portal_neurobreeze') }}" class="lin-nav-sub {% if request.endpoint=='portal_neurobreeze' %}active{% endif %}">🧠 NeuroBreeze</a>
+      </div>
+      <div class="lin-nav-item" id="nav-admin" onclick="toggleNav('admin')"><span class="lin-nav-icon">⚙️</span><span>관리</span><span class="lin-nav-arrow">▶</span></div>
+      <div class="lin-sub-group" id="sub-admin">
+        <a href="{{ url_for('portal_news') }}" class="lin-nav-sub {% if request.endpoint=='portal_news' %}active{% endif %}">📣 공지 관리</a>
+        <a href="{{ url_for('portal_contacts') }}" class="lin-nav-sub {% if request.endpoint=='portal_contacts' %}active{% endif %}">✉ 문의 수신함</a>
+        <a href="{{ url_for('portal_settings') }}" class="lin-nav-sub {% if request.endpoint=='portal_settings' %}active{% endif %}">설정</a>
+        <a href="{{ url_for('portal_audit') }}" class="lin-nav-sub {% if request.endpoint=='portal_audit' %}active{% endif %}">🗒 감사 로그</a>
+        <a href="{{ url_for('api_docs') }}" class="lin-nav-sub {% if request.endpoint=='api_docs' %}active{% endif %}">📖 API 문서</a>
+      </div>
+    </div>
+  </div>
+  <div class="lin-sidebar-bottom">
+    <a href="{{ url_for('logout') }}" class="lin-nav-item" style="margin:0;"><span class="lin-nav-icon" style="font-size:.8rem;">↩</span><span style="font-size:.79rem;">로그아웃</span></a>
+  </div>
+</aside>

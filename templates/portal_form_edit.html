@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block title %}{{ form.title }} · 설문 편집{% endblock %}
+{% block head %}
+<style>
+.lin-wrap{display:flex;height:calc(100vh - var(--nav-h,72px));overflow:hidden;background:var(--bg);}
+.lin-sidebar{width:232px;min-width:232px;height:100%;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;}
+.lin-sidebar-top{padding:14px 10px 10px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.lin-workspace{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:9px;}
+.lin-workspace-icon{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--violet,#7c6fe0),#4fc3f7);display:flex;align-items:center;justify-content:center;font-size:.9rem;color:#fff;font-weight:900;flex-shrink:0;}
+.lin-workspace-name{font-size:.84rem;font-weight:700;color:var(--fg-1,#fff);line-height:1.2;}
+.lin-workspace-user{font-size:.7rem;color:var(--fg-4,rgba(255,255,255,.35));overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px;}
+.lin-sidebar-scroll{flex:1;overflow-y:auto;padding:8px 0 0;}
+.lin-sidebar-bottom{padding:8px;border-top:1px solid var(--border);flex-shrink:0;}
+.lin-nav-item{display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:.81rem;color:var(--fg-3,rgba(255,255,255,.6));text-decoration:none;border-radius:8px;margin:1px 6px;cursor:pointer;transition:background .12s,color .12s;user-select:none;}
+.lin-nav-item:hover{background:rgba(124,111,224,.09);color:var(--fg-1);}
+.lin-nav-item.active{background:rgba(124,111,224,.16);color:var(--violet-soft,#a89af0);font-weight:600;}
+.lin-nav-icon{font-size:.82rem;width:18px;text-align:center;flex-shrink:0;}
+.lin-nav-arrow{margin-left:auto;font-size:.58rem;color:var(--fg-4);transition:transform .2s;}
+.lin-nav-item.expanded .lin-nav-arrow{transform:rotate(90deg);}
+.lin-sub-group{display:none;}.lin-sub-group.open{display:block;}
+.lin-nav-sub{display:flex;align-items:center;gap:8px;padding:5px 10px 5px 36px;font-size:.78rem;color:var(--fg-3);text-decoration:none;border-radius:7px;margin:1px 6px;transition:background .12s,color .12s;}
+.lin-nav-sub:hover{background:rgba(124,111,224,.08);color:var(--fg-1);}
+.lin-nav-sub.active{background:rgba(124,111,224,.12);color:var(--violet-soft,#a89af0);font-weight:600;}
+.lin-main{flex:1;overflow-y:auto;min-width:0;}
+@media(max-width:640px){.lin-sidebar{display:none;}}
+.f-title-in{width:100%;font-size:1.5rem;font-weight:800;border:none;background:transparent;color:var(--fg-1);border-bottom:2px solid transparent;padding:4px 0;font-family:inherit;letter-spacing:-.02em;}
+.f-title-in:focus{outline:none;border-bottom-color:var(--violet);}
+.f-desc-in{width:100%;border:none;background:transparent;color:var(--muted);font-size:.9rem;resize:vertical;padding:4px 0;font-family:inherit;}
+.f-desc-in:focus{outline:none;}
+.badge{font-size:.68rem;font-weight:700;padding:3px 10px;border-radius:100px;}
+.badge.draft{background:rgba(140,140,150,.18);color:var(--muted);}
+.badge.published{background:rgba(94,230,168,.16);color:#3ea877;}
+.badge.closed{background:rgba(239,68,68,.14);color:#e06a6a;}
+.q-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px;}
+.q-card-top{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.q-num{width:22px;height:22px;border-radius:50%;background:var(--violet);color:#fff;font-size:.72rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.q-type{padding:5px 8px;border:1px solid var(--border);border-radius:7px;background:var(--bg);font-size:.8rem;color:var(--fg-1);font-family:inherit;}
+.q-req{font-size:.76rem;color:var(--muted);display:flex;align-items:center;gap:4px;cursor:pointer;}
+.q-btn{width:26px;height:26px;border:1px solid var(--border);background:var(--bg);border-radius:6px;cursor:pointer;font-size:.8rem;color:var(--fg-3);}
+.q-btn:hover{background:var(--surface2);color:var(--fg-1);}
+.q-del:hover{border-color:#e74c3c;color:#e74c3c;}
+.q-label{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);font-size:.9rem;color:var(--fg-1);font-family:inherit;}
+.q-options{margin-top:8px;}
+.q-opt-lbl{font-size:.74rem;color:var(--muted);display:block;margin-bottom:4px;}
+.q-opts{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);font-size:.85rem;color:var(--fg-1);font-family:inherit;}
+.q-empty{color:var(--muted);font-size:.85rem;padding:24px;text-align:center;border:1.5px dashed var(--border);border-radius:12px;}
+.link-box{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:8px 12px;font-size:.82rem;flex-wrap:wrap;}
+.link-box code{color:var(--violet-soft);font-size:.8rem;word-break:break-all;}
+.addbar{display:flex;gap:8px;align-items:center;margin:16px 0;flex-wrap:wrap;}
+</style>
+{% endblock %}
+{% block content %}
+<div class="lin-wrap">
+  {% include "_portal_sidebar.html" %}
+  <div class="lin-main">
+  <div class="container" style="max-width:820px;padding-top:28px;padding-bottom:60px;">
+
+    <a href="{{ url_for('portal_forms') }}" style="font-size:.82rem;color:var(--muted);">← 설문 목록</a>
+
+    <div style="display:flex;align-items:center;gap:10px;margin:14px 0 4px;flex-wrap:wrap;">
+      {% if form.status == 'published' %}<span class="badge published">공개중</span>
+      {% elif form.status == 'closed' %}<span class="badge closed">마감</span>
+      {% else %}<span class="badge draft">작성중</span>{% endif %}
+      <a href="{{ url_for('portal_form_responses', form_id=form.id) }}" style="font-size:.82rem;color:var(--violet-soft);font-weight:600;">📊 응답 보기</a>
+    </div>
+
+    <input class="f-title-in" id="f-title" value="{{ form.title }}" placeholder="설문 제목">
+    <textarea class="f-desc-in" id="f-desc" rows="2" placeholder="설문 설명 (선택)">{{ form.description or '' }}</textarea>
+
+    <!-- Publish / link controls -->
+    <div style="margin:16px 0;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;">
+      {% if form.status == 'published' %}
+      <div style="font-size:.82rem;color:var(--muted);margin-bottom:8px;">이 링크를 참여자에게 공유하세요 (로그인 없이 응답 가능):</div>
+      <div class="link-box">
+        <code id="pub-link">{{ public_url }}</code>
+        <button type="button" class="btn btn-outline" style="font-size:.74rem;padding:4px 10px;" onclick="copyLink()">복사</button>
+        <a href="{{ public_url }}" target="_blank" rel="noopener" class="btn btn-outline" style="font-size:.74rem;padding:4px 10px;">↗ 열기</a>
+      </div>
+      <form action="{{ url_for('portal_form_status', form_id=form.id) }}" method="POST" style="margin-top:10px;">
+        <input type="hidden" name="status" value="closed">
+        <button type="submit" class="btn btn-outline" style="font-size:.78rem;">응답 마감</button>
+      </form>
+      {% elif form.status == 'closed' %}
+      <div style="font-size:.82rem;color:var(--muted);margin-bottom:8px;">마감된 설문입니다. 다시 열면 응답을 받을 수 있어요.</div>
+      <form action="{{ url_for('portal_form_status', form_id=form.id) }}" method="POST">
+        <input type="hidden" name="status" value="published">
+        <button type="submit" class="btn btn-primary" style="font-size:.78rem;">다시 공개</button>
+      </form>
+      {% else %}
+      <div style="font-size:.82rem;color:var(--muted);margin-bottom:8px;">문항을 다 만들었으면 공개하세요. 공개하면 응답 링크가 생깁니다.</div>
+      <form action="{{ url_for('portal_form_status', form_id=form.id) }}" method="POST" onsubmit="return beforePublish();">
+        <input type="hidden" name="status" value="published">
+        <button type="submit" class="btn btn-primary" style="font-size:.78rem;">공개하기</button>
+        <span style="font-size:.74rem;color:var(--muted);">먼저 아래 <strong>저장</strong>을 눌러주세요</span>
+      </form>
+      {% endif %}
+    </div>
+
+    <h3 style="font-size:1rem;margin:18px 0 4px;">문항</h3>
+    <div id="q-list"></div>
+
+    <div class="addbar">
+      <button type="button" class="btn btn-outline" onclick="addQ()">+ 질문 추가</button>
+      <span style="flex:1"></span>
+      <span id="save-status" style="font-size:.8rem;color:#3ea877;font-weight:600;"></span>
+      <button type="button" class="btn btn-primary" id="save-btn" onclick="save()">저장</button>
+    </div>
+
+  </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function toggleNav(key){var b=document.getElementById('nav-'+key),g=document.getElementById('sub-'+key);if(!b||!g)return;var o=g.classList.contains('open');g.classList.toggle('open',!o);b.classList.toggle('expanded',!o);}
+var state = { questions: {{ questions|tojson }} };
+var TYPES = [['short_text','단답형'],['long_text','장문형'],['single_choice','객관식 (하나 선택)'],['multiple_choice','객관식 (여러 개)'],['number','숫자'],['date','날짜'],['rating','평점 (1-5)']];
+function uid(){ return 'q'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function typeOpts(sel){ return TYPES.map(function(t){return '<option value="'+t[0]+'"'+(t[0]===sel?' selected':'')+'>'+t[1]+'</option>';}).join(''); }
+function render(){
+  var list=document.getElementById('q-list');
+  if(!state.questions.length){ list.innerHTML='<div class="q-empty">아직 문항이 없어요. 아래 <b>+ 질문 추가</b>로 시작하세요.</div>'; return; }
+  list.innerHTML = state.questions.map(function(q,i){
+    var isChoice=(q.type==='single_choice'||q.type==='multiple_choice');
+    return '<div class="q-card" data-id="'+esc(q.id)+'">'
+      +'<div class="q-card-top"><span class="q-num">'+(i+1)+'</span>'
+      +'<select class="q-type">'+typeOpts(q.type)+'</select>'
+      +'<label class="q-req"><input type="checkbox" class="q-required"'+(q.required?' checked':'')+'> 필수</label>'
+      +'<span style="flex:1"></span>'
+      +'<button type="button" class="q-btn" onclick="moveQ('+i+',-1)">↑</button>'
+      +'<button type="button" class="q-btn" onclick="moveQ('+i+',1)">↓</button>'
+      +'<button type="button" class="q-btn q-del" onclick="removeQ('+i+')">✕</button></div>'
+      +'<input type="text" class="q-label" placeholder="질문을 입력하세요" value="'+esc(q.label)+'">'
+      +'<div class="q-options" style="display:'+(isChoice?'block':'none')+'"><label class="q-opt-lbl">선택지 (한 줄에 하나씩)</label>'
+      +'<textarea class="q-opts" rows="3" placeholder="선택지 1&#10;선택지 2">'+esc((q.options||[]).join('\n'))+'</textarea></div></div>';
+  }).join('');
+  [].forEach.call(list.querySelectorAll('.q-type'),function(sel){ sel.addEventListener('change',function(){ syncFromDom(); render(); }); });
+}
+function syncFromDom(){
+  var arr=[];
+  [].forEach.call(document.querySelectorAll('#q-list .q-card'),function(c){
+    var type=c.querySelector('.q-type').value;
+    var q={ id:c.getAttribute('data-id')||uid(), type:type, label:c.querySelector('.q-label').value, required:c.querySelector('.q-required').checked, options:[] };
+    if(type==='single_choice'||type==='multiple_choice'){
+      var t=c.querySelector('.q-opts'); q.options=(t?t.value:'').split('\n').map(function(s){return s.trim();}).filter(Boolean);
+    }
+    arr.push(q);
+  });
+  state.questions=arr;
+}
+function addQ(){ syncFromDom(); state.questions.push({id:uid(),type:'short_text',label:'',required:false,options:[]}); render(); }
+function removeQ(i){ syncFromDom(); state.questions.splice(i,1); render(); }
+function moveQ(i,d){ syncFromDom(); var j=i+d; if(j<0||j>=state.questions.length)return; var t=state.questions[i]; state.questions[i]=state.questions[j]; state.questions[j]=t; render(); }
+function csrf(){ var m=document.querySelector('meta[name="csrf-token"]'); return m?m.content:''; }
+var savedOnce=false;
+function save(){
+  syncFromDom();
+  var btn=document.getElementById('save-btn'); btn.disabled=true; btn.textContent='저장 중…';
+  return fetch('{{ url_for("portal_form_save", form_id=form.id) }}',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':csrf()},body:JSON.stringify({title:document.getElementById('f-title').value.trim()||'제목 없는 설문',description:document.getElementById('f-desc').value,questions:state.questions})})
+    .then(function(r){return r.json();}).then(function(d){ btn.disabled=false; btn.textContent='저장'; savedOnce=true; var s=document.getElementById('save-status'); s.textContent=d.ok?'✓ 저장됨':'저장 실패'; setTimeout(function(){s.textContent='';},2200); return d.ok; })
+    .catch(function(){ btn.disabled=false; btn.textContent='저장'; document.getElementById('save-status').textContent='저장 실패'; return false; });
+}
+function beforePublish(){ if(!savedOnce){ save(); alert('저장했어요. 한 번 더 "공개하기"를 눌러주세요.'); return false; } return true; }
+function copyLink(){ var t=document.getElementById('pub-link').textContent.trim(); navigator.clipboard.writeText(t).then(function(){ alert('링크를 복사했어요!'); }); }
+document.addEventListener('DOMContentLoaded', render);
+</script>
+{% endblock %}

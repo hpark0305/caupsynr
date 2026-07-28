@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}{{ form.title if form else '설문' }}{% endblock %}
+{% block head %}
+<style>
+.pf-wrap{max-width:680px;margin:0 auto;padding:48px 20px 80px;}
+.pf-card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:32px 28px;box-shadow:var(--shadow-sm);}
+.pf-title{font-size:1.6rem;font-weight:800;letter-spacing:-.02em;color:var(--fg-1);margin-bottom:8px;}
+.pf-desc{color:var(--muted);font-size:.95rem;line-height:1.6;margin-bottom:8px;white-space:pre-wrap;}
+.pf-q{padding:20px 0;border-top:1px solid var(--border);}
+.pf-q-label{font-weight:600;color:var(--fg-1);font-size:.98rem;margin-bottom:12px;}
+.pf-req{color:#e06a6a;margin-left:2px;}
+.pf-in{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:9px;background:var(--bg);font-size:.95rem;color:var(--fg-1);font-family:inherit;}
+.pf-in:focus{outline:none;border-color:var(--violet);}
+.pf-opt{display:flex;align-items:center;gap:9px;padding:8px 10px;border:1px solid var(--border);border-radius:9px;margin-bottom:7px;cursor:pointer;font-size:.92rem;color:var(--fg-2);transition:border-color .15s,background .15s;}
+.pf-opt:hover{border-color:var(--violet);background:var(--accent-light);}
+.pf-rating{display:flex;gap:8px;flex-wrap:wrap;}
+.pf-rating label{width:44px;height:44px;border:1.5px solid var(--border);border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-weight:700;color:var(--fg-2);}
+.pf-rating input{position:absolute;opacity:0;width:0;height:0;}
+.pf-rating input:checked + span{}
+.pf-rating label:has(input:checked){background:var(--violet);color:#fff;border-color:var(--violet);}
+.pf-msg{max-width:560px;margin:80px auto;text-align:center;padding:0 20px;}
+.pf-msg-icon{font-size:3.4rem;margin-bottom:16px;}
+</style>
+{% endblock %}
+{% block content %}
+{% if not form %}
+<div class="pf-msg">
+  <div class="pf-msg-icon">🔍</div>
+  <h2>설문을 찾을 수 없어요</h2>
+  <p style="color:var(--muted);">링크가 올바른지 확인해주세요.</p>
+</div>
+{% elif done %}
+<div class="pf-msg">
+  <div class="pf-msg-icon">✅</div>
+  <h2>응답이 제출되었습니다</h2>
+  <p style="color:var(--muted);">소중한 시간을 내어 참여해주셔서 감사합니다.</p>
+</div>
+{% elif closed %}
+<div class="pf-msg">
+  <div class="pf-msg-icon">🔒</div>
+  <h2>지금은 응답을 받지 않아요</h2>
+  <p style="color:var(--muted);">이 설문은 아직 공개되지 않았거나 마감되었습니다.</p>
+</div>
+{% else %}
+<div class="pf-wrap">
+  <form method="POST" class="pf-card">
+    <div class="pf-title">{{ form.title }}</div>
+    {% if form.description %}<div class="pf-desc">{{ form.description }}</div>{% endif %}
+
+    <div class="pf-q">
+      <div class="pf-q-label">참여자 코드 <span style="color:var(--muted);font-weight:400;font-size:.82rem;">(있는 경우에만)</span></div>
+      <input class="pf-in" type="text" name="participant_code" placeholder="예: P001">
+    </div>
+
+    {% for q in questions %}
+    <div class="pf-q">
+      <div class="pf-q-label">{{ q.label }}{% if q.required %}<span class="pf-req">*</span>{% endif %}</div>
+      {% set nm = 'q_' + q.id %}
+      {% if q.type == 'long_text' %}
+      <textarea class="pf-in" name="{{ nm }}" rows="4" {% if q.required %}required{% endif %}></textarea>
+      {% elif q.type == 'number' %}
+      <input class="pf-in" type="number" step="any" name="{{ nm }}" {% if q.required %}required{% endif %}>
+      {% elif q.type == 'date' %}
+      <input class="pf-in" type="date" name="{{ nm }}" {% if q.required %}required{% endif %}>
+      {% elif q.type == 'single_choice' %}
+        {% for opt in q.options %}
+        <label class="pf-opt"><input type="radio" name="{{ nm }}" value="{{ opt }}" {% if q.required %}required{% endif %}> {{ opt }}</label>
+        {% endfor %}
+      {% elif q.type == 'multiple_choice' %}
+        {% for opt in q.options %}
+        <label class="pf-opt"><input type="checkbox" name="{{ nm }}" value="{{ opt }}"> {{ opt }}</label>
+        {% endfor %}
+      {% elif q.type == 'rating' %}
+      <div class="pf-rating">
+        {% for n in range(1,6) %}
+        <label><input type="radio" name="{{ nm }}" value="{{ n }}" {% if q.required %}required{% endif %}><span>{{ n }}</span></label>
+        {% endfor %}
+      </div>
+      {% else %}
+      <input class="pf-in" type="text" name="{{ nm }}" {% if q.required %}required{% endif %}>
+      {% endif %}
+    </div>
+    {% endfor %}
+
+    <div style="padding-top:24px;">
+      <button type="submit" class="btn btn-primary btn-lg" style="width:100%;">제출하기</button>
+    </div>
+  </form>
+</div>
+{% endif %}
+{% endblock %}
