@@ -68,6 +68,20 @@
       </div>
       {% endfor %}
     </div>
+
+    {% if team.intern %}
+    <h3 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:.8rem;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:48px 0 20px;">Undergraduate Lab Interns</h3>
+    <div class="grid-3">
+      {% for m in team.intern %}
+      <div class="member-card">
+        <img class="member-photo" src="{{ url_for('static', filename=m.image) }}" alt="{{ m.name }}">
+        <div class="member-degree">Undergraduate Intern</div>
+        <div class="member-name">{{ m.name }}</div>
+        <div class="member-interest">{{ m.interest }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
   </div>
 </section>
 

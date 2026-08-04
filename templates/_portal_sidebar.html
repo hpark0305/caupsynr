@@ -21,7 +21,6 @@
       <div class="lin-sub-group open" id="sub-data">
         <a href="{{ url_for('portal_drive') }}" class="lin-nav-sub {% if request.endpoint=='portal_drive' %}active{% endif %}">☁️ Google Drive</a>
         <a href="{{ url_for('portal_analytics') }}" class="lin-nav-sub {% if request.endpoint=='portal_analytics' %}active{% endif %}">📈 분석</a>
-        <a href="{{ url_for('portal_forms') }}" class="lin-nav-sub {% if request.endpoint in ['portal_forms','portal_form_edit','portal_form_responses'] %}active{% endif %}">📝 설문</a>
       </div>
       <a href="{{ url_for('portal_tasks') }}" class="lin-nav-item {% if request.endpoint=='portal_tasks' %}active{% endif %}"><span class="lin-nav-icon">📅</span><span>일정</span></a>
       <div class="lin-nav-item" id="nav-app" onclick="toggleNav('app')"><span class="lin-nav-icon">📱</span><span>App 로그</span><span class="lin-nav-arrow">▶</span></div>

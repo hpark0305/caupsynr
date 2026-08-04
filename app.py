@@ -247,23 +247,6 @@ def init_db():
                 alpha_progress_rate REAL,
                 received_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now','localtime'))
             );
-            CREATE TABLE IF NOT EXISTS forms (
-                id TEXT PRIMARY KEY,
-                title TEXT NOT NULL,
-                description TEXT,
-                questions TEXT DEFAULT '[]',
-                researcher_email TEXT NOT NULL,
-                project_id TEXT,
-                status TEXT DEFAULT 'draft',
-                created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now','localtime'))
-            );
-            CREATE TABLE IF NOT EXISTS form_responses (
-                id TEXT PRIMARY KEY,
-                form_id TEXT NOT NULL,
-                answers TEXT DEFAULT '{}',
-                participant_code TEXT,
-                submitted_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now','localtime'))
-            );
         ''')
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA synchronous=NORMAL")
@@ -331,7 +314,6 @@ _ALLOWED_TABLES = {
     'sessions','audit_log','project_collaborators','reset_tokens','project_protocols',
     'wardy_events','tasks',
     'neurobreeze_eeg','neurobreeze_meditation',
-    'forms','form_responses',
 }
 
 def _safe_col(col):
@@ -566,11 +548,15 @@ RESEARCH_TOPICS = [
 TEAM = {
     "phd": [
         {"name": "Hae-In Namgung",  "interest": "Simulation education, intervention research, RCT, PTSD, Artificial intelligence (AI)", "image": "images/member-haein-placeholder.jpg"},
-        {"name": "Jae-Won Kwak",    "interest": "Community mental health nursing, community addiction management",                        "image": "images/member-jaewon-placeholder.jpg"},
         {"name": "Joo-Young Jin",   "interest": "Nursing simulation, disaster nursing, psychological safety",                            "image": "images/member-jooyoung-placeholder.jpg"},
+        {"name": "Ji-Young Yeon",   "interest": "",                                                                                       "image": "images/member-jaewon-placeholder.jpg"},
     ],
     "ma": [
         {"name": "Chae-Young Lee",  "interest": "Anxiety, PTSD, depression, suicide, addiction",                                       "image": "images/member-chaeyoung-placeholder.jpg"},
+    ],
+    "intern": [
+        {"name": "Hyun Park", "interest": "", "image": "images/member-jaewon-placeholder.jpg"},
+        {"name": "Mi-So Kim", "interest": "", "image": "images/member-jaewon-placeholder.jpg"},
     ],
     "alumni": [
         {"name": "Run-Ju Choi",   "image": "images/run-ju_choi.avif",    "current_position": ""},
@@ -2126,180 +2112,6 @@ def portal_drive_file(file_id):
     resp = Response(data, mimetype=mime or "application/octet-stream")
     resp.headers["Content-Disposition"] = "attachment; filename*=UTF-8''" + quote(name)
     return resp
-
-# ─── Forms / surveys (native builder) ────────────────────────────────────────
-def _get_form_owned(form_id):
-    rows = sb("GET", "forms", params=f"?id=eq.{form_id}")
-    if not rows:
-        return None
-    f = rows[0]
-    if f.get("researcher_email") != session.get("researcher"):
-        return None
-    return f
-
-@app.route("/portal/forms")
-@login_required
-def portal_forms():
-    email = session["researcher"]
-    forms = sb("GET", "forms", params=f"?researcher_email=eq.{email}&order=created_at.desc") or []
-    for f in (forms if isinstance(forms, list) else []):
-        rc = sb("GET", "form_responses", params=f"?form_id=eq.{f['id']}&select=id") or []
-        f["response_count"] = len(rc) if isinstance(rc, list) else 0
-        try:
-            f["question_count"] = len(json.loads(f.get("questions") or "[]"))
-        except Exception:
-            f["question_count"] = 0
-    projects = sb("GET", "projects", params=f"?researcher_email=eq.{email}&order=created_at.desc") or []
-    return render_template("portal_forms.html",
-                           forms=forms if isinstance(forms, list) else [],
-                           projects=projects if isinstance(projects, list) else [], researcher=email)
-
-@app.route("/portal/forms/new", methods=["POST"])
-@login_required
-def portal_forms_new():
-    title = request.form.get("title", "").strip() or "제목 없는 설문"
-    row = sb("POST", "forms", data={
-        "title": title,
-        "description": request.form.get("description", "").strip(),
-        "questions": "[]",
-        "researcher_email": session["researcher"],
-        "project_id": request.form.get("project_id") or None,
-        "status": "draft",
-    })
-    fid = row[0]["id"] if row else None
-    if fid:
-        return redirect(url_for("portal_form_edit", form_id=fid))
-    flash("설문 생성에 실패했어요.", "error")
-    return redirect(url_for("portal_forms"))
-
-@app.route("/portal/forms/<form_id>")
-@login_required
-def portal_form_edit(form_id):
-    f = _get_form_owned(form_id)
-    if not f:
-        flash("설문을 찾을 수 없어요.", "error"); return redirect(url_for("portal_forms"))
-    try:
-        questions = json.loads(f.get("questions") or "[]")
-    except Exception:
-        questions = []
-    public_url = url_for("public_form", form_id=form_id, _external=True)
-    return render_template("portal_form_edit.html", form=f, questions=questions,
-                           public_url=public_url, researcher=session["researcher"])
-
-@app.route("/portal/forms/<form_id>/save", methods=["POST"])
-@login_required
-def portal_form_save(form_id):
-    f = _get_form_owned(form_id)
-    if not f:
-        return jsonify({"ok": False, "error": "not found"}), 404
-    payload = request.get_json(silent=True) or {}
-    title = (payload.get("title") or f.get("title") or "").strip() or "제목 없는 설문"
-    sb("PATCH", "forms", params=f"?id=eq.{form_id}", data={
-        "title": title,
-        "description": payload.get("description", f.get("description") or ""),
-        "questions": json.dumps(payload.get("questions", []), ensure_ascii=False),
-    })
-    return jsonify({"ok": True})
-
-@app.route("/portal/forms/<form_id>/status", methods=["POST"])
-@login_required
-def portal_form_status(form_id):
-    f = _get_form_owned(form_id)
-    if not f:
-        return redirect(url_for("portal_forms"))
-    new_status = request.form.get("status", "draft")
-    if new_status in ("draft", "published", "closed"):
-        sb("PATCH", "forms", params=f"?id=eq.{form_id}", data={"status": new_status})
-    return redirect(url_for("portal_form_edit", form_id=form_id))
-
-@app.route("/portal/forms/<form_id>/responses")
-@login_required
-def portal_form_responses(form_id):
-    f = _get_form_owned(form_id)
-    if not f:
-        flash("설문을 찾을 수 없어요.", "error"); return redirect(url_for("portal_forms"))
-    try:
-        questions = json.loads(f.get("questions") or "[]")
-    except Exception:
-        questions = []
-    resp = sb("GET", "form_responses", params=f"?form_id=eq.{form_id}&order=submitted_at.desc") or []
-    parsed = []
-    for r in (resp if isinstance(resp, list) else []):
-        try:
-            ans = json.loads(r.get("answers") or "{}")
-        except Exception:
-            ans = {}
-        parsed.append({"id": r.get("id"), "submitted_at": r.get("submitted_at", ""),
-                       "participant_code": r.get("participant_code", ""), "answers": ans})
-    return render_template("portal_form_responses.html", form=f, questions=questions,
-                           responses=parsed, researcher=session["researcher"])
-
-@app.route("/portal/forms/<form_id>/export")
-@login_required
-def portal_form_export(form_id):
-    f = _get_form_owned(form_id)
-    if not f:
-        return redirect(url_for("portal_forms"))
-    try:
-        questions = json.loads(f.get("questions") or "[]")
-    except Exception:
-        questions = []
-    resp = sb("GET", "form_responses", params=f"?form_id=eq.{form_id}&order=submitted_at.asc") or []
-    output = io.StringIO()
-    writer = csv.writer(output)
-    writer.writerow(["submitted_at", "participant_code"] + [q.get("label", "") for q in questions])
-    for r in (resp if isinstance(resp, list) else []):
-        try:
-            ans = json.loads(r.get("answers") or "{}")
-        except Exception:
-            ans = {}
-        row = [r.get("submitted_at", ""), r.get("participant_code", "")]
-        for q in questions:
-            v = ans.get(q.get("id"), "")
-            row.append(", ".join(map(str, v)) if isinstance(v, list) else v)
-        writer.writerow(row)
-    output.seek(0)
-    return Response(output.getvalue(), mimetype="text/csv;charset=utf-8-sig",
-        headers={"Content-Disposition": f"attachment;filename=form_{form_id}.csv"})
-
-@app.route("/portal/forms/<form_id>/delete", methods=["POST"])
-@login_required
-def portal_form_delete(form_id):
-    f = _get_form_owned(form_id)
-    if f:
-        sb("DELETE", "form_responses", params=f"?form_id=eq.{form_id}")
-        sb("DELETE", "forms", params=f"?id=eq.{form_id}")
-        flash("설문이 삭제됐어요.")
-    return redirect(url_for("portal_forms"))
-
-@app.route("/f/<form_id>", methods=["GET", "POST"])
-@csrf.exempt
-def public_form(form_id):
-    rows = sb("GET", "forms", params=f"?id=eq.{form_id}")
-    if not rows:
-        return render_template("form_public.html", form=None, questions=[], done=False, closed=False), 404
-    f = rows[0]
-    if f.get("status") != "published":
-        return render_template("form_public.html", form=f, questions=[], done=False, closed=True)
-    try:
-        questions = json.loads(f.get("questions") or "[]")
-    except Exception:
-        questions = []
-    if request.method == "POST":
-        answers = {}
-        for q in questions:
-            qid = q.get("id")
-            if q.get("type") == "multiple_choice":
-                answers[qid] = request.form.getlist("q_" + qid)
-            else:
-                answers[qid] = request.form.get("q_" + qid, "")
-        sb("POST", "form_responses", data={
-            "form_id": form_id,
-            "answers": json.dumps(answers, ensure_ascii=False),
-            "participant_code": request.form.get("participant_code", "").strip() or None,
-        })
-        return render_template("form_public.html", form=f, questions=questions, done=True, closed=False)
-    return render_template("form_public.html", form=f, questions=questions, done=False, closed=False)
 
 @app.route("/portal/settings")
 @login_required
