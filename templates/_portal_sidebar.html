@@ -7,18 +7,23 @@
   </div>
   <div class="lin-sidebar-scroll">
     <div class="lin-nav-section" style="padding-top:4px;">
-      <a href="{{ url_for('portal') }}" class="lin-nav-item {% if request.endpoint=='portal' %}active{% endif %}"><span class="lin-nav-icon">🗂</span><span>프로젝트</span></a>
-      <div class="lin-nav-item expanded" id="nav-data" onclick="toggleNav('data')"><span class="lin-nav-icon">📊</span><span>데이터</span><span class="lin-nav-arrow">▶</span></div>
-      <div class="lin-sub-group open" id="sub-data">
+      <div class="lin-nav-item expanded {% if request.endpoint=='portal' %}active{% endif %}" id="nav-proj">
+        <a href="{{ url_for('portal') }}" style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;color:inherit;text-decoration:none;"><span class="lin-nav-icon">🗂</span><span>프로젝트</span></a>
+        <span class="lin-nav-arrow" style="cursor:pointer;padding:4px 6px;margin:-4px -6px -4px 0;" onclick="event.stopPropagation();toggleNav('proj')">▶</span>
+      </div>
+      <div class="lin-sub-group open" id="sub-proj">
         <a href="{{ url_for('portal_all_participants') }}" class="lin-nav-sub {% if request.endpoint=='portal_all_participants' %}active{% endif %}">전체 참여자</a>
         <a href="{{ url_for('portal_all_sessions') }}" class="lin-nav-sub {% if request.endpoint=='portal_all_sessions' %}active{% endif %}">전체 세션</a>
         <a href="{{ url_for('portal_merge') }}" class="lin-nav-sub {% if request.endpoint=='portal_merge' %}active{% endif %}">프로젝트 병합</a>
         <a href="{{ url_for('portal_files') }}" class="lin-nav-sub {% if request.endpoint=='portal_files' %}active{% endif %}">📁 파일 관리</a>
+      </div>
+      <div class="lin-nav-item expanded" id="nav-data" onclick="toggleNav('data')"><span class="lin-nav-icon">📊</span><span>데이터</span><span class="lin-nav-arrow">▶</span></div>
+      <div class="lin-sub-group open" id="sub-data">
         <a href="{{ url_for('portal_drive') }}" class="lin-nav-sub {% if request.endpoint=='portal_drive' %}active{% endif %}">☁️ Google Drive</a>
         <a href="{{ url_for('portal_analytics') }}" class="lin-nav-sub {% if request.endpoint=='portal_analytics' %}active{% endif %}">📈 분석</a>
+        <a href="{{ url_for('portal_forms') }}" class="lin-nav-sub {% if request.endpoint in ['portal_forms','portal_form_edit','portal_form_responses'] %}active{% endif %}">📝 설문</a>
       </div>
       <a href="{{ url_for('portal_tasks') }}" class="lin-nav-item {% if request.endpoint=='portal_tasks' %}active{% endif %}"><span class="lin-nav-icon">📅</span><span>일정</span></a>
-      <a href="{{ url_for('portal_forms') }}" class="lin-nav-item {% if request.endpoint in ['portal_forms','portal_form_edit','portal_form_responses'] %}active{% endif %}"><span class="lin-nav-icon">📝</span><span>설문</span></a>
       <div class="lin-nav-item" id="nav-app" onclick="toggleNav('app')"><span class="lin-nav-icon">📱</span><span>App 로그</span><span class="lin-nav-arrow">▶</span></div>
       <div class="lin-sub-group" id="sub-app">
         <a href="{{ url_for('portal_wardy') }}" class="lin-nav-sub {% if request.endpoint=='portal_wardy' %}active{% endif %}">🎮 Wardy</a>
