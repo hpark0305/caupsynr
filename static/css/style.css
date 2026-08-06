@@ -1132,17 +1132,18 @@ span.ri-card-icon {
 .member-degree { font-size: .71rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 4px; }
 .member-interest { font-size: .82rem; color: var(--fg-3); line-height: 1.5; margin-top: 4px; }
 
-.alumni-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; }
+.alumni-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 28px 24px; }
 .alumni-item { text-align: center; }
 .alumni-photo {
-  width: 72px; height: 72px; border-radius: 50%; object-fit: cover;
-  margin: 0 auto 10px;
+  width: 100%; max-width: 168px; aspect-ratio: 1 / 1; height: auto;
+  border-radius: 50%; object-fit: cover;
+  margin: 0 auto 14px;
   border: 2px solid var(--border);
   filter: contrast(1.02);
   transition: filter .4s var(--ease-out);
 }
 .alumni-item:hover .alumni-photo { filter: contrast(1.04) brightness(1.03); }
-.alumni-name { font-size: .82rem; font-weight: 500; color: var(--fg-2); }
+.alumni-name { font-size: .92rem; font-weight: 600; color: var(--fg-1); }
 
 /* ═══════════════════════════════════════════════════════════════
    PUBLICATIONS PAGE
