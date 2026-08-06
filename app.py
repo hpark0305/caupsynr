@@ -549,14 +549,14 @@ TEAM = {
     "phd": [
         {"name": "Hae-In Namgung",  "interest": "Simulation education, intervention research, RCT, PTSD, Artificial intelligence (AI)", "image": "images/member-haein-placeholder.jpg"},
         {"name": "Joo-Young Jin",   "interest": "Nursing simulation, disaster nursing, psychological safety",                            "image": "images/member-jooyoung-placeholder.jpg"},
-        {"name": "Ji-Young Yeon",   "interest": "",                                                                                       "image": "images/member-jaewon-placeholder.jpg"},
+        {"name": "Ji-Young Yeon",   "interest": "",                                                                                       "image": "images/ji-young_yeon.jpg"},
     ],
     "ma": [
         {"name": "Chae-Young Lee",  "interest": "Anxiety, PTSD, depression, suicide, addiction",                                       "image": "images/member-chaeyoung-placeholder.jpg"},
     ],
     "intern": [
-        {"name": "Hyun Park", "interest": "", "image": "images/member-jaewon-placeholder.jpg"},
-        {"name": "Mi-So Kim", "interest": "", "image": "images/member-jaewon-placeholder.jpg"},
+        {"name": "Hyun Park", "interest": "", "image": "images/member-placeholder.jpg"},
+        {"name": "Mi-So Kim", "interest": "", "image": "images/member-placeholder.jpg"},
     ],
     "alumni": [
         {"name": "Run-Ju Choi",   "image": "images/run-ju_choi.avif",    "current_position": ""},
@@ -645,6 +645,13 @@ APPS = [
 
 # ─── Publications ────────────────────────────────────────────
 ARTICLES = [
+    # 2026
+    {"year": 2026, "title": "Efficacy of a Mobile-Based Intervention for Newly Graduated Nurses: A Randomized Controlled Trial", "authors": "Choi, Y. J., Song, H. W., Namgung, H. I. & Lee, C. Y.", "journal": "Digital Health, 12", "doi": "https://doi.org/10.1177/20552076261450524"},
+    {"year": 2026, "title": "Associations of Suicidal Behaviors with Physical Activity Types and Psychosocial Factors among Korean Adolescents: A Secondary Data Analysis", "authors": "Choi, Y. J.", "journal": "International Journal of Mental Health Promotion", "doi": None},
+    # 2025
+    {"year": 2025, "title": "Blooming as a New Nurse amid Trials and Uncertainty: A Qualitative Content Analysis", "authors": "Choi, Y. J., Namgung, H. I., Song, H. & Lee, N. R.", "journal": "Journal of Nursing Management, 5401225", "doi": "https://doi.org/10.1155/jonm/5401225"},
+    {"year": 2025, "title": "Changes in citizens' anxiety, depression, and PTSD after the Seoul Halloween crowd crush in 2022", "authors": "Choi, Y. J. & Song, H.", "journal": "Scientific Reports, 15, 30299", "doi": "https://doi.org/10.1038/s41598-025-15634-0"},
+    {"year": 2025, "title": "Using a mobile app comprising neurofeedback-based meditation and binaural beat music to treat PTSD symptoms: A qualitative analysis", "authors": "Choi, Y. J. & Lee, N. R.", "journal": "Digital Health, 11", "doi": "https://doi.org/10.1177/20552076241311053"},
     # 2024
     {"year": 2024, "title": "Feasibility of a Mobile App for Traumatic Stress Management Using Neurofeedback-based Mediation and Binaural Beat Music: A Pilot Randomized Controlled Trial", "authors": "Choi, Y. J., Cho, D. H. & Lee, N. R.", "journal": "Digital Health, 10", "doi": "https://doi.org/10.1177/20552076241308986"},
     {"year": 2024, "title": "Mental Health Status and Related Factors of Citizens 6 Months after Mass Death and Injury Due to Crowd Crush Incident: Focused on the Itaewon Disaster in 2022", "authors": "Choi, Y. J., Song, H., Namgung, H. I. & Lee, N. R.", "journal": "Disaster Medicine and Public Health Preparedness, 19, e11", "doi": "https://doi.org/10.1017/dmp.2024.342"},
