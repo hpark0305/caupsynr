@@ -11,6 +11,7 @@ from pathlib import Path
 from html.parser import HTMLParser
 from unittest.mock import patch, MagicMock
 from urllib.parse import parse_qs, urlsplit
+from contextlib import contextmanager
 
 IMPORT_DIR = tempfile.TemporaryDirectory(prefix='cau-security-import-')
 with patch.dict(os.environ, {
@@ -86,6 +87,133 @@ class SecurityTests(unittest.TestCase):
             sess['researcher'] = email
             sess['auth_stamp'] = portal._auth_stamp(portal._get_account(email))
             sess['auth_session_id'] = sid
+
+    @contextmanager
+    def remote_files(self):
+        objects = {}
+        store = MagicMock()
+        store.put.side_effect = lambda key, value, **kw: objects.__setitem__(key, value)
+        store.get.side_effect = objects.get
+        store.list.side_effect = lambda prefix: [{'id': key, 'name': key[len(prefix)+1:]} for key in objects if key.startswith(prefix + '/')]
+        store.delete.side_effect = lambda key: objects.pop(key, None)
+        local_sb = portal.sb
+        def db(*args, **kwargs):
+            with patch.object(portal, '_USE_SUPABASE', False):
+                return local_sb(*args, **kwargs)
+        with patch.object(portal, '_USE_SUPABASE', True), patch.object(portal, '_file_store', return_value=store), patch.object(portal, 'sb', side_effect=db):
+            yield store, objects
+
+    def test_remote_upload_survives_empty_local_directory(self):
+        with self.remote_files() as (store, objects):
+            response = self.post('/portal/files/upload', {'file': (io.BytesIO(b'code,score\na,1'), 'data.csv'), 'project_id': 'own'})
+            self.assertEqual(response.status_code, 302)
+            row = portal.sb('GET', 'portal_files')[0]
+            self.assertTrue(row['filename'].startswith('storage/'))
+            self.assertEqual(list(Path(portal.DATA_DIR).rglob('*')), [])
+            response = self.client.get('/portal/files/' + row['id'] + '/download')
+            self.assertEqual(response.data, b'code,score\na,1')
+            self.assertEqual(response.headers['Cache-Control'], 'no-store')
+        self.sign_in('other@example.test')
+        with self.remote_files() as (store, objects):
+            self.assertEqual(self.client.get('/portal/files/' + row['id'] + '/download').status_code, 302)
+            store.get.assert_not_called()
+
+    def test_remote_failure_leaves_no_database_metadata_or_import(self):
+        before = len(portal.sb('GET', 'measurements'))
+        with self.remote_files() as (store, objects):
+            store.put.side_effect = portal.StorageUnavailable('unavailable')
+            for path in ('/portal/files/upload', '/portal/projects/own/upload'):
+                response = self.post(path, {'file': (io.BytesIO(b'code,score\na,1'), 'data.csv')})
+                self.assertEqual(response.status_code, 503)
+            self.assertEqual(portal.sb('GET', 'portal_files'), [])
+            self.assertEqual(len(portal.sb('GET', 'measurements')), before)
+
+    def test_import_original_is_durable_and_downloadable(self):
+        with self.remote_files() as (store, objects):
+            response = self.post('/portal/projects/own/upload', {'file': (io.BytesIO(b'code,score\na,1'), 'data.csv')})
+            self.assertEqual(response.status_code, 302)
+            row = portal.sb('GET', 'portal_files')[0]
+            self.assertEqual(self.client.get('/portal/files/' + row['id'] + '/download').data, b'code,score\na,1')
+
+    def test_metadata_failure_keeps_remote_original_without_false_success(self):
+        local_sb = portal.sb
+        def fail_metadata(method, table, **kwargs):
+            if method == 'POST' and table == 'portal_files': return []
+            with patch.object(portal, '_USE_SUPABASE', False):
+                return local_sb(method, table, **kwargs)
+        with self.remote_files() as (store, objects), patch.object(portal, 'sb', side_effect=fail_metadata):
+            response = self.post('/portal/files/upload', {'file': (io.BytesIO(b'code,score'), 'data.csv')})
+            self.assertEqual(response.status_code, 503)
+            self.assertEqual(len(objects), 1)
+            store.delete.assert_not_called()
+
+    def test_site_metadata_remote_roundtrip_preserves_local_original(self):
+        original = [{'key': 'old', 'title': 'Original'}]
+        portal.save_events(original)
+        with self.remote_files() as (store, objects):
+            self.assertEqual(portal.load_events(), original)
+            portal.save_events(original + [{'key': 'new', 'title': 'New'}])
+            self.assertEqual(len(portal.load_events()), 2)
+            self.assertEqual(json.loads(Path(portal.GALLERY_DATA_FILE).read_text()), original)
+            store.get.side_effect = portal.StorageUnavailable('offline')
+            with self.assertRaises(portal.StorageUnavailable): portal.load_events()
+
+    def test_gallery_upload_and_public_photo_cannot_expose_private_files(self):
+        from PIL import Image
+        photo = io.BytesIO()
+        Image.new('RGB', (2, 2)).save(photo, format='PNG')
+        photo.seek(0)
+        self.sign_in('admin@example.test')
+        portal.save_events([{'key': 'test', 'title': 'Test', 'cover': None}])
+        with self.remote_files() as (store, objects):
+            self.assertEqual(self.post('/gallery/test/upload', {'photo': (photo, 'photo.png')}).status_code, 302)
+            name = portal.event_photos('test')[0]
+            anonymous = portal.app.test_client()
+            self.assertEqual(anonymous.get('/gallery/test/photo/' + name).status_code, 200)
+            store.get.reset_mock()
+            self.assertEqual(anonymous.get('/gallery/test/photo/private.csv').status_code, 404)
+            self.assertFalse(any(call.args[0].startswith('portal/') for call in store.get.call_args_list))
+            self.assertEqual(anonymous.get('/gallery/missing/photo/' + name).status_code, 404)
+
+    def test_remote_delete_failure_keeps_file_metadata(self):
+        with self.remote_files() as (store, objects):
+            self.post('/portal/files/upload', {'file': (io.BytesIO(b'x'), 'data.csv')})
+            row = portal.sb('GET', 'portal_files')[0]
+            store.delete.side_effect = portal.StorageUnavailable('offline')
+            self.assertEqual(self.post('/portal/files/' + row['id'] + '/delete').status_code, 503)
+            self.assertEqual(len(portal.sb('GET', 'portal_files')), 1)
+
+    def test_remote_file_delete_still_requires_project_owner(self):
+        with self.remote_files() as (store, objects):
+            self.sign_in('editor@example.test')
+            self.post('/portal/files/upload', {'file': (io.BytesIO(b'x'), 'data.csv'), 'project_id': 'own'})
+            row = portal.sb('GET', 'portal_files')[0]
+            self.assertEqual(self.post('/portal/files/' + row['id'] + '/delete').status_code, 403)
+            store.delete.assert_not_called()
+
+    def test_legacy_project_original_download_unchanged(self):
+        folder = Path(portal.DATA_DIR) / 'project_own'
+        folder.mkdir(parents=True)
+        (folder / 'legacy.csv').write_bytes(b'original data')
+        portal.sb('POST', 'portal_files', data={'id': 'legacy', 'project_id': 'own', 'filename': 'legacy.csv',
+                  'original_name': 'legacy.csv', 'researcher_email': 'owner@example.test'})
+        with self.remote_files() as (store, objects):
+            response = self.client.get('/portal/files/legacy/download')
+            self.assertEqual(response.data, b'original data')
+            response.close()
+            store.get.assert_not_called()
+
+    def test_bundled_gallery_delete_is_persistent_hide_not_original_removal(self):
+        folder = Path(portal.GALLERY_FOLDER) / 'test'
+        folder.mkdir(parents=True)
+        (folder / 'old.png').write_bytes(b'original')
+        portal.save_events([{'key': 'test', 'title': 'Test', 'cover': 'old.png'}])
+        self.sign_in('admin@example.test')
+        with self.remote_files() as (store, objects):
+            self.assertEqual(self.post('/gallery/test/delete/old.png').status_code, 302)
+            self.assertEqual((folder / 'old.png').read_bytes(), b'original')
+            self.assertEqual(portal.event_photos('test'), [])
+            self.assertEqual(self.client.get('/gallery/test/photo/old.png').status_code, 404)
 
     def test_logout_rejects_replayed_cookie(self):
         self.token()

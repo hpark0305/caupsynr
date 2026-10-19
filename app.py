@@ -7,6 +7,7 @@ import requests as _requests
 from urllib.parse import quote, parse_qsl
 from werkzeug.exceptions import HTTPException
 from zipfile import BadZipFile
+from file_storage import PrivateStorage, StorageUnavailable
 import drive_sync
 from security_utils import DOCUMENT_EXTENSIONS, validate_archive, validate_image, SafeCSVWriter, neutralize_excel_formulas, validate_production_settings, password_policy_error
 from scipy import stats as _scipy_stats
@@ -130,33 +131,82 @@ def validate_api_body():
         if request.endpoint in ('api_receive_session', 'api_mindmate_followup') and not isinstance(body, dict):
             abort(400)
 
+def _file_store():
+    return PrivateStorage(SUPABASE_URL, SUPABASE_KEY)
+
+@app.errorhandler(StorageUnavailable)
+def storage_unavailable(error):
+    app.logger.warning('Persistent file storage operation failed')
+    return Response('파일 저장소에 연결하지 못했습니다. 저장 완료로 처리하지 않았습니다. 잠시 후 다시 시도해주세요.',
+                    status=503, content_type='text/plain; charset=utf-8')
+
+def _load_site_json(path):
+    if _USE_SUPABASE:
+        content = _file_store().get('site/' + os.path.basename(path))
+        if content is not None:
+            try:
+                value = json.loads(content)
+                if not isinstance(value, list): raise ValueError('Expected list')
+                return value
+            except ValueError as exc:
+                raise StorageUnavailable('Invalid site metadata') from exc
+    if not os.path.exists(path): return []
+    with open(path, encoding='utf-8') as f: return json.load(f)
+
+def _save_site_json(path, data):
+    if _USE_SUPABASE:
+        _file_store().put('site/' + os.path.basename(path), json.dumps(data, ensure_ascii=False).encode(),
+                          content_type='application/json', replace=True)
+    else:
+        with open(path, 'w', encoding='utf-8') as f: json.dump(data, f, ensure_ascii=False, indent=2)
+
+def _save_portal_upload(upload, project_id=None):
+    name = str(_uuid.uuid4()) + os.path.splitext(upload.filename)[1].lower()
+    upload.seek(0)
+    if _USE_SUPABASE:
+        content = upload.read()
+        _file_store().put('portal/' + name, content)
+        return 'storage/' + name, len(content)
+    folder = _stored_path(DATA_DIR, f'project_{project_id}') if project_id else DATA_DIR
+    os.makedirs(folder, exist_ok=True)
+    path = _stored_path(folder, name)
+    upload.save(path)
+    return name, os.path.getsize(path)
+
+def _portal_storage_key(filename):
+    if not re.fullmatch(r'storage/[0-9a-f-]{36}\.[a-z0-9]+', filename):
+        abort(400)
+    return 'portal/' + filename.split('/', 1)[1]
+
 def load_events():
-    if not os.path.exists(GALLERY_DATA_FILE): return []
-    with open(GALLERY_DATA_FILE,'r',encoding='utf-8') as f: return json.load(f)
+    return _load_site_json(GALLERY_DATA_FILE)
 
 def save_events(events):
-    with open(GALLERY_DATA_FILE,'w',encoding='utf-8') as f: json.dump(events,f,ensure_ascii=False,indent=2)
+    _save_site_json(GALLERY_DATA_FILE, events)
 
 def event_photos(key):
-    folder = os.path.join(GALLERY_FOLDER, key)
-    if not os.path.exists(folder): return []
-    photos = [f for f in os.listdir(folder) if os.path.isfile(os.path.join(folder,f)) and allowed_file(f)]
+    folder = _stored_path(GALLERY_FOLDER, key)
+    photos = [f for f in os.listdir(folder) if os.path.isfile(os.path.join(folder,f)) and allowed_file(f)] if os.path.isdir(folder) else []
     photos.sort(key=lambda f: os.path.getmtime(os.path.join(folder,f)))
+    if _USE_SUPABASE:
+        photos += [row['name'] for row in _file_store().list('gallery/' + key)
+                   if row.get('id') and row.get('name') and allowed_file(row['name'])
+                   and secure_filename(row['name']) == row['name'] and row['name'] not in photos]
+        event = next((e for e in load_events() if e['key'] == key), {})
+        photos = [p for p in photos if p not in event.get('hidden_photos', [])]
     return photos
 
 def load_extra_apps():
-    if not os.path.exists(APPS_EXTRA_FILE): return []
-    with open(APPS_EXTRA_FILE,'r',encoding='utf-8') as f: return json.load(f)
+    return _load_site_json(APPS_EXTRA_FILE)
 
 def save_extra_apps(data):
-    with open(APPS_EXTRA_FILE,'w',encoding='utf-8') as f: json.dump(data,f,ensure_ascii=False,indent=2)
+    _save_site_json(APPS_EXTRA_FILE, data)
 
 def load_extra_pubs():
-    if not os.path.exists(PUBS_EXTRA_FILE): return []
-    with open(PUBS_EXTRA_FILE,'r',encoding='utf-8') as f: return json.load(f)
+    return _load_site_json(PUBS_EXTRA_FILE)
 
 def save_extra_pubs(data):
-    with open(PUBS_EXTRA_FILE,'w',encoding='utf-8') as f: json.dump(data,f,ensure_ascii=False,indent=2)
+    _save_site_json(PUBS_EXTRA_FILE, data)
 
 def init_db():
     os.makedirs(PORTAL_FILES_DIR, exist_ok=True)
@@ -1412,7 +1462,8 @@ def gallery_new():
           'cover':None,'created_at':datetime.now().isoformat()[:10]}
     events.insert(0, ev)
     save_events(events)
-    os.makedirs(os.path.join(GALLERY_FOLDER, key), exist_ok=True)
+    if not _USE_SUPABASE:
+        os.makedirs(_stored_path(GALLERY_FOLDER, key), exist_ok=True)
     return redirect(url_for('gallery_event', key=key))
 
 @app.route("/gallery/<key>")
@@ -1423,6 +1474,23 @@ def gallery_event(key):
     photos = event_photos(key)
     return render_template("gallery_event.html", event=ev, photos=photos)
 
+@app.route('/gallery/<key>/photo/<filename>')
+def gallery_photo(key, filename):
+    # Only published gallery images are public; never expose arbitrary storage keys.
+    ev = next((e for e in load_events() if e['key'] == key), None)
+    if not ev or not allowed_file(filename) or '/' in filename or '\\' in filename or filename in ev.get('hidden_photos', []):
+        abort(404)
+    path = _stored_path(GALLERY_FOLDER, key, filename)
+    if os.path.isfile(path):
+        from flask import send_file
+        return send_file(path)
+    if not _USE_SUPABASE or secure_filename(filename) != filename:
+        abort(404)
+    content = _file_store().get('gallery/' + key + '/' + filename)
+    if content is None: abort(404)
+    from flask import send_file
+    return send_file(io.BytesIO(content), download_name=filename, max_age=3600)
+
 @app.route("/gallery/<key>/upload", methods=["POST"])
 @login_required
 def gallery_event_upload(key):
@@ -1430,7 +1498,7 @@ def gallery_event_upload(key):
     ev = next((e for e in events if e['key']==key), None)
     if not ev: return redirect(url_for('gallery'))
     folder = _stored_path(GALLERY_FOLDER, key)
-    os.makedirs(folder, exist_ok=True)
+    if not _USE_SUPABASE: os.makedirs(folder, exist_ok=True)
     changed = False
     if len(request.files.getlist('photo')) > 20:
         abort(400)
@@ -1443,7 +1511,12 @@ def gallery_event_upload(key):
                 abort(400)
             filename = str(_uuid.uuid4()) + ext
             if filename:
-                file.save(os.path.join(folder, filename))
+                if _USE_SUPABASE:
+                    file.seek(0)
+                    _file_store().put('gallery/' + key + '/' + filename, file.read(),
+                                      content_type='image/' + ('jpeg' if ext in ('.jpg', '.jpeg') else ext[1:]))
+                else:
+                    file.save(os.path.join(folder, filename))
                 if not ev.get('cover'): ev['cover'] = filename; changed = True
     if changed: save_events(events)
     return redirect(url_for('gallery_event', key=key))
@@ -1455,9 +1528,17 @@ def gallery_event_delete(key, filename):
     if not any(e['key'] == key for e in load_events()) or safe != filename:
         abort(404)
     path = _stored_path(GALLERY_FOLDER, key, safe)
-    if os.path.exists(path): os.remove(path)
     events = load_events()
     ev = next((e for e in events if e['key']==key), None)
+    if _USE_SUPABASE:
+        # Keep bundled originals untouched; persist a hide marker instead.
+        if os.path.exists(path):
+            ev.setdefault('hidden_photos', []).append(safe)
+            save_events(events)
+        else:
+            _file_store().delete('gallery/' + key + '/' + safe)
+    elif os.path.exists(path):
+        os.remove(path)
     if ev and ev.get('cover')==safe:
         remaining = event_photos(key)
         ev['cover'] = remaining[0] if remaining else None
@@ -2017,16 +2098,8 @@ def portal_project_upload(project_id):
         flash('데이터가 없어요.', 'error')
         return redirect(url_for('portal_project', project_id=project_id))
 
-    # ── 원본 파일을 DATA_DIR에 저장 ──────────────────────────
-    proj_dir = _stored_path(DATA_DIR, f'project_{project_id}')
-    os.makedirs(proj_dir, exist_ok=True)
-    uid = str(_uuid.uuid4())
-    ext = os.path.splitext(original_name)[1]
-    stored_name = uid + ext
-    stored_path = os.path.join(proj_dir, stored_name)
-    f.seek(0)
-    f.save(stored_path)
-    file_size = os.path.getsize(stored_path)
+    # 원본 보존 성공 후에만 연구 데이터 가져오기를 시작합니다.
+    stored_name, file_size = _save_portal_upload(f, project_id)
 
     # ── 컬럼 스키마 분석 ─────────────────────────────────────
     all_headers = [h for h in rows[0].keys() if h]
@@ -2053,6 +2126,8 @@ def portal_project_upload(project_id):
         'row_count': len(rows),
     })
     file_id = file_rec[0]['id'] if file_rec else None
+    if not file_id:
+        raise StorageUnavailable('File metadata could not be saved; original retained')
 
     # ── 컬럼 매핑 ────────────────────────────────────────────
     def slugify(s):
@@ -2576,17 +2651,14 @@ def portal_files_upload():
     if not safe:
         flash("유효하지 않은 파일명입니다.", "error")
         return redirect(url_for("portal_files"))
-    uid = str(_uuid.uuid4())
-    ext = os.path.splitext(safe)[1]
-    stored = uid + ext
-    os.makedirs(PORTAL_FILES_DIR, exist_ok=True)
-    f.save(os.path.join(PORTAL_FILES_DIR, stored))
-    size = os.path.getsize(os.path.join(PORTAL_FILES_DIR, stored))
-    sb("POST", "portal_files", data={
+    stored, size = _save_portal_upload(f)
+    saved = sb("POST", "portal_files", data={
         "filename": stored, "original_name": original,
         "size": size, "researcher_email": session["researcher"],
         "project_id": project_id,
     })
+    if not saved:
+        raise StorageUnavailable('File metadata could not be saved; original retained')
     flash(f"'{original}' 업로드 완료")
     return redirect(url_for("portal_files"))
 
@@ -2598,9 +2670,17 @@ def portal_files_download(file_id):
     row = rows[0]
     if row.get("researcher_email") != session["researcher"]:
         flash("접근 권한이 없습니다.", "error"); return redirect(url_for("portal_files"))
-    path = _stored_path(PORTAL_FILES_DIR, row["filename"])
-    if not os.path.exists(path): return redirect(url_for("portal_files"))
+    if row.get('project_id'):
+        _authorize_project(row['project_id'])
     from flask import send_file
+    if row['filename'].startswith('storage/'):
+        content = _file_store().get(_portal_storage_key(row['filename']))
+        if content is None: abort(404)
+        return send_file(io.BytesIO(content), as_attachment=True, download_name=row['original_name'])
+    path = _stored_path(PORTAL_FILES_DIR, row["filename"])
+    if not os.path.exists(path) and row.get('project_id'):
+        path = _stored_path(DATA_DIR, f"project_{row['project_id']}", row['filename'])
+    if not os.path.exists(path): abort(404)
     return send_file(path, as_attachment=True, download_name=row["original_name"])
 
 @app.route("/portal/files/<file_id>/delete", methods=["POST"])
@@ -2611,13 +2691,16 @@ def portal_files_delete(file_id):
         if rows[0].get('project_id'):
             _authorize_project(rows[0]['project_id'], owner_only=True)
         # Delete physical file
+        remote = rows[0]['filename'].startswith('storage/')
+        if remote:
+            _file_store().delete(_portal_storage_key(rows[0]['filename']))
         path = _stored_path(DATA_DIR, rows[0]["filename"])
-        if not os.path.exists(path):
+        if not remote and not os.path.exists(path):
             # also check project subfolder
             proj_id = rows[0].get("project_id","")
             path2 = _stored_path(DATA_DIR, f"project_{proj_id}", rows[0]["filename"])
             if os.path.exists(path2): path = path2
-        if os.path.exists(path):
+        if not remote and os.path.exists(path):
             try: os.remove(path)
             except: pass
         # Optionally cascade-delete measurements linked to this file

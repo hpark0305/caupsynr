@@ -34,7 +34,7 @@
       {% for ev in events %}
       <a href="{{ url_for('gallery_event', key=ev.key) }}" class="gallery-overlay-card">
         {% if ev.cover_photo %}
-        <img src="{{ url_for('static', filename='images/gallery/' + ev.key + '/' + ev.cover_photo) }}"
+        <img src="{{ url_for('gallery_photo', key=ev.key, filename=ev.cover_photo) }}"
              alt="{{ ev.title }}" loading="lazy">
         {% else %}
         <div class="gallery-overlay-placeholder">📷</div>
