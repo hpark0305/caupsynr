@@ -99,10 +99,10 @@ input[type=checkbox]{cursor:pointer;width:15px;height:15px;}
       }
       box.innerHTML = events.map(e => `
         <div class="mm-event">
-          <span class="mm-type mm-type-${e.type}">${esc(e.label)}</span>
+          <span class="mm-type mm-type-${esc(e.type)}">${esc(e.label)}</span>
           <span style="font-weight:700;font-size:.88rem;">${esc(e.participant)}</span>
           <span style="font-size:.8rem;color:var(--muted);">${esc(e.date)}${e.detail ? ' · ' + esc(e.detail) : ''}</span>
-          <span style="font-size:.78rem;color:var(--muted);margin-left:auto;">${fmtTime(e.at)}</span>
+          <span style="font-size:.78rem;color:var(--muted);margin-left:auto;">${esc(fmtTime(e.at))}</span>
         </div>`).join('');
     }
     async function pollLiveData(){

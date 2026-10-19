@@ -39,7 +39,7 @@
 <section class="apd-section apd-section-alt">
   <div class="container-sm" style="text-align:center;">
     <span class="label" style="display:block;margin-bottom:12px;">한국어 소개</span>
-    <p class="apd-desc-kr">{{ app.desc_kr | replace('\n', '<br>') | safe }}</p>
+    <p class="apd-desc-kr">{{ app.desc_kr | e | replace('\n', '<br>') | safe }}</p>
   </div>
 </section>
 {% endif %}

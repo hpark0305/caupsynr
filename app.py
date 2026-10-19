@@ -1,10 +1,14 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, Response
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, Response, abort
 from collections import OrderedDict
 from functools import wraps
 from dotenv import load_dotenv
-import os, sqlite3, uuid as _uuid, json, csv, io, re, hashlib, hmac
+import os, sqlite3, uuid as _uuid, json, csv, io, re, hashlib, hmac, time
 import requests as _requests
+from urllib.parse import quote, parse_qsl
+from werkzeug.exceptions import HTTPException
+from zipfile import BadZipFile
 import drive_sync
+from security_utils import DOCUMENT_EXTENSIONS, validate_archive, validate_image, SafeCSVWriter, neutralize_excel_formulas, validate_production_settings
 from scipy import stats as _scipy_stats
 import numpy as _np
 from datetime import datetime, timedelta
@@ -32,17 +36,32 @@ if not MINDMATE_PEPPER:
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
+validate_production_settings(os.environ)
 _USE_SUPABASE = bool(SUPABASE_URL and SUPABASE_KEY)
+if _USE_SUPABASE and not SUPABASE_URL.startswith('https://'):
+    raise SystemExit('SUPABASE_URL은 HTTPS 주소여야 합니다.')
 
 app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY", "tsl-dev-secret-2025")
+app.secret_key = os.getenv("SECRET_KEY", "")
+if len(app.secret_key) < 32 or app.secret_key == "tsl-dev-secret-2025":
+    raise SystemExit("SECRET_KEY에 32자 이상의 무작위 비밀값을 설정하세요. 기본값은 사용할 수 없습니다.")
+app.config.update(
+    SESSION_COOKIE_SECURE=os.getenv("SESSION_COOKIE_SECURE", "true").lower() != "false",
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_REFRESH_EACH_REQUEST=False,
+    MAX_FORM_PARTS=2000,
+    MAX_FORM_MEMORY_SIZE=512 * 1024,
+)
+ADMIN_EMAILS = {s.strip().lower() for s in os.getenv("PORTAL_ADMIN_EMAILS", "").split(",") if s.strip()}
 app.config['WTF_CSRF_TIME_LIMIT'] = 3600
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50 MB upload limit
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)  # keep researchers logged in
 csrf = CSRFProtect(app)
-limiter = Limiter(get_remote_address, app=app, default_limits=[], storage_uri="memory://")
+limiter = Limiter(get_remote_address, app=app, default_limits=[],
+                  storage_uri=os.getenv("RATELIMIT_STORAGE_URI", "memory://"))
 
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'portal.db')
+DB_PATH = os.getenv("PORTAL_DB_PATH", os.path.join(os.path.dirname(os.path.abspath(__file__)), 'portal.db'))
 DATA_DIR = os.getenv("DATA_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), 'portal_files'))
 os.makedirs(DATA_DIR, exist_ok=True)
 PORTAL_FILES_DIR = DATA_DIR  # alias kept for backward compat
@@ -54,6 +73,62 @@ PUBS_EXTRA_FILE   = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'pu
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'avif', 'webp'}
 
 def allowed_file(f): return '.' in f and f.rsplit('.',1)[1].lower() in ALLOWED_EXTENSIONS
+
+def _q(value):
+    """Encode one query value, never a whole PostgREST query fragment."""
+    return quote(str(value), safe="")
+
+def _stored_path(root, *parts):
+    root = os.path.realpath(root)
+    path = os.path.realpath(os.path.join(root, *parts))
+    if path == root or os.path.commonpath([root, path]) != root:
+        abort(400)
+    return path
+
+@app.after_request
+def security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['Content-Security-Policy'] = "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+    response.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()'
+    if app.config['SESSION_COOKIE_SECURE']:
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000'
+    if request.path.startswith(('/portal', '/api', '/login', '/reset-password')) or session.get('researcher'):
+        response.headers['Cache-Control'] = 'no-store'
+    return response
+
+@app.errorhandler(HTTPException)
+def safe_http_error(error):
+    messages = {400: '요청을 확인해주세요. 페이지를 새로고침한 뒤 다시 시도해주세요.',
+                403: '접근 권한이 없습니다.', 404: '요청한 항목을 찾을 수 없습니다.',
+                405: '허용되지 않는 요청 방식입니다.', 413: '파일 또는 요청이 너무 큽니다.',
+                429: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.'}
+    response = error.get_response()
+    response.data = json.dumps({'ok': False, 'error': messages.get(error.code, '요청을 처리하지 못했습니다.')}, ensure_ascii=False)
+    response.content_type = 'application/json; charset=utf-8'
+    return response
+
+@app.errorhandler(500)
+def safe_server_error(error):
+    return jsonify(ok=False, error='서버 처리 중 오류가 발생했습니다.'), 500
+
+@app.before_request
+def validate_api_body():
+    if not request.path.startswith('/api/') or request.method != 'POST':
+        return
+    request.max_content_length = 2 * 1024 * 1024
+    if not hmac.compare_digest(request.headers.get('X-API-Key', '').encode(), APP_API_KEY.encode()):
+        return jsonify(error='Unauthorized'), 401
+    if request.content_length and request.content_length > 2 * 1024 * 1024:
+        abort(413)
+    if request.is_json:
+        body = request.get_json(silent=True)
+        batch = body if isinstance(body, list) else [body]
+        if not batch or len(batch) > 500 or any(not isinstance(row, dict) for row in batch):
+            abort(400)
+        if request.endpoint in ('api_receive_session', 'api_mindmate_followup') and not isinstance(body, dict):
+            abort(400)
 
 def load_events():
     if not os.path.exists(GALLERY_DATA_FILE): return []
@@ -89,6 +164,12 @@ def init_db():
         return  # Tables managed in Supabase; skip local SQLite init
     with sqlite3.connect(DB_PATH) as conn:
         conn.executescript('''
+            CREATE TABLE IF NOT EXISTS portal_auth_sessions (
+                id TEXT PRIMARY KEY,
+                researcher_email TEXT NOT NULL,
+                created_at INTEGER NOT NULL,
+                last_seen INTEGER NOT NULL
+            );
             CREATE TABLE IF NOT EXISTS projects (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
@@ -316,7 +397,7 @@ def init_db():
         if existing == 0:
             seed_email = os.getenv("SEED_ADMIN_EMAIL","")
             seed_pw    = os.getenv("SEED_ADMIN_PASSWORD","")
-            if seed_email and seed_pw:
+            if seed_email and len(seed_pw) >= 12:
                 conn.execute("INSERT INTO accounts (email,password) VALUES (?,?)",
                              (seed_email, generate_password_hash(seed_pw)))
                 conn.commit()
@@ -358,6 +439,9 @@ def init_db():
     # Migrations: add columns if missing
     _migrations = [
         ("measurements",    "ALTER TABLE measurements ADD COLUMN excluded INTEGER DEFAULT 0"),
+        ("measurements",    "ALTER TABLE measurements ADD COLUMN source_file_id TEXT"),
+        ("portal_files",    "ALTER TABLE portal_files ADD COLUMN column_schema TEXT DEFAULT '[]'"),
+        ("portal_files",    "ALTER TABLE portal_files ADD COLUMN row_count INTEGER DEFAULT 0"),
         ("audit_log",       "ALTER TABLE audit_log ADD COLUMN before_val TEXT"),
         ("audit_log",       "ALTER TABLE audit_log ADD COLUMN after_val TEXT"),
         ("mindmate_daily_survey", "ALTER TABLE mindmate_daily_survey ADD COLUMN source TEXT"),
@@ -413,6 +497,7 @@ def audit(action, table=None, target_id=None, detail=None, before=None, after=No
 
 _SAFE_IDENT = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
 _ALLOWED_TABLES = {
+    'portal_auth_sessions',
     'projects','project_participants','measurements','project_variables',
     'portal_files','accounts','news','research_topics_extra','contact_messages',
     'sessions','audit_log','project_collaborators','reset_tokens','project_protocols',
@@ -429,10 +514,7 @@ def _parse_sb_params(params):
     filters, order_by, select_fields = {}, None, "*"
     if not params:
         return filters, order_by, select_fields
-    for part in params.lstrip("?").split("&"):
-        if not part or "=" not in part:
-            continue
-        key, val = part.split("=", 1)
+    for key, val in parse_qsl(params.lstrip('?'), keep_blank_values=True):
         if key == "select":
             cols = [_safe_col(c) for c in val.split(",")]
             if all(cols):
@@ -461,6 +543,8 @@ def sb(method, table, data=None, params="", upsert=False):
     if table not in _ALLOWED_TABLES:
         print(f"DB error: disallowed table '{table}'")
         return []
+    if data and any(not _SAFE_IDENT.fullmatch(k) for k in data):
+        raise ValueError('Invalid database column')
 
     # ── Supabase REST API mode ──────────────────────────
     if _USE_SUPABASE:
@@ -490,7 +574,9 @@ def sb(method, table, data=None, params="", upsert=False):
                 r.raise_for_status()
                 return []
         except Exception as e:
-            print(f"Supabase error [{method} {table}]: {e}")
+            app.logger.error("Database operation failed: %s %s (%s)", method, table, type(e).__name__)
+            if table == 'portal_auth_sessions':
+                abort(503)
             return []
 
     # ── SQLite fallback (local dev) ─────────────────────
@@ -507,6 +593,12 @@ def sb(method, table, data=None, params="", upsert=False):
                 vals = list(filters.values())
             if order_by:
                 sql += f" ORDER BY {order_by}"
+            paging = dict(parse_qsl(params.lstrip('?')))
+            if 'limit' in paging:
+                limit = max(0, min(int(paging['limit']), 10000))
+                offset = max(0, int(paging.get('offset', '0')))
+                sql += ' LIMIT ? OFFSET ?'
+                vals.extend([limit, offset])
             rows = conn.execute(sql, vals).fetchall()
             result = []
             for row in rows:
@@ -561,13 +653,17 @@ def sb(method, table, data=None, params="", upsert=False):
             conn.commit()
             return []
     except Exception as e:
-        print(f"DB error [{method} {table}]: {e}")
+        app.logger.error("Database operation failed: %s %s (%s)", method, table, type(e).__name__)
+        if table == 'portal_auth_sessions':
+            abort(503)
         return []
     finally:
         if conn: conn.close()
 
 def _sb_count(table, params=""):
     """Return total row count for a table. Used for pagination."""
+    if table not in _ALLOWED_TABLES:
+        raise ValueError('Invalid database table')
     if _USE_SUPABASE:
         url = f"{SUPABASE_URL}/rest/v1/{table}{params if params else '?select=id'}"
         if "select=" not in url:
@@ -586,7 +682,7 @@ def _sb_count(table, params=""):
             return 0
 
 def _get_account(email):
-    rows = sb("GET", "accounts", params=f"?email=eq.{email}&select=password")
+    rows = sb("GET", "accounts", params=f"?email=eq.{_q(email)}&select=password")
     return rows[0]["password"] if rows else None
 
 def _set_account(email, password, already_hashed=False):
@@ -594,15 +690,19 @@ def _set_account(email, password, already_hashed=False):
     sb("POST", "accounts", data={"email": email, "password": hashed}, upsert=True)
 
 def _account_exists(email):
-    rows = sb("GET", "accounts", params=f"?email=eq.{email}&select=email")
+    rows = sb("GET", "accounts", params=f"?email=eq.{_q(email)}&select=email")
     return bool(rows)
 
 def _seed_supabase_account():
-    """Supabase 모드에서 계정이 없으면 기본 관리자 계정 생성."""
-    if _USE_SUPABASE:
-        if not sb("GET", "accounts", params="?select=email&limit=1"):
-            _set_account(os.getenv("PORTAL_EMAIL", "admin@example.com"),
-                         os.getenv("PORTAL_PASSWORD", "changeme123"))
+    """Bootstrap only explicitly configured credentials; never reset on a failed read."""
+    email, password = os.getenv('PORTAL_EMAIL', ''), os.getenv('PORTAL_PASSWORD', '')
+    if not (_USE_SUPABASE and email and len(password) >= 12):
+        return
+    response = _requests.get(f'{SUPABASE_URL}/rest/v1/accounts?select=email&limit=1',
+                             headers=_sb_headers(), timeout=10)
+    response.raise_for_status()
+    if response.json() == []:
+        _set_account(email, password)
 
 init_db()
 _seed_supabase_account()
@@ -610,13 +710,146 @@ _seed_supabase_account()
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        if "researcher" not in session: return redirect(url_for("login"))
+        email = session.get('researcher')
+        stored = _get_account(email) if email else None
+        if not stored or not hmac.compare_digest(session.get('auth_stamp', ''), _auth_stamp(stored)) or not _valid_login_session():
+            session.clear()
+            if request.is_json:
+                return jsonify(ok=False, error='Login required'), 401
+            return redirect(url_for("login"))
+        _authorize_portal_request()
         return f(*args, **kwargs)
     return decorated
 
+def _auth_stamp(password_hash):
+    return hmac.new(app.secret_key.encode(), password_hash.encode(), hashlib.sha256).hexdigest()
+
+def _start_login_session(email, password_hash):
+    now = int(time.time())
+    sid = str(_uuid.uuid4())
+    if not sb('POST', 'portal_auth_sessions', data={
+        'id': sid, 'researcher_email': email, 'created_at': now, 'last_seen': now,
+    }):
+        abort(503)
+    session.clear()
+    session.permanent = True
+    session.update(researcher=email, auth_stamp=_auth_stamp(password_hash), auth_session_id=sid)
+
+def _valid_login_session():
+    sid = session.get('auth_session_id')
+    if not sid:
+        return False
+    query = f"?id=eq.{_q(sid)}&researcher_email=eq.{_q(session['researcher'])}"
+    rows = sb('GET', 'portal_auth_sessions', params=query)
+    if not rows:
+        return False
+    now = int(time.time())
+    if now - int(rows[0]['created_at']) >= 8 * 3600 or now - int(rows[0]['last_seen']) >= 30 * 60:
+        sb('DELETE', 'portal_auth_sessions', params=query)
+        return False
+    if now - int(rows[0]['last_seen']) >= 60:
+        sb('PATCH', 'portal_auth_sessions', data={'last_seen': now}, params=query)
+    return True
+
+def _is_admin():
+    return session.get('researcher', '').lower() in ADMIN_EMAILS
+
+def _project_role(project_id):
+    email = session['researcher']
+    projects = sb('GET', 'projects', params=f'?id=eq.{_q(project_id)}')
+    if not projects:
+        return None
+    if projects[0].get('researcher_email') == email:
+        return 'owner'
+    rows = sb('GET', 'project_collaborators',
+              params=f'?project_id=eq.{_q(project_id)}&researcher_email=eq.{_q(email)}')
+    return rows[0].get('role') if rows else None
+
+def _authorize_project(project_id, write=False, owner_only=False):
+    roles = {'owner'} if owner_only else ({'owner', 'editor'} if write else {'owner', 'editor', 'viewer'})
+    if not project_id or _project_role(project_id) not in roles:
+        abort(403)
+
+def _authorize_portal_request():
+    """Check URL and hidden-field IDs before any authenticated handler runs."""
+    endpoint = request.endpoint or ''
+    write = request.method not in ('GET', 'HEAD', 'OPTIONS')
+    admin_routes = {'portal_add_account', 'portal_db_backup', 'portal_db_restore',
+                    'portal_contacts', 'portal_audit', 'portal_drive', 'portal_drive_file',
+                    'pubs_new', 'publications_new', 'apps_new', 'portal_research_edit'}
+    if (endpoint in admin_routes or endpoint.startswith(('gallery_', 'portal_news', 'portal_mindmate'))) and not _is_admin():
+        abort(403)
+    # Restoring an arbitrary database replaces credentials and all project ACLs.
+    if endpoint == 'portal_db_restore':
+        abort(403)
+    if endpoint == 'portal_db_backup' and _USE_SUPABASE:
+        abort(404)
+    values = request.view_args or {}
+    project_id = values.get('project_id') or request.values.get('project_id')
+    if project_id:
+        _authorize_project(project_id, write=write, owner_only=endpoint.endswith('_delete') or 'delete_' in endpoint)
+        for key, table in (('participant_id', 'project_participants'), ('measurement_id', 'measurements'),
+                           ('m_id', 'measurements'), ('var_id', 'project_variables'), ('file_id', 'portal_files')):
+            rid = values.get(key) or request.values.get(key)
+            if rid and not sb('GET', table, params=f'?id=eq.{_q(rid)}&project_id=eq.{_q(project_id)}'):
+                abort(404)
+    if endpoint in ('portal_merge_preview', 'portal_merge_execute'):
+        keys = ('project1_id', 'project2_id') if endpoint.endswith('preview') else ('p1_id', 'p2_id')
+        for key in keys:
+            _authorize_project(request.form.get(key), owner_only=True)
+    if values.get('task_id'):
+        rows = sb('GET', 'tasks', params=f"?id=eq.{_q(values['task_id'])}")
+        if not rows:
+            abort(404)
+        row = rows[0]
+        if row.get('project_id'):
+            _authorize_project(row['project_id'], write=True, owner_only=endpoint.endswith('_delete'))
+        elif row.get('created_by') != session['researcher']:
+            abort(403)
+    if request.is_json and write and not isinstance(request.get_json(silent=True), dict):
+        abort(400)
+    if endpoint in ('portal_task_new', 'portal_task_edit'):
+        if request.form.get('status', 'todo') not in ('todo', 'doing', 'done'):
+            abort(400)
+        if request.form.get('priority', 'normal') not in ('low', 'normal', 'high'):
+            abort(400)
+        due = request.form.get('due_date', '')
+        if due:
+            try:
+                datetime.strptime(due, '%Y-%m-%d')
+            except ValueError:
+                abort(400)
+    if endpoint in ('portal_project_upload', 'portal_project_upload_sheets', 'portal_files_upload'):
+        upload = request.files.get('file')
+        if upload and upload.filename:
+            ext = os.path.splitext(upload.filename)[1].lower()
+            allowed = DOCUMENT_EXTENSIONS if endpoint == 'portal_files_upload' else {'.csv', '.xls', '.xlsx'}
+            if ext not in allowed:
+                abort(400)
+            if ext in {'.xlsx', '.docx', '.pptx', '.hwpx'}:
+                try:
+                    validate_archive(upload.stream)
+                except (ValueError, OSError, BadZipFile):
+                    abort(400)
+
+def _project_rows(table, params=''):
+    """Query only accessible projects; unassigned rows are never implicitly public."""
+    selected = request.args.get('project_id')
+    projects = [{'id': selected}] if selected else _accessible_projects(session['researcher'])
+    rows = []
+    for project in projects:
+        pid = project['id']
+        _authorize_project(pid)
+        # The caller's selected project filter is redundant, not a second filter.
+        pairs = [(k, v) for k, v in parse_qsl(params.lstrip('?')) if k != 'project_id']
+        from urllib.parse import urlencode
+        query = '?' + urlencode(pairs + [('project_id', 'eq.' + pid)])
+        rows.extend(sb('GET', table, params=query) or [])
+    return rows
+
 def _require_project_owner(project_id):
     """Returns (project_dict, None) if OK, (None, redirect_response) if unauthorized."""
-    proj = sb("GET","projects",params=f"?id=eq.{project_id}")
+    proj = sb("GET","projects",params=f"?id=eq.{_q(project_id)}")
     if not proj or not isinstance(proj,list):
         flash("프로젝트를 찾을 수 없어요.", "error")
         return None, redirect(url_for("portal"))
@@ -625,7 +858,7 @@ def _require_project_owner(project_id):
     # Allow owner OR collaborator with any role
     if owner != email:
         row = sb("GET", "project_collaborators",
-                 params=f"?project_id=eq.{project_id}&researcher_email=eq.{email}&select=role")
+                 params=f"?project_id=eq.{_q(project_id)}&researcher_email=eq.{_q(email)}&select=role")
         if not row:
             flash("이 프로젝트에 접근 권한이 없어요.", "error")
             return None, redirect(url_for("portal"))
@@ -633,45 +866,42 @@ def _require_project_owner(project_id):
 
 def _project_access_ok(project_id, email):
     """Same check as _require_project_owner but returns a bool (no flash/redirect) — for JSON endpoints."""
-    proj = sb("GET","projects",params=f"?id=eq.{project_id}")
+    proj = sb("GET","projects",params=f"?id=eq.{_q(project_id)}")
     if not proj or not isinstance(proj,list):
         return False
     if proj[0].get("researcher_email","") == email:
         return True
     row = sb("GET", "project_collaborators",
-             params=f"?project_id=eq.{project_id}&researcher_email=eq.{email}&select=role")
+             params=f"?project_id=eq.{_q(project_id)}&researcher_email=eq.{_q(email)}&select=role")
     return bool(row)
 
 def _accessible_projects(email):
     """Projects `email` owns or collaborates on, deduped, as [{'id':..,'name':..}, ...]."""
-    projects = sb("GET", "projects", params=f"?researcher_email=eq.{email}&select=id,name") or []
+    projects = sb("GET", "projects", params=f"?researcher_email=eq.{_q(email)}&select=id,name") or []
     have = {p["id"] for p in projects}
-    collab_rows = sb("GET", "project_collaborators", params=f"?researcher_email=eq.{email}&select=project_id") or []
+    collab_rows = sb("GET", "project_collaborators", params=f"?researcher_email=eq.{_q(email)}&select=project_id") or []
     for row in collab_rows:
         pid = row.get("project_id")
         if pid and pid not in have:
-            r = sb("GET", "projects", params=f"?id=eq.{pid}&select=id,name")
+            r = sb("GET", "projects", params=f"?id=eq.{_q(pid)}&select=id,name")
             if r:
                 projects.append(r[0])
                 have.add(pid)
     return projects
 
 def _delete_owned_rows(table, ids, redirect_endpoint, **redirect_kwargs):
-    """Delete rows from an app-log table (wardy_events, neurobreeze_*, mindmate_followup)
-    by id, but only ones whose project the session researcher can access. Rows with no
-    project_id (never assigned to a project) are deletable by any logged-in researcher —
-    there's no project to protect. Returns a redirect with a flash summary."""
+    """Delete app rows only as the project owner. Unassigned rows are protected."""
     email = session["researcher"]
     deleted, skipped = 0, 0
     for rid in ids:
-        rows = sb("GET", table, params=f"?id=eq.{rid}&select=id,project_id")
+        rows = sb("GET", table, params=f"?id=eq.{_q(rid)}&select=id,project_id")
         if not rows:
             continue
         pid = rows[0].get("project_id")
-        if pid and not _project_access_ok(pid, email):
+        if not pid or _project_role(pid) != 'owner':
             skipped += 1
             continue
-        sb("DELETE", table, params=f"?id=eq.{rid}")
+        sb("DELETE", table, params=f"?id=eq.{_q(rid)}")
         deleted += 1
     if skipped:
         flash(f"{deleted}건 삭제됐습니다. ({skipped}건은 권한이 없어 건너뛰었어요.)")
@@ -1132,6 +1362,7 @@ def mindmate_privacy():
     return render_template("mindmate_privacy.html")
 
 @app.route("/contact", methods=["GET","POST"])
+@limiter.limit('5 per minute', methods=['POST'])
 def contact():
     success = False
     if request.method == "POST":
@@ -1139,6 +1370,8 @@ def contact():
         email   = request.form.get("email","").strip()
         subject = request.form.get("subject","").strip()
         message = request.form.get("message","").strip()
+        if len(name) > 200 or len(email) > 254 or len(subject) > 500 or len(message) > 10000:
+            abort(400)
         if message:
             sb("POST", "contact_messages", data={
                 "name": name, "email": email, "subject": subject, "message": message
@@ -1190,12 +1423,19 @@ def gallery_event_upload(key):
     events = load_events()
     ev = next((e for e in events if e['key']==key), None)
     if not ev: return redirect(url_for('gallery'))
-    folder = os.path.join(GALLERY_FOLDER, key)
+    folder = _stored_path(GALLERY_FOLDER, key)
     os.makedirs(folder, exist_ok=True)
     changed = False
+    if len(request.files.getlist('photo')) > 20:
+        abort(400)
     for file in request.files.getlist('photo'):
         if file and file.filename and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
+            ext = os.path.splitext(file.filename)[1].lower()
+            try:
+                validate_image(file.stream, ext)
+            except Exception:
+                abort(400)
+            filename = str(_uuid.uuid4()) + ext
             if filename:
                 file.save(os.path.join(folder, filename))
                 if not ev.get('cover'): ev['cover'] = filename; changed = True
@@ -1206,7 +1446,9 @@ def gallery_event_upload(key):
 @login_required
 def gallery_event_delete(key, filename):
     safe = secure_filename(filename)
-    path = os.path.join(GALLERY_FOLDER, key, safe)
+    if not any(e['key'] == key for e in load_events()) or safe != filename:
+        abort(404)
+    path = _stored_path(GALLERY_FOLDER, key, safe)
     if os.path.exists(path): os.remove(path)
     events = load_events()
     ev = next((e for e in events if e['key']==key), None)
@@ -1233,14 +1475,15 @@ def login():
         password = request.form.get("password","").strip()
         stored = _get_account(email)
         if stored and check_password_hash(stored, password):
-            session.permanent = True
-            session["researcher"] = email
+            _start_login_session(email, stored)
             return redirect(url_for("portal"))
         error = "이메일 또는 비밀번호가 올바르지 않습니다."
     return render_template("login.html", error=error)
 
-@app.route("/logout")
+@app.route("/logout", methods=['POST'])
 def logout():
+    if session.get('auth_session_id') and session.get('researcher'):
+        sb('DELETE', 'portal_auth_sessions', params=f"?id=eq.{_q(session['auth_session_id'])}&researcher_email=eq.{_q(session['researcher'])}")
     session.clear()
     return redirect(url_for("home"))
 
@@ -1252,14 +1495,14 @@ def logout():
 def portal():
     email = session["researcher"]
     # 내 프로젝트와 초대받은 프로젝트를 한 화면에서 관리한다.
-    projects = sb("GET", "projects", params=f"?researcher_email=eq.{email}&order=created_at.desc") or []
+    projects = sb("GET", "projects", params=f"?researcher_email=eq.{_q(email)}&order=created_at.desc") or []
     project_ids = {p.get("id") for p in projects if p.get("id")}
     collab_rows = sb("GET", "project_collaborators",
-                    params=f"?researcher_email=eq.{email}&select=project_id") or []
+                    params=f"?researcher_email=eq.{_q(email)}&select=project_id") or []
     for collab in collab_rows:
         pid = collab.get("project_id")
         if pid and pid not in project_ids:
-            rows = sb("GET", "projects", params=f"?id=eq.{pid}") or []
+            rows = sb("GET", "projects", params=f"?id=eq.{_q(pid)}") or []
             if rows:
                 projects.append(rows[0])
                 project_ids.add(pid)
@@ -1270,13 +1513,13 @@ def portal():
     missing_measurements = []
     for p in (projects if isinstance(projects,list) else []):
         pid = p.get("id","")
-        pcs = sb("GET","project_participants",params=f"?project_id=eq.{pid}&select=id") or []
-        mcs = sb("GET","measurements",params=f"?project_id=eq.{pid}&select=id") or []
+        pcs = sb("GET","project_participants",params=f"?project_id=eq.{_q(pid)}&select=id") or []
+        mcs = sb("GET","measurements",params=f"?project_id=eq.{_q(pid)}&select=id") or []
         p["participant_count"] = len(pcs) if isinstance(pcs,list) else 0
         p["measurement_count"] = len(mcs) if isinstance(mcs,list) else 0
         if p["participant_count"] and not p["measurement_count"]:
             missing_measurements.append(p)
-        tasks = sb("GET", "tasks", params=f"?project_id=eq.{pid}&order=due_date.asc") or []
+        tasks = sb("GET", "tasks", params=f"?project_id=eq.{_q(pid)}&order=due_date.asc") or []
         for task in tasks:
             task["project_name"] = p.get("name") or "프로젝트"
             if task.get("status") != "done":
@@ -1298,8 +1541,11 @@ def portal():
         ("mindmate_daily_survey", "💬 Mind Mate 설문", "updated_at", False),
     ]
     for table, label, time_col, has_project in activity_sources:
+        if not has_project and not _is_admin():
+            continue
         select = f"project_id,{time_col}" if has_project else time_col
-        rows = sb("GET", table, params=f"?select={select}&order={time_col}.desc&limit=6") or []
+        query = f"?select={_q(select)}&order={_q(time_col)}.desc&limit=6"
+        rows = _project_rows(table, query) if has_project else sb('GET', table, params=query)
         for row in rows:
             recent_activity.append({
                 "label": label,
@@ -1311,6 +1557,8 @@ def portal():
     # 앱 로그 중 프로젝트가 비어 있는 행은 연구자가 먼저 분류해야 하는 데이터다.
     unassigned_app_records = 0
     for table in ("wardy_events", "neurobreeze_eeg", "neurobreeze_meditation"):
+        if not _is_admin():
+            continue
         rows = sb("GET", table, params="?select=project_id&limit=5000") or []
         unassigned_app_records += sum(1 for row in rows if not row.get("project_id"))
 
@@ -1345,9 +1593,9 @@ def portal_project_new():
 def portal_project(project_id):
     project, err = _require_project_owner(project_id)
     if err: return err
-    participants = sb("GET","project_participants",params=f"?project_id=eq.{project_id}&order=enrolled_at.desc") or []
-    measurements_raw = sb("GET","measurements",params=f"?project_id=eq.{project_id}&order=measured_at.desc") or []
-    variables = sb("GET","project_variables",params=f"?project_id=eq.{project_id}") or []
+    participants = sb("GET","project_participants",params=f"?project_id=eq.{_q(project_id)}&order=enrolled_at.desc") or []
+    measurements_raw = sb("GET","measurements",params=f"?project_id=eq.{_q(project_id)}&order=measured_at.desc") or []
+    variables = sb("GET","project_variables",params=f"?project_id=eq.{_q(project_id)}") or []
     p_map = {p["id"]: {"code": p["code"], "group_name": p.get("group_name") or ""} for p in (participants if isinstance(participants,list) else [])}
     for m in (measurements_raw if isinstance(measurements_raw,list) else []):
         info = p_map.get(m.get("participant_id",""), {})
@@ -1356,9 +1604,9 @@ def portal_project(project_id):
     for p in (participants if isinstance(participants,list) else []):
         p["mcount"] = sum(1 for m in (measurements_raw if isinstance(measurements_raw,list) else []) if m.get("participant_id")==p["id"])
     collaborators = sb("GET", "project_collaborators",
-                       params=f"?project_id=eq.{project_id}&order=invited_at.asc") or []
+                       params=f"?project_id=eq.{_q(project_id)}&order=invited_at.asc") or []
     protocols = sb("GET", "project_protocols",
-                   params=f"?project_id=eq.{project_id}&order=sort_order.asc") or []
+                   params=f"?project_id=eq.{_q(project_id)}&order=sort_order.asc") or []
     is_owner = project.get("researcher_email") == session.get("researcher")
     return render_template("portal_project.html",
         project=project,
@@ -1376,10 +1624,10 @@ def portal_project_delete(project_id):
     proj, err = _require_project_owner(project_id)
     if err: return err
     pname = proj["name"]
-    sb("DELETE","measurements",params=f"?project_id=eq.{project_id}")
-    sb("DELETE","project_participants",params=f"?project_id=eq.{project_id}")
-    sb("DELETE","project_variables",params=f"?project_id=eq.{project_id}")
-    sb("DELETE","projects",params=f"?id=eq.{project_id}")
+    sb("DELETE","measurements",params=f"?project_id=eq.{_q(project_id)}")
+    sb("DELETE","project_participants",params=f"?project_id=eq.{_q(project_id)}")
+    sb("DELETE","project_variables",params=f"?project_id=eq.{_q(project_id)}")
+    sb("DELETE","projects",params=f"?id=eq.{_q(project_id)}")
     audit("delete_project", "projects", project_id, f"name={pname}")
     flash("프로젝트가 삭제됐습니다.")
     return redirect(url_for("portal"))
@@ -1402,7 +1650,7 @@ def portal_project_add_participant(project_id):
             flash("나이는 1~120 사이 숫자로 입력해주세요.", "error"); return redirect(url_for("portal_project", project_id=project_id))
         age = int(age_raw)
     # Duplicate code check
-    existing = sb("GET","project_participants",params=f"?project_id=eq.{project_id}&code=eq.{code}")
+    existing = sb("GET","project_participants",params=f"?project_id=eq.{_q(project_id)}&code=eq.{_q(code)}")
     if existing:
         flash(f"'{code}' 코드는 이미 이 프로젝트에 존재해요.", "error"); return redirect(url_for("portal_project", project_id=project_id))
     sb("POST","project_participants",data={
@@ -1419,10 +1667,10 @@ def portal_project_add_participant(project_id):
 def portal_project_delete_participant(project_id, participant_id):
     _, err = _require_project_owner(project_id)
     if err: return err
-    parts = sb("GET","project_participants",params=f"?id=eq.{participant_id}")
+    parts = sb("GET","project_participants",params=f"?id=eq.{_q(participant_id)}")
     code = parts[0]["code"] if parts else participant_id
-    sb("DELETE","measurements",params=f"?participant_id=eq.{participant_id}")
-    sb("DELETE","project_participants",params=f"?id=eq.{participant_id}")
+    sb("DELETE","measurements",params=f"?participant_id=eq.{_q(participant_id)}")
+    sb("DELETE","project_participants",params=f"?id=eq.{_q(participant_id)}")
     audit("delete_participant", "project_participants", participant_id, f"code={code},project={project_id}")
     return redirect(url_for("portal_project", project_id=project_id))
 
@@ -1436,7 +1684,7 @@ def portal_edit_participant(project_id, participant_id):
        data={"gender":request.form.get("gender","").strip() or None,
              "age":int(age_raw) if age_raw.isdigit() else None,
              "group_name":request.form.get("group_name","").strip() or None},
-       params=f"?id=eq.{participant_id}")
+       params=f"?id=eq.{_q(participant_id)}")
     return redirect(url_for("portal_participant_detail", project_id=project_id, participant_id=participant_id))
 
 @app.route("/portal/projects/<project_id>/participants/<participant_id>")
@@ -1444,11 +1692,11 @@ def portal_edit_participant(project_id, participant_id):
 def portal_participant_detail(project_id, participant_id):
     proj, err = _require_project_owner(project_id)
     if err: return err
-    p_list = sb("GET","project_participants",params=f"?id=eq.{participant_id}")
+    p_list = sb("GET","project_participants",params=f"?id=eq.{_q(participant_id)}")
     if not p_list or not isinstance(p_list,list): return redirect(url_for("portal_project",project_id=project_id))
     participant = p_list[0]
-    measurements = sb("GET","measurements",params=f"?participant_id=eq.{participant_id}&order=measured_at.asc") or []
-    variables = sb("GET","project_variables",params=f"?project_id=eq.{project_id}") or []
+    measurements = sb("GET","measurements",params=f"?participant_id=eq.{_q(participant_id)}&order=measured_at.asc") or []
+    variables = sb("GET","project_variables",params=f"?project_id=eq.{_q(project_id)}") or []
     # Pre→Post changes (first vs last phase for each variable)
     changes = {}
     # Multi-phase delta transitions: list of {from_phase, to_phase, deltas:{vname:{diff,pct}}}
@@ -1499,7 +1747,7 @@ def portal_participant_detail(project_id, participant_id):
 def portal_project_add_measurement(project_id):
     _, err = _require_project_owner(project_id)
     if err: return err
-    variables = sb("GET","project_variables",params=f"?project_id=eq.{project_id}") or []
+    variables = sb("GET","project_variables",params=f"?project_id=eq.{_q(project_id)}") or []
     if variables and isinstance(variables,list):
         data_dict = {}
         for v in variables:
@@ -1525,7 +1773,7 @@ def portal_project_add_measurement(project_id):
 def portal_project_delete_measurement(project_id, measurement_id):
     _, err = _require_project_owner(project_id)
     if err: return err
-    sb("DELETE","measurements",params=f"?id=eq.{measurement_id}")
+    sb("DELETE","measurements",params=f"?id=eq.{_q(measurement_id)}")
     audit("delete_measurement", "measurements", measurement_id, f"project={project_id}")
     return redirect(url_for("portal_project", project_id=project_id))
 
@@ -1534,7 +1782,7 @@ def portal_project_delete_measurement(project_id, measurement_id):
 def portal_edit_measurement(project_id, measurement_id):
     _, err = _require_project_owner(project_id)
     if err: return err
-    variables = sb("GET","project_variables",params=f"?project_id=eq.{project_id}") or []
+    variables = sb("GET","project_variables",params=f"?project_id=eq.{_q(project_id)}") or []
     if variables and isinstance(variables,list):
         data_dict = {}
         for v in variables:
@@ -1550,7 +1798,7 @@ def portal_edit_measurement(project_id, measurement_id):
        data={"phase":request.form.get("phase","").strip() or None,
              "notes":request.form.get("notes","").strip() or None,
              "data":data_dict},
-       params=f"?id=eq.{measurement_id}")
+       params=f"?id=eq.{_q(measurement_id)}")
     return redirect(url_for("portal_participant_detail", project_id=project_id,
                             participant_id=request.form.get("participant_id","")))
 
@@ -1574,11 +1822,11 @@ def portal_project_export(project_id):
     proj, err = _require_project_owner(project_id)
     if err: return err
     proj_name = proj["name"]
-    participants = sb("GET","project_participants",params=f"?project_id=eq.{project_id}") or []
-    measurements = sb("GET","measurements",params=f"?project_id=eq.{project_id}&order=measured_at.desc") or []
+    participants = sb("GET","project_participants",params=f"?project_id=eq.{_q(project_id)}") or []
+    measurements = sb("GET","measurements",params=f"?project_id=eq.{_q(project_id)}&order=measured_at.desc") or []
     p_map = {p["id"]: p for p in (participants if isinstance(participants,list) else [])}
     output = io.StringIO()
-    writer = csv.writer(output)
+    writer = SafeCSVWriter(output)
     writer.writerow(["participant_code","group","gender","age","phase","measured_at","notes","data"])
     for m in (measurements if isinstance(measurements,list) else []):
         p = p_map.get(m.get("participant_id",""), {})
@@ -1596,9 +1844,9 @@ def portal_project_export_range(project_id):
     proj, err = _require_project_owner(project_id)
     if err: return err
     proj_name = proj["name"]
-    participants = sb("GET","project_participants",params=f"?project_id=eq.{project_id}") or []
-    variables    = sb("GET","project_variables",params=f"?project_id=eq.{project_id}") or []
-    measurements = sb("GET","measurements",params=f"?project_id=eq.{project_id}&order=measured_at.asc") or []
+    participants = sb("GET","project_participants",params=f"?project_id=eq.{_q(project_id)}") or []
+    variables    = sb("GET","project_variables",params=f"?project_id=eq.{_q(project_id)}") or []
+    measurements = sb("GET","measurements",params=f"?project_id=eq.{_q(project_id)}&order=measured_at.asc") or []
     p_map = {p["id"]: p for p in (participants if isinstance(participants,list) else [])}
     # Read filter params
     date_from = request.args.get("date_from","").strip()
@@ -1611,7 +1859,7 @@ def portal_project_export_range(project_id):
     excl_f    = request.args.get("exclude_excl","1")  # "1" = exclude flagged rows by default
     var_names = [v["name"] for v in (variables if isinstance(variables,list) else [])]
     output = io.StringIO()
-    writer = csv.writer(output)
+    writer = SafeCSVWriter(output)
     header = ["participant_code","group","gender","age","phase","measured_at","notes"] + var_names
     writer.writerow(header)
     for m in (measurements if isinstance(measurements,list) else []):
@@ -1698,7 +1946,10 @@ def portal_project_upload(project_id):
         if fname_lower.endswith('.csv'):
             content = f.read().decode('utf-8-sig')
             reader = csv.DictReader(io.StringIO(content))
-            rows = list(reader)
+            from itertools import islice
+            rows = list(islice(reader, 10001))
+            if len(rows) > 10000 or any(len(row) > 200 for row in rows):
+                raise ValueError('Spreadsheet limit exceeded')
         elif fname_lower.endswith('.xlsx'):
             tmp_fd, tmppath = tempfile.mkstemp(suffix='.xlsx')
             os.close(tmp_fd)
@@ -1709,13 +1960,17 @@ def portal_project_upload(project_id):
                 ws = wb[sheet_name]
             else:
                 ws = wb.active
-            headers = [str(c.value or '').strip() for c in next(ws.iter_rows(max_row=1))]
+            if (ws.max_row or 0) > 10001 or (ws.max_column or 0) > 200:
+                raise ValueError('Spreadsheet limit exceeded')
+            headers = [str(c.value or '').strip() for c in next(ws.iter_rows(max_row=1, max_col=min(ws.max_column or 200, 200)))]
             # 빈 헤더 제거
             headers = [h if h else f'col_{i}' for i, h in enumerate(headers)]
-            for row in ws.iter_rows(min_row=2, values_only=True):
+            for row in ws.iter_rows(min_row=2, max_row=min(ws.max_row or 10002, 10002), max_col=len(headers), values_only=True):
                 if any(v is not None for v in row):
                     rows.append({headers[i]: (str(v).strip() if v is not None else '') for i, v in enumerate(row) if i < len(headers)})
             wb.close()
+            if len(rows) > 10000:
+                raise ValueError('Spreadsheet limit exceeded')
         elif fname_lower.endswith('.xls'):
             import xlrd as _xlrd, tempfile as _tf
             tmp_fd2, tmppath2 = _tf.mkstemp(suffix='.xls')
@@ -1727,6 +1982,8 @@ def portal_project_upload(project_id):
                     ws_xls = wb_xls.sheet_by_name(sheet_name)
                 else:
                     ws_xls = wb_xls.sheet_by_index(0)
+                if ws_xls.nrows > 10001 or ws_xls.ncols > 200:
+                    raise ValueError('Spreadsheet limit exceeded')
                 if ws_xls.nrows < 2:
                     flash('데이터가 없어요.', 'error')
                     return redirect(url_for('portal_project', project_id=project_id))
@@ -1743,7 +2000,7 @@ def portal_project_upload(project_id):
             flash('CSV 또는 Excel(.xlsx) 파일만 업로드 가능해요.', 'error')
             return redirect(url_for('portal_project', project_id=project_id))
     except Exception as e:
-        flash(f'파일 읽기 오류: {e}', 'error')
+        flash('파일을 읽을 수 없습니다. 형식과 크기를 확인해주세요.', 'error')
         return redirect(url_for('portal_project', project_id=project_id))
     finally:
         if tmppath and os.path.exists(tmppath):
@@ -1755,7 +2012,7 @@ def portal_project_upload(project_id):
         return redirect(url_for('portal_project', project_id=project_id))
 
     # ── 원본 파일을 DATA_DIR에 저장 ──────────────────────────
-    proj_dir = os.path.join(DATA_DIR, f'project_{project_id}')
+    proj_dir = _stored_path(DATA_DIR, f'project_{project_id}')
     os.makedirs(proj_dir, exist_ok=True)
     uid = str(_uuid.uuid4())
     ext = os.path.splitext(original_name)[1]
@@ -1812,7 +2069,7 @@ def portal_project_upload(project_id):
     data_cols = [h for h in all_headers if h not in skip_cols]
 
     # ── 변수 자동 등록 ────────────────────────────────────────
-    existing_vars = sb('GET', 'project_variables', params=f'?project_id=eq.{project_id}') or []
+    existing_vars = sb('GET', 'project_variables', params=f'?project_id=eq.{_q(project_id)}') or []
     existing_var_names = {v['name'] for v in (existing_vars if isinstance(existing_vars,list) else [])}
     for h in data_cols:
         vname = slugify(h)
@@ -1825,7 +2082,7 @@ def portal_project_upload(project_id):
             existing_var_names.add(vname)
 
     # ── 참여자 + 측정 데이터 저장 ────────────────────────────
-    existing_parts = sb('GET', 'project_participants', params=f'?project_id=eq.{project_id}') or []
+    existing_parts = sb('GET', 'project_participants', params=f'?project_id=eq.{_q(project_id)}') or []
     pmap = {p['code']: p['id'] for p in (existing_parts if isinstance(existing_parts,list) else [])}
     added_p = added_m = 0
     row_errors = []
@@ -1889,9 +2146,9 @@ def portal_project_stats(project_id):
     import math
     proj, err = _require_project_owner(project_id)
     if err: return err
-    measurements = sb("GET","measurements",params=f"?project_id=eq.{project_id}") or []
-    variables    = sb("GET","project_variables",params=f"?project_id=eq.{project_id}") or []
-    participants = sb("GET","project_participants",params=f"?project_id=eq.{project_id}") or []
+    measurements = sb("GET","measurements",params=f"?project_id=eq.{_q(project_id)}") or []
+    variables    = sb("GET","project_variables",params=f"?project_id=eq.{_q(project_id)}") or []
+    participants = sb("GET","project_participants",params=f"?project_id=eq.{_q(project_id)}") or []
     stats = {}
     if isinstance(measurements,list) and isinstance(variables,list):
         for v in variables:
@@ -1975,7 +2232,7 @@ def portal_outliers_exclude(project_id):
     if ids:
         for mid in ids:
             sb("PATCH", "measurements", data={"excluded": 1},
-               params=f"?id=eq.{mid}&project_id=eq.{project_id}")
+               params=f"?id=eq.{_q(mid)}&project_id=eq.{_q(project_id)}")
     flash(f"{len(ids)}건의 이상값을 제외 처리했습니다.")
     return redirect(url_for("portal_project_stats", project_id=project_id))
 
@@ -1991,7 +2248,7 @@ def portal_variable_edit(project_id, var_id):
            "unit":     request.form.get("unit","").strip() or None,
            "var_type": request.form.get("var_type","number"),
        },
-       params=f"?id=eq.{var_id}")
+       params=f"?id=eq.{_q(var_id)}")
     return redirect(url_for("portal_project", project_id=project_id, _anchor="tab-variables"))
 
 @app.route("/portal/projects/<project_id>/variables/<var_id>/delete", methods=["POST"])
@@ -1999,9 +2256,9 @@ def portal_variable_edit(project_id, var_id):
 def portal_variable_delete(project_id, var_id):
     _, err = _require_project_owner(project_id)
     if err: return err
-    vrows = sb("GET","project_variables",params=f"?id=eq.{var_id}")
+    vrows = sb("GET","project_variables",params=f"?id=eq.{_q(var_id)}")
     vname = vrows[0]["name"] if vrows else var_id
-    sb("DELETE", "project_variables", params=f"?id=eq.{var_id}")
+    sb("DELETE", "project_variables", params=f"?id=eq.{_q(var_id)}")
     audit("delete_variable", "project_variables", var_id, f"name={vname},project={project_id}")
     return redirect(url_for("portal_project", project_id=project_id, _anchor="tab-variables"))
 
@@ -2011,10 +2268,10 @@ def portal_variable_delete(project_id, var_id):
 def portal_measurement_toggle_exclude(project_id, m_id):
     _, err = _require_project_owner(project_id)
     if err: return err
-    rows = sb("GET", "measurements", params=f"?id=eq.{m_id}")
+    rows = sb("GET", "measurements", params=f"?id=eq.{_q(m_id)}")
     if rows:
         new_val = 0 if rows[0].get("excluded") else 1
-        sb("PATCH", "measurements", data={"excluded": new_val}, params=f"?id=eq.{m_id}")
+        sb("PATCH", "measurements", data={"excluded": new_val}, params=f"?id=eq.{_q(m_id)}")
         audit("toggle_exclude_measurement", "measurements", m_id,
               f"excluded={new_val},project={project_id}")
     return redirect(url_for("portal_project", project_id=project_id, _anchor="tab-measurements"))
@@ -2026,9 +2283,9 @@ def portal_project_tests(project_id):
     import math
     proj, err = _require_project_owner(project_id)
     if err: return err
-    measurements_raw = sb("GET","measurements",params=f"?project_id=eq.{project_id}") or []
-    variables    = sb("GET","project_variables",params=f"?project_id=eq.{project_id}") or []
-    participants = sb("GET","project_participants",params=f"?project_id=eq.{project_id}") or []
+    measurements_raw = sb("GET","measurements",params=f"?project_id=eq.{_q(project_id)}") or []
+    variables    = sb("GET","project_variables",params=f"?project_id=eq.{_q(project_id)}") or []
+    participants = sb("GET","project_participants",params=f"?project_id=eq.{_q(project_id)}") or []
 
     # Inject group_name into measurements
     pid_to_group = {p["id"]: (p.get("group_name") or "미지정") for p in (participants if isinstance(participants,list) else [])}
@@ -2238,17 +2495,17 @@ def portal_project_tests_export(project_id):
     _, err = _require_project_owner(project_id)
     if err: return err
     # Re-run the test logic (lightweight version returning only flat rows)
-    measurements_raw = sb("GET","measurements",params=f"?project_id=eq.{project_id}") or []
-    variables    = sb("GET","project_variables",params=f"?project_id=eq.{project_id}") or []
-    participants = sb("GET","project_participants",params=f"?project_id=eq.{project_id}") or []
-    proj = sb("GET","projects",params=f"?id=eq.{project_id}")
+    measurements_raw = sb("GET","measurements",params=f"?project_id=eq.{_q(project_id)}") or []
+    variables    = sb("GET","project_variables",params=f"?project_id=eq.{_q(project_id)}") or []
+    participants = sb("GET","project_participants",params=f"?project_id=eq.{_q(project_id)}") or []
+    proj = sb("GET","projects",params=f"?id=eq.{_q(project_id)}")
     proj_name = proj[0]["name"] if proj else "project"
     pid_to_group = {p["id"]: (p.get("group_name") or "미지정") for p in (participants if isinstance(participants,list) else [])}
     measurements = [m for m in (measurements_raw if isinstance(measurements_raw,list) else []) if not m.get("excluded")]
     for m in measurements:
         m["group_name"] = pid_to_group.get(m.get("participant_id",""), "미지정")
     output = io.StringIO()
-    writer = csv.writer(output)
+    writer = SafeCSVWriter(output)
     writer.writerow(["변수","비교유형","그룹1","그룹2","N1","N2","평균1","평균2","t/U/F","p값","유의","Cohen's d","효과크기"])
     for v in (variables if isinstance(variables,list) else []):
         vn = v["name"]; label = v.get("label") or vn
@@ -2289,8 +2546,8 @@ def portal_project_tests_export(project_id):
 @login_required
 def portal_files():
     email = session["researcher"]
-    files = sb("GET", "portal_files", params=f"?researcher_email=eq.{email}&order=uploaded_at.desc") or []
-    projects = sb("GET", "projects", params=f"?researcher_email=eq.{email}&order=created_at.desc") or []
+    files = sb("GET", "portal_files", params=f"?researcher_email=eq.{_q(email)}&order=uploaded_at.desc") or []
+    projects = sb("GET", "projects", params=f"?researcher_email=eq.{_q(email)}&order=created_at.desc") or []
     # Build project name lookup
     proj_map = {p["id"]: p["name"] for p in (projects if isinstance(projects, list) else [])}
     for f in (files if isinstance(files, list) else []):
@@ -2330,12 +2587,12 @@ def portal_files_upload():
 @app.route("/portal/files/<file_id>/download")
 @login_required
 def portal_files_download(file_id):
-    rows = sb("GET", "portal_files", params=f"?id=eq.{file_id}")
+    rows = sb("GET", "portal_files", params=f"?id=eq.{_q(file_id)}")
     if not rows: return redirect(url_for("portal_files"))
     row = rows[0]
     if row.get("researcher_email") != session["researcher"]:
         flash("접근 권한이 없습니다.", "error"); return redirect(url_for("portal_files"))
-    path = os.path.join(PORTAL_FILES_DIR, row["filename"])
+    path = _stored_path(PORTAL_FILES_DIR, row["filename"])
     if not os.path.exists(path): return redirect(url_for("portal_files"))
     from flask import send_file
     return send_file(path, as_attachment=True, download_name=row["original_name"])
@@ -2343,22 +2600,24 @@ def portal_files_download(file_id):
 @app.route("/portal/files/<file_id>/delete", methods=["POST"])
 @login_required
 def portal_files_delete(file_id):
-    rows = sb("GET", "portal_files", params=f"?id=eq.{file_id}")
+    rows = sb("GET", "portal_files", params=f"?id=eq.{_q(file_id)}")
     if rows and rows[0].get("researcher_email") == session["researcher"]:
+        if rows[0].get('project_id'):
+            _authorize_project(rows[0]['project_id'], owner_only=True)
         # Delete physical file
-        path = os.path.join(DATA_DIR, rows[0]["filename"])
+        path = _stored_path(DATA_DIR, rows[0]["filename"])
         if not os.path.exists(path):
             # also check project subfolder
             proj_id = rows[0].get("project_id","")
-            path2 = os.path.join(DATA_DIR, f"project_{proj_id}", rows[0]["filename"])
+            path2 = _stored_path(DATA_DIR, f"project_{proj_id}", rows[0]["filename"])
             if os.path.exists(path2): path = path2
         if os.path.exists(path):
             try: os.remove(path)
             except: pass
         # Optionally cascade-delete measurements linked to this file
         if request.form.get("delete_measurements") == "1":
-            sb("DELETE", "measurements", params=f"?source_file_id=eq.{file_id}")
-        sb("DELETE", "portal_files", params=f"?id=eq.{file_id}")
+            sb("DELETE", "measurements", params=f"?source_file_id=eq.{_q(file_id)}")
+        sb("DELETE", "portal_files", params=f"?id=eq.{_q(file_id)}")
         flash("파일이 삭제됐어요.")
     return redirect(url_for("portal_files"))
 
@@ -2389,7 +2648,7 @@ def portal_drive():
         except drive_sync.DriveNotConfigured as e:
             error = str(e)
         except Exception as e:
-            error = "드라이브를 불러오지 못했어요: " + str(e)
+            error = "드라이브를 불러오지 못했어요. 관리자에게 연결 상태 확인을 요청해주세요."
     return render_template("portal_drive.html",
                            researcher=session.get("researcher", ""),
                            folders=folders, error=error)
@@ -2401,9 +2660,9 @@ def portal_drive_file(file_id):
         flash("잘못된 파일 ID예요.", "error")
         return redirect(url_for("portal_drive"))
     try:
-        data, mime, name = drive_sync.get_file(file_id)
+        data, mime, name = drive_sync.get_file(file_id, DRIVE_FOLDER_IDS)
     except Exception as e:
-        flash("파일을 불러오지 못했어요: " + str(e), "error")
+        flash("파일을 불러올 수 없거나 접근 권한이 없습니다.", "error")
         return redirect(url_for("portal_drive"))
     from urllib.parse import quote
     resp = Response(data, mimetype=mime or "application/octet-stream")
@@ -2425,8 +2684,9 @@ def portal_change_password():
     stored = _get_account(email)
     if not stored or not check_password_hash(stored, current): flash("현재 비밀번호가 틀렸어요.", "error"); return redirect(url_for("portal_settings"))
     if new_pw!=confirm: flash("새 비밀번호가 일치하지 않아요.", "error"); return redirect(url_for("portal_settings"))
-    if len(new_pw)<6: flash("비밀번호는 6자 이상이어야 해요.", "error"); return redirect(url_for("portal_settings"))
+    if len(new_pw)<12: flash("비밀번호는 12자 이상이어야 해요.", "error"); return redirect(url_for("portal_settings"))
     _set_account(email, new_pw)
+    session.clear()
     flash("비밀번호가 변경됐어요.")
     return redirect(url_for("portal_settings"))
 
@@ -2436,6 +2696,8 @@ def portal_add_account():
     new_email=request.form.get("email","").strip()
     new_pw=request.form.get("password","").strip()
     if not new_email or not new_pw: flash("이메일과 비밀번호를 입력해주세요.", "error"); return redirect(url_for("portal_settings"))
+    if len(new_pw) < 12:
+        abort(400)
     if _account_exists(new_email): flash("이미 존재하는 계정이에요.", "error"); return redirect(url_for("portal_settings"))
     _set_account(new_email, new_pw)
     flash(f"{new_email} 계정이 추가됐어요.")
@@ -2444,59 +2706,23 @@ def portal_add_account():
 @app.route("/portal/settings/backup")
 @login_required
 def portal_db_backup():
-    import shutil
-    backup_buf = io.BytesIO()
-    # Use SQLite's backup API for a consistent snapshot
-    src = sqlite3.connect(DB_PATH)
-    dst = sqlite3.connect(":memory:")
-    src.backup(dst)
-    src.close()
-    # Write in-memory DB to buffer
-    for chunk in dst.iterdump():
-        pass  # iterdump is text; use serialize instead (Python 3.11+) or file copy
-    dst.close()
-    # Simpler: just send the file directly (safe because WAL is enabled)
-    with open(DB_PATH, "rb") as f:
-        data = f.read()
-    fname = f"portal_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
-    return Response(data, mimetype="application/octet-stream",
-        headers={"Content-Disposition": f"attachment;filename={fname}"})
+    with sqlite3.connect(DB_PATH) as src, sqlite3.connect(':memory:') as snapshot:
+        src.backup(snapshot)
+        data = snapshot.serialize()
+    return Response(data, mimetype='application/octet-stream',
+                    headers={'Content-Disposition': 'attachment;filename=portal_backup.db'})
 
 @app.route("/portal/settings/restore", methods=["POST"])
 @login_required
 def portal_db_restore():
-    f = request.files.get("backup_file")
-    if not f or not f.filename.endswith(".db"):
-        flash("올바른 .db 파일을 선택해주세요.", "error")
-        return redirect(url_for("portal_settings"))
-    # Validate it's a SQLite file
-    header = f.read(16)
-    if not header.startswith(b"SQLite format 3"):
-        flash("유효한 SQLite 데이터베이스 파일이 아닙니다.", "error")
-        return redirect(url_for("portal_settings"))
-    f.seek(0)
-    # Write to a temp file then validate before replacing
-    import tempfile, shutil
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".db") as tmp:
-        f.save(tmp.name)
-        try:
-            test_conn = sqlite3.connect(tmp.name)
-            test_conn.execute("SELECT name FROM sqlite_master LIMIT 1").fetchone()
-            test_conn.close()
-        except Exception as e:
-            os.unlink(tmp.name)
-            flash(f"복원 실패: DB 파일 검증 오류 — {e}", "error")
-            return redirect(url_for("portal_settings"))
-        shutil.copy2(tmp.name, DB_PATH)
-        os.unlink(tmp.name)
-    flash("데이터베이스가 성공적으로 복원됐어요. 페이지를 새로고침해주세요.")
-    return redirect(url_for("portal_settings"))
+    # Database restore is an offline administrative operation, not a web upload.
+    abort(403)
 
 @app.route("/portal/merge")
 @login_required
 def portal_merge():
     email=session["researcher"]
-    projects=sb("GET","projects",params=f"?researcher_email=eq.{email}&order=created_at.desc") or []
+    projects=sb("GET","projects",params=f"?researcher_email=eq.{_q(email)}&order=created_at.desc") or []
     return render_template("portal_merge.html",researcher=email,
         projects=projects if isinstance(projects,list) else [])
 
@@ -2505,13 +2731,13 @@ def portal_merge():
 def portal_merge_preview():
     p1_id=request.form.get("project1_id",""); p2_id=request.form.get("project2_id","")
     if not p1_id or not p2_id or p1_id==p2_id: flash("서로 다른 프로젝트를 선택해주세요.", "error"); return redirect(url_for("portal_merge"))
-    p1=sb("GET","projects",params=f"?id=eq.{p1_id}"); p2=sb("GET","projects",params=f"?id=eq.{p2_id}")
-    p1_parts=sb("GET","project_participants",params=f"?project_id=eq.{p1_id}") or []
-    p2_parts=sb("GET","project_participants",params=f"?project_id=eq.{p2_id}") or []
+    p1=sb("GET","projects",params=f"?id=eq.{_q(p1_id)}"); p2=sb("GET","projects",params=f"?id=eq.{_q(p2_id)}")
+    p1_parts=sb("GET","project_participants",params=f"?project_id=eq.{_q(p1_id)}") or []
+    p2_parts=sb("GET","project_participants",params=f"?project_id=eq.{_q(p2_id)}") or []
     p1_codes={p["code"] for p in (p1_parts if isinstance(p1_parts,list) else [])}
     p2_codes={p["code"] for p in (p2_parts if isinstance(p2_parts,list) else [])}
     return render_template("portal_merge.html",researcher=session["researcher"],
-        projects=sb("GET","projects",params=f"?researcher_email=eq.{session['researcher']}&order=created_at.desc") or [],
+        projects=sb("GET","projects",params=f"?researcher_email=eq.{_q(session['researcher'])}&order=created_at.desc") or [],
         preview=True,project1=p1[0] if p1 else {},project2=p2[0] if p2 else {},
         common=sorted(p1_codes&p2_codes),only_p1=sorted(p1_codes-p2_codes),only_p2=sorted(p2_codes-p1_codes),
         p1_id=p1_id,p2_id=p2_id)
@@ -2527,23 +2753,23 @@ def portal_merge_execute():
     new_pid=new_proj[0]["id"]
     all_vars={}
     for src in [p1_id,p2_id]:
-        for v in (sb("GET","project_variables",params=f"?project_id=eq.{src}") or []):
+        for v in (sb("GET","project_variables",params=f"?project_id=eq.{_q(src)}") or []):
             all_vars[v["name"]]=v
     for vn,v in all_vars.items():
         sb("POST","project_variables",data={"project_id":new_pid,"name":vn,
             "label":v.get("label"),"var_type":v.get("var_type","number"),"unit":v.get("unit")})
     p_code_map={}
     for src in [p1_id,p2_id]:
-        for p in (sb("GET","project_participants",params=f"?project_id=eq.{src}") or []):
+        for p in (sb("GET","project_participants",params=f"?project_id=eq.{_q(src)}") or []):
             if p["code"] not in p_code_map:
                 new_p=sb("POST","project_participants",data={"project_id":new_pid,"code":p["code"],
                     "gender":p.get("gender"),"age":p.get("age"),"group_name":p.get("group_name")})
                 if new_p and isinstance(new_p,list): p_code_map[p["code"]]=new_p[0]["id"]
     for src_pid in [p1_id,p2_id]:
-        src_parts=sb("GET","project_participants",params=f"?project_id=eq.{src_pid}") or []
+        src_parts=sb("GET","project_participants",params=f"?project_id=eq.{_q(src_pid)}") or []
         src_map={p["id"]:p["code"] for p in (src_parts if isinstance(src_parts,list) else [])}
         tag="P1" if src_pid==p1_id else "P2"
-        for m in (sb("GET","measurements",params=f"?project_id=eq.{src_pid}") or []):
+        for m in (sb("GET","measurements",params=f"?project_id=eq.{_q(src_pid)}") or []):
             code=src_map.get(m.get("participant_id",""),"")
             new_pid2=p_code_map.get(code)
             if not new_pid2: continue
@@ -2556,16 +2782,16 @@ def portal_merge_execute():
 @app.route("/portal/all/participants")
 @login_required
 def portal_all_participants():
-    participants=sb("GET","project_participants",params="?select=*,projects(name)&order=enrolled_at.desc") or []
+    participants=_project_rows("project_participants", params="?order=enrolled_at.desc") or []
     return render_template("portal_participants.html",researcher=session["researcher"],
         participants=participants if isinstance(participants,list) else [])
 
 @app.route("/portal/all/sessions")
 @login_required
 def portal_all_sessions():
-    session_list = sb("GET", "sessions", params="?order=received_at.desc") or []
+    session_list = _project_rows("sessions", params="?order=received_at.desc") or []
     if session_list:
-        all_parts = sb("GET", "project_participants", params="?select=id,code") or []
+        all_parts = _project_rows("project_participants", params="?select=id,code") or []
         p_map = {p["id"]: p["code"] for p in (all_parts if isinstance(all_parts, list) else [])}
         for s in session_list:
             s["participant_code"] = p_map.get(s.get("participant_id", ""), "")
@@ -2735,7 +2961,7 @@ def _mindmate_payload():
 def _merge_upsert(table, row_id, fields, overwrite_always=("raw", "updated_at", "source")):
     """부분 전송을 반영: 새 값이 비어있으면 기존 값을 유지한 채 upsert.
     raw/updated_at은 항상 최신 값으로 덮어씀."""
-    existing = sb("GET", table, params=f"?id=eq.{row_id}&select=*")
+    existing = sb("GET", table, params=f"?id=eq.{_q(row_id)}&select=*")
     merged = dict(existing[0]) if existing else {}
     for k, v in fields.items():
         if k in overwrite_always or v not in (None, ""):
@@ -2801,12 +3027,19 @@ def api_mindmate_followup():
             j = json.loads(payload.get("jsonData", "{}"))
         except (ValueError, TypeError):
             return jsonify({"error": "invalid jsonData"}), 400
+        if not isinstance(j, dict):
+            return jsonify(error='invalid jsonData'), 400
         dates      = str(j.get("date", "")).split("|")
         work_types = str(j.get("workType", "")).split("|")
         is_daily   = str(j.get("isServeyDaily", "")).split("|")
         is_healing = str(j.get("isMindHealing", "")).split("|")
         is_five    = str(j.get("isFiveDays", "")).split("|")
-        n = int(j.get("dataCount") or len(dates))
+        try:
+            n = int(j.get("dataCount") or len(dates))
+        except (TypeError, ValueError):
+            return jsonify(error='invalid dataCount'), 400
+        if not 1 <= n <= 500:
+            return jsonify(error='dataCount must be 1..500'), 400
         saved = invalid = failed = 0
         for i in range(n):
             date = dates[i] if i < len(dates) else ""
@@ -2851,11 +3084,11 @@ def portal_wardy():
     state      = request.args.get("state", "").strip()
 
     params = "?select=*&order=event_time.asc"
-    if project_id: params += f"&project_id=eq.{project_id}"
-    if user_name:  params += f"&user_name=ilike.{user_name}%25"
-    if state:      params += f"&state=ilike.{state}"
+    if project_id: params += f"&project_id=eq.{_q(project_id)}"
+    if user_name:  params += f"&user_name=ilike.{_q(user_name)}%25"
+    if state:      params += f"&state=ilike.{_q(state)}"
     params += "&limit=3000"
-    all_events = sb("GET", "wardy_events", params=params) or []
+    all_events = _project_rows("wardy_events", params=params) or []
     total = len(all_events)
 
     # 참여자별로 그룹핑 (가장 최근 이벤트 순 정렬)
@@ -2883,7 +3116,7 @@ def portal_wardy():
     grouped_users.sort(key=lambda g: g["last_time"], reverse=True)
 
     distinct_states = sorted(set(e.get("state", "") for e in all_events if e.get("state")))
-    projects = sb("GET", "projects", params="?select=id,name&order=created_at.desc") or []
+    projects = _accessible_projects(session["researcher"]) or []
 
     return render_template("portal_wardy.html",
         researcher=session["researcher"],
@@ -2891,7 +3124,7 @@ def portal_wardy():
         project_id=project_id, user_name=user_name, state=state,
         total=total,
         distinct_states=distinct_states,
-        api_key=APP_API_KEY)
+        api_key="(서버 환경변수에서 별도 관리)")
 
 @app.route("/portal/wardy/delete", methods=["POST"])
 @login_required
@@ -2910,13 +3143,13 @@ def portal_wardy_export():
     state      = request.args.get("state", "").strip()
 
     params = "?select=*&order=received_at.asc"
-    if project_id: params += f"&project_id=eq.{project_id}"
-    if user_name:  params += f"&user_name=ilike.{user_name}%25"
-    if state:      params += f"&state=ilike.{state}"
-    events = sb("GET", "wardy_events", params=params) or []
+    if project_id: params += f"&project_id=eq.{_q(project_id)}"
+    if user_name:  params += f"&user_name=ilike.{_q(user_name)}%25"
+    if state:      params += f"&state=ilike.{_q(state)}"
+    events = _project_rows("wardy_events", params=params) or []
 
     buf = io.StringIO()
-    w = csv.writer(buf)
+    w = SafeCSVWriter(buf)
     w.writerow(["id","project_id","user_name","seq","event_time","state","game_level","data","received_at"])
     for ev in events:
         w.writerow([
@@ -2960,12 +3193,12 @@ def portal_neurobreeze():
     tab        = request.args.get("tab","eeg")  # eeg | meditation
 
     base_params = "?select=*&order=received_at.asc&limit=3000"
-    if project_id: base_params += f"&project_id=eq.{project_id}"
-    if user_name:  base_params += f"&user_name=ilike.{user_name}%25"
-    eeg_rows        = sb("GET","neurobreeze_eeg",        params=base_params) or []
-    meditation_rows = sb("GET","neurobreeze_meditation",  params=base_params) or []
+    if project_id: base_params += f"&project_id=eq.{_q(project_id)}"
+    if user_name:  base_params += f"&user_name=ilike.{_q(user_name)}%25"
+    eeg_rows        = _project_rows("neurobreeze_eeg", params=base_params) or []
+    meditation_rows = _project_rows("neurobreeze_meditation", params=base_params) or []
 
-    projects = sb("GET", "projects", params="?select=id,name&order=created_at.desc") or []
+    projects = _accessible_projects(session["researcher"]) or []
 
     return render_template("portal_neurobreeze.html",
         researcher=session["researcher"],
@@ -2974,7 +3207,7 @@ def portal_neurobreeze():
         eeg_total=len(eeg_rows), med_total=len(meditation_rows),
         projects=projects,
         project_id=project_id, user_name=user_name, tab=tab,
-        api_key=APP_API_KEY)
+        api_key="(서버 환경변수에서 별도 관리)")
 
 @app.route("/portal/neurobreeze/eeg/delete", methods=["POST"])
 @login_required
@@ -3003,12 +3236,12 @@ def portal_neurobreeze_export():
 
     table = "neurobreeze_eeg" if tab == "eeg" else "neurobreeze_meditation"
     params = "?select=*&order=received_at.asc"
-    if project_id: params += f"&project_id=eq.{project_id}"
-    if user_name:  params += f"&user_name=ilike.{user_name}%25"
-    rows = sb("GET", table, params=params) or []
+    if project_id: params += f"&project_id=eq.{_q(project_id)}"
+    if user_name:  params += f"&user_name=ilike.{_q(user_name)}%25"
+    rows = _project_rows(table, params=params) or []
 
     buf = io.StringIO()
-    w = csv.writer(buf)
+    w = SafeCSVWriter(buf)
 
     if tab == "eeg":
         w.writerow(["id","project_id","user_name","session_num","recorded_at",
@@ -3065,7 +3298,7 @@ def portal_mindmate():
 
     table = "mindmate_music_log" if tab == "music" else "mindmate_daily_survey"
     params = "?select=*&order=date.desc&limit=3000"
-    if q: params += f"&participant_key=ilike.{q}%25"
+    if q: params += f"&participant_key=ilike.{_q(q)}%25"
     rows = sb("GET", table, params=params) or []
     for r in rows:
         r["label"] = _mm_label(r.get("participant_key"))
@@ -3081,7 +3314,7 @@ def portal_mindmate_music_delete():
         flash("삭제할 항목을 선택해주세요.", "error")
         return redirect(url_for("portal_mindmate", tab="music"))
     for rid in ids:
-        sb("DELETE", "mindmate_music_log", params=f"?id=eq.{rid}")
+        sb("DELETE", "mindmate_music_log", params=f"?id=eq.{_q(rid)}")
     flash(f"{len(ids)}건 삭제됐습니다.")
     return redirect(url_for("portal_mindmate", tab="music"))
 
@@ -3093,7 +3326,7 @@ def portal_mindmate_survey_delete():
         flash("삭제할 항목을 선택해주세요.", "error")
         return redirect(url_for("portal_mindmate", tab="survey"))
     for rid in ids:
-        sb("DELETE", "mindmate_daily_survey", params=f"?id=eq.{rid}")
+        sb("DELETE", "mindmate_daily_survey", params=f"?id=eq.{_q(rid)}")
     flash(f"{len(ids)}건 삭제됐습니다.")
     return redirect(url_for("portal_mindmate", tab="survey"))
 
@@ -3109,7 +3342,7 @@ def portal_mindmate_export():
 
     buf = io.StringIO()
     buf.write("﻿")  # UTF-8 BOM: 엑셀에서 바로 열 수 있게
-    w = csv.writer(buf)
+    w = SafeCSVWriter(buf)
     w.writerow(cols)
     for r in rows:
         w.writerow([r.get(c,"") for c in cols])
@@ -3119,7 +3352,7 @@ def portal_mindmate_export():
 
 # ── Mind Mate 실시간 뷰어 ─────────────────────────────
 # 두 테이블(음원 재생 / 일일 설문·동기화)의 최근 활동을 시간순으로 합쳐서
-# "지금 누가 쓰고 있는지" 보여준다. project_id 개념이 없어 로그인만 확인.
+# "지금 누가 쓰고 있는지" 보여준다. 프로젝트 연결 전까지 지정된 관리자만 접근.
 _MM_ACTIVITY_TYPES = {
     "music":  "🎵 음원 재생",
     "survey": "📋 일일 설문",
@@ -3180,7 +3413,7 @@ def portal_project_edit(project_id):
        data={"name": new_name,
              "description": request.form.get("description","").strip(),
              "app_type": request.form.get("app_type","").strip()},
-       params=f"?id=eq.{project_id}")
+       params=f"?id=eq.{_q(project_id)}")
     audit("edit_project", "projects", project_id, f"name={new_name}")
     flash("프로젝트 정보가 수정됐어요.")
     return redirect(url_for("portal_project", project_id=project_id))
@@ -3191,7 +3424,7 @@ def portal_project_edit(project_id):
 def portal_project_clone(project_id):
     proj, err = _require_project_owner(project_id)
     if err: return err
-    variables = sb("GET","project_variables",params=f"?project_id=eq.{project_id}") or []
+    variables = sb("GET","project_variables",params=f"?project_id=eq.{_q(project_id)}") or []
     new_id = str(_uuid.uuid4())
     sb("POST","projects",data={
         "id": new_id,
@@ -3216,9 +3449,9 @@ def portal_project_export_excel(project_id):
     from openpyxl.styles import Font, PatternFill, Alignment
     proj, err = _require_project_owner(project_id)
     if err: return err
-    participants = sb("GET","project_participants",params=f"?project_id=eq.{project_id}") or []
-    measurements = sb("GET","measurements",params=f"?project_id=eq.{project_id}") or []
-    variables    = sb("GET","project_variables",params=f"?project_id=eq.{project_id}") or []
+    participants = sb("GET","project_participants",params=f"?project_id=eq.{_q(project_id)}") or []
+    measurements = sb("GET","measurements",params=f"?project_id=eq.{_q(project_id)}") or []
+    variables    = sb("GET","project_variables",params=f"?project_id=eq.{_q(project_id)}") or []
     p_map = {p["id"]: p for p in (participants if isinstance(participants,list) else [])}
     var_names = [v["name"] for v in (variables if isinstance(variables,list) else [])]
     var_labels = {v["name"]: (v.get("label") or v["name"]) for v in (variables if isinstance(variables,list) else [])}
@@ -3272,6 +3505,7 @@ def portal_project_export_excel(project_id):
             ws2.append(row)
 
     buf = io.BytesIO()
+    neutralize_excel_formulas(wb)
     wb.save(buf); buf.seek(0)
     proj_name = proj["name"].replace("/","_").replace("\\","_")
     return Response(buf.read(),
@@ -3284,9 +3518,9 @@ def portal_project_export_excel(project_id):
 def portal_measurement_edit(project_id, m_id):
     _, err = _require_project_owner(project_id)
     if err: return err
-    rows = sb("GET","measurements",params=f"?id=eq.{m_id}")
+    rows = sb("GET","measurements",params=f"?id=eq.{_q(m_id)}")
     if not rows: return redirect(url_for("portal_project", project_id=project_id))
-    variables = sb("GET","project_variables",params=f"?project_id=eq.{project_id}") or []
+    variables = sb("GET","project_variables",params=f"?project_id=eq.{_q(project_id)}") or []
     data_dict = {}
     if isinstance(variables, list):
         for v in variables:
@@ -3298,7 +3532,7 @@ def portal_measurement_edit(project_id, m_id):
        data={"phase": request.form.get("phase","").strip() or None,
              "notes": request.form.get("notes","").strip() or None,
              "data": data_dict},
-       params=f"?id=eq.{m_id}")
+       params=f"?id=eq.{_q(m_id)}")
     return redirect(url_for("portal_project", project_id=project_id, _anchor="tab-measurements"))
 
 # ── Participant bulk group change ─────────────────────
@@ -3311,7 +3545,7 @@ def portal_participants_bulk_group(project_id):
     group_name = request.form.get("group_name","").strip() or None
     for pid in ids:
         sb("PATCH","project_participants",data={"group_name": group_name},
-           params=f"?id=eq.{pid}&project_id=eq.{project_id}")
+           params=f"?id=eq.{_q(pid)}&project_id=eq.{_q(project_id)}")
     flash(f"{len(ids)}명의 그룹이 변경됐어요.")
     return redirect(url_for("portal_project", project_id=project_id, _anchor="tab-participants"))
 
@@ -3342,14 +3576,14 @@ def portal_news_edit(news_id):
        data={"title": request.form.get("title","").strip(),
              "content": request.form.get("content","").strip(),
              "published": 1 if request.form.get("published") else 0},
-       params=f"?id=eq.{news_id}")
+       params=f"?id=eq.{_q(news_id)}")
     flash("공지가 수정됐어요.")
     return redirect(url_for("portal_news"))
 
 @app.route("/portal/news/<news_id>/delete", methods=["POST"])
 @login_required
 def portal_news_delete(news_id):
-    sb("DELETE","news",params=f"?id=eq.{news_id}")
+    sb("DELETE","news",params=f"?id=eq.{_q(news_id)}")
     flash("공지가 삭제됐어요.")
     return redirect(url_for("portal_news"))
 
@@ -3358,7 +3592,7 @@ def portal_news_delete(news_id):
 @login_required
 def portal_analytics():
     email = session["researcher"]
-    projects = sb("GET", "projects", params=f"?researcher_email=eq.{email}&order=created_at.desc") or []
+    projects = sb("GET", "projects", params=f"?researcher_email=eq.{_q(email)}&order=created_at.desc") or []
     return render_template("portal_analytics.html", researcher=email,
         projects=projects if isinstance(projects, list) else [])
 
@@ -3372,9 +3606,9 @@ def portal_analytics_data():
         return jsonify({"error": "project_id required"}), 400
     if not _project_access_ok(project_id, email):
         return jsonify({"error": "unauthorized"}), 403
-    participants = sb("GET", "project_participants", params=f"?project_id=eq.{project_id}") or []
+    participants = sb("GET", "project_participants", params=f"?project_id=eq.{_q(project_id)}") or []
     p_map = {p["id"]: p for p in (participants if isinstance(participants, list) else [])}
-    mlist = sb("GET", "measurements", params=f"?project_id=eq.{project_id}&excluded=eq.0&order=measured_at.asc") or []
+    mlist = sb("GET", "measurements", params=f"?project_id=eq.{_q(project_id)}&excluded=eq.0&order=measured_at.asc") or []
     rows = []
     for m in (mlist if isinstance(mlist, list) else []):
         info = p_map.get(m.get("participant_id", ""), {})
@@ -3398,7 +3632,7 @@ def portal_analytics_data():
 @app.route("/api/docs")
 @login_required
 def api_docs():
-    api_key = APP_API_KEY
+    api_key = '(서버 환경변수에서 별도 관리)'
     return render_template("api_docs.html", researcher=session["researcher"], api_key=api_key)
 
 # ── Research topic inline edit ────────────────────────
@@ -3426,19 +3660,19 @@ def portal_contacts():
 def portal_tasks():
     me = session["researcher"]
     # 내 프로젝트 + 협력자 프로젝트
-    my_projects = sb("GET", "projects", params=f"?researcher_email=eq.{me}&select=id,name") or []
-    collab_rows = sb("GET", "project_collaborators", params=f"?researcher_email=eq.{me}&select=project_id") or []
+    my_projects = sb("GET", "projects", params=f"?researcher_email=eq.{_q(me)}&select=id,name") or []
+    collab_rows = sb("GET", "project_collaborators", params=f"?researcher_email=eq.{_q(me)}&select=project_id") or []
     collab_pids = [r["project_id"] for r in collab_rows]
     if collab_pids:
         for pid in collab_pids:
-            row = sb("GET", "projects", params=f"?id=eq.{pid}&select=id,name")
+            row = sb("GET", "projects", params=f"?id=eq.{_q(pid)}&select=id,name")
             if row: my_projects += row
     proj_map = {p["id"]: p["name"] for p in my_projects}
     pids = list(proj_map.keys())
 
     all_tasks = []
     for pid in pids:
-        rows = sb("GET", "tasks", params=f"?project_id=eq.{pid}&order=due_date.asc") or []
+        rows = sb("GET", "tasks", params=f"?project_id=eq.{_q(pid)}&order=due_date.asc") or []
         for r in rows:
             r["project_name"] = proj_map.get(pid, "")
         all_tasks += rows
@@ -3478,12 +3712,13 @@ def portal_task_new():
 
 @app.route("/portal/tasks/<task_id>/status", methods=["POST"])
 @login_required
-@csrf.exempt
 def portal_task_status(task_id):
     new_status = request.get_json(silent=True) or {}
     status = new_status.get("status", "todo")
+    if status not in ('todo', 'doing', 'done'):
+        abort(400)
     sb("PATCH", "tasks", data={"status": status, "updated_at": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")},
-       params=f"?id=eq.{task_id}")
+       params=f"?id=eq.{_q(task_id)}")
     return jsonify({"ok": True})
 
 @app.route("/portal/tasks/<task_id>/edit", methods=["POST"])
@@ -3497,14 +3732,14 @@ def portal_task_edit(task_id):
         "priority":    request.form.get("priority", "normal"),
         "status":      request.form.get("status", "todo"),
         "updated_at":  datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"),
-    }, params=f"?id=eq.{task_id}")
+    }, params=f"?id=eq.{_q(task_id)}")
     flash("태스크가 수정됐습니다.")
     return redirect(url_for("portal_tasks"))
 
 @app.route("/portal/tasks/<task_id>/delete", methods=["POST"])
 @login_required
 def portal_task_delete(task_id):
-    sb("DELETE", "tasks", params=f"?id=eq.{task_id}")
+    sb("DELETE", "tasks", params=f"?id=eq.{_q(task_id)}")
     flash("태스크를 삭제했습니다.")
     return redirect(url_for("portal_tasks"))
 
@@ -3516,7 +3751,7 @@ def portal_audit():
     total = _sb_count("audit_log")
     offset = (page - 1) * PAGE_SIZE
     logs = sb("GET", "audit_log",
-              params=f"?order=created_at.desc&limit={PAGE_SIZE}&offset={offset}") or []
+              params=f"?order=created_at.desc&limit={_q(PAGE_SIZE)}&offset={_q(offset)}") or []
     total_pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
     return render_template("portal_audit.html", logs=logs, researcher=session["researcher"],
                            page=page, total_pages=total_pages, total=total)
@@ -3533,6 +3768,8 @@ def portal_project_add_collaborator(project_id):
         return redirect(url_for("portal_project", project_id=project_id))
     email = (request.form.get("collaborator_email") or "").strip().lower()
     role  = request.form.get("role", "viewer")
+    if role not in ('viewer', 'editor'):
+        abort(400)
     if not email:
         flash("초대할 연구자 이메일을 입력해 주세요.", "error")
         return redirect(url_for("portal_project", project_id=project_id))
@@ -3540,7 +3777,7 @@ def portal_project_add_collaborator(project_id):
         flash("본인을 협력자로 초대할 수 없어요.", "error")
         return redirect(url_for("portal_project", project_id=project_id))
     existing = sb("GET", "project_collaborators",
-                  params=f"?project_id=eq.{project_id}&researcher_email=eq.{email}&select=id")
+                  params=f"?project_id=eq.{_q(project_id)}&researcher_email=eq.{_q(email)}&select=id")
     if existing:
         flash(f"{email}는 이미 협력자로 등록되어 있어요.", "error")
         return redirect(url_for("portal_project", project_id=project_id))
@@ -3562,7 +3799,7 @@ def portal_project_remove_collaborator(project_id):
         return redirect(url_for("portal_project", project_id=project_id))
     email = (request.form.get("collaborator_email") or "").strip().lower()
     sb("DELETE", "project_collaborators",
-       params=f"?project_id=eq.{project_id}&researcher_email=eq.{email}")
+       params=f"?project_id=eq.{_q(project_id)}&researcher_email=eq.{_q(email)}")
     audit("collaborator_remove", "project_collaborators", project_id, before={"email": email})
     flash(f"{email}를 협력자 목록에서 제거했어요.")
     return redirect(url_for("portal_project", project_id=project_id))
@@ -3575,7 +3812,7 @@ def portal_project_protocols_save(project_id):
     if err: return err
     phases_raw = request.form.get("phases", "")
     phases = [p.strip() for p in phases_raw.split(",") if p.strip()]
-    sb("DELETE", "project_protocols", params=f"?project_id=eq.{project_id}")
+    sb("DELETE", "project_protocols", params=f"?project_id=eq.{_q(project_id)}")
     for i, phase in enumerate(phases):
         sb("POST", "project_protocols", data={
             "project_id": project_id, "phase_name": phase, "sort_order": i
@@ -3586,46 +3823,17 @@ def portal_project_protocols_save(project_id):
 
 # ── Password reset ─────────────────────────────────────
 @app.route("/reset-password", methods=["GET","POST"])
+@limiter.limit('5 per minute', methods=['POST'])
 def reset_password_request():
-    if request.method == "POST":
-        email = (request.form.get("email") or "").strip().lower()
-        acct = sb("GET", "accounts", params=f"?email=eq.{email}&select=email")
-        if acct:
-            token = str(_uuid.uuid4())
-            expires = (datetime.now() + timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M:%S")
-            sb("DELETE", "reset_tokens", params=f"?email=eq.{email}")
-            sb("POST", "reset_tokens", data={
-                "token": token, "email": email, "expires_at": expires
-            })
-            reset_url = url_for("reset_password_confirm", token=token, _external=True)
-            flash(f"비밀번호 재설정 링크가 생성되었어요. (개발 환경: {reset_url})")
-        else:
-            flash("해당 이메일로 등록된 계정이 없어요.", "error")
-        return redirect(url_for("reset_password_request"))
-    return render_template("reset_password_request.html")
+    if request.method == 'POST':
+        flash('보안을 위해 온라인 비밀번호 재설정을 중단했습니다. 연구실 관리자에게 문의해주세요.')
+        return redirect(url_for('login'))
+    return render_template('reset_password_request.html')
 
 @app.route("/reset-password/<token>", methods=["GET","POST"])
 def reset_password_confirm(token):
-    rows = sb("GET", "reset_tokens", params=f"?token=eq.{token}&select=email,expires_at")
-    if not rows:
-        flash("유효하지 않거나 이미 사용된 링크예요.", "error")
-        return redirect(url_for("login"))
-    email, expires_at = rows[0]["email"], rows[0]["expires_at"]
-    if datetime.now() > datetime.strptime(expires_at, "%Y-%m-%dT%H:%M:%S"):
-        flash("링크가 만료되었어요. 다시 요청해 주세요.", "error")
-        return redirect(url_for("reset_password_request"))
-    if request.method == "POST":
-        pw = request.form.get("password", "")
-        if len(pw) < 8:
-            flash("비밀번호는 8자 이상이어야 해요.", "error")
-            return render_template("reset_password_confirm.html", token=token)
-        sb("PATCH", "accounts",
-           data={"password": generate_password_hash(pw, method='pbkdf2:sha256')},
-           params=f"?email=eq.{email}")
-        sb("DELETE", "reset_tokens", params=f"?token=eq.{token}")
-        flash("비밀번호가 재설정되었어요. 로그인해 주세요.")
-        return redirect(url_for("login"))
-    return render_template("reset_password_confirm.html", token=token)
+    # Previously disclosed tokens must not remain usable.
+    abort(404)
 
 # ── Data viewer / editor (Feature C) ──────────────────
 @app.route("/portal/projects/<project_id>/data")
@@ -3634,16 +3842,16 @@ def portal_project_data(project_id):
     proj, err = _require_project_owner(project_id)
     if err: return err
     file_id = request.args.get("file_id")
-    participants = sb("GET", "project_participants", params=f"?project_id=eq.{project_id}") or []
+    participants = sb("GET", "project_participants", params=f"?project_id=eq.{_q(project_id)}") or []
     p_map = {p["id"]: p for p in (participants if isinstance(participants, list) else [])}
     if file_id:
-        mlist = sb("GET", "measurements", params=f"?project_id=eq.{project_id}&source_file_id=eq.{file_id}&order=measured_at.asc") or []
-        file_info = sb("GET", "portal_files", params=f"?id=eq.{file_id}")
+        mlist = sb("GET", "measurements", params=f"?project_id=eq.{_q(project_id)}&source_file_id=eq.{_q(file_id)}&order=measured_at.asc") or []
+        file_info = sb("GET", "portal_files", params=f"?id=eq.{_q(file_id)}")
         file_info = file_info[0] if file_info else {}
         try: col_schema = json.loads(file_info.get("column_schema") or "[]")
         except: col_schema = []
     else:
-        mlist = sb("GET", "measurements", params=f"?project_id=eq.{project_id}&order=measured_at.asc") or []
+        mlist = sb("GET", "measurements", params=f"?project_id=eq.{_q(project_id)}&order=measured_at.asc") or []
         file_info = {}
         col_schema = []
 
@@ -3664,14 +3872,13 @@ def portal_project_data(project_id):
                 if k not in all_keys: all_keys.append(k)
         col_schema = [{"name": k, "type": "text"} for k in all_keys]
 
-    files = sb("GET", "portal_files", params=f"?project_id=eq.{project_id}&order=uploaded_at.desc") or []
+    files = sb("GET", "portal_files", params=f"?project_id=eq.{_q(project_id)}&order=uploaded_at.desc") or []
     return render_template("portal_data.html",
         project=proj, measurements=measurements, col_schema=col_schema,
         file_info=file_info, file_id=file_id, files=files,
         researcher=session["researcher"])
 
 @app.route("/portal/projects/<project_id>/data/cell", methods=["POST"])
-@csrf.exempt
 @login_required
 def portal_project_data_cell(project_id):
     _, err = _require_project_owner(project_id)
@@ -3682,7 +3889,7 @@ def portal_project_data_cell(project_id):
     val = payload.get("value","")
     if not measurement_id or not col:
         return jsonify({"ok": False, "error": "missing fields"}), 400
-    rows = sb("GET", "measurements", params=f"?id=eq.{measurement_id}&project_id=eq.{project_id}&select=data")
+    rows = sb("GET", "measurements", params=f"?id=eq.{_q(measurement_id)}&project_id=eq.{_q(project_id)}&select=data")
     if not rows:
         return jsonify({"ok": False, "error": "not found"}), 404
     data = rows[0].get("data") or {}
@@ -3691,10 +3898,10 @@ def portal_project_data_cell(project_id):
         except: data = {}
     # Handle special top-level columns
     if col in ("phase", "notes"):
-        sb("PATCH", "measurements", data={col: val or None}, params=f"?id=eq.{measurement_id}")
+        sb("PATCH", "measurements", data={col: val or None}, params=f"?id=eq.{_q(measurement_id)}")
     else:
         data[col] = val
-        sb("PATCH", "measurements", data={"data": data}, params=f"?id=eq.{measurement_id}")
+        sb("PATCH", "measurements", data={"data": data}, params=f"?id=eq.{_q(measurement_id)}")
     return jsonify({"ok": True})
 
 @app.route("/portal/projects/<project_id>/data/export")
@@ -3705,17 +3912,17 @@ def portal_project_data_export(project_id):
     import openpyxl
     from openpyxl.styles import Font, PatternFill, Alignment
     file_id = request.args.get("file_id")
-    participants = sb("GET", "project_participants", params=f"?project_id=eq.{project_id}") or []
+    participants = sb("GET", "project_participants", params=f"?project_id=eq.{_q(project_id)}") or []
     p_map = {p["id"]: p for p in (participants if isinstance(participants, list) else [])}
     if file_id:
-        mlist = sb("GET", "measurements", params=f"?project_id=eq.{project_id}&source_file_id=eq.{file_id}&order=measured_at.asc") or []
-        file_info = sb("GET", "portal_files", params=f"?id=eq.{file_id}")
+        mlist = sb("GET", "measurements", params=f"?project_id=eq.{_q(project_id)}&source_file_id=eq.{_q(file_id)}&order=measured_at.asc") or []
+        file_info = sb("GET", "portal_files", params=f"?id=eq.{_q(file_id)}")
         file_info = file_info[0] if file_info else {}
         try: col_schema = json.loads(file_info.get("column_schema") or "[]")
         except: col_schema = []
         data_cols = [c["name"] for c in col_schema]
     else:
-        mlist = sb("GET", "measurements", params=f"?project_id=eq.{project_id}&order=measured_at.asc") or []
+        mlist = sb("GET", "measurements", params=f"?project_id=eq.{_q(project_id)}&order=measured_at.asc") or []
         data_cols = []
 
     measurements = mlist if isinstance(mlist, list) else []
@@ -3750,6 +3957,7 @@ def portal_project_data_export(project_id):
         ] + [data.get(c,"") for c in data_cols]
         ws.append(row)
     buf = io.BytesIO()
+    neutralize_excel_formulas(wb)
     wb.save(buf); buf.seek(0)
     fname = f'{proj["name"].replace(" ","_")}_{datetime.now().strftime("%Y%m%d")}.xlsx'
     return Response(buf.read(), mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

@@ -47,7 +47,7 @@
         <form action="{{ url_for('portal_project_clone', project_id=project.id) }}" method="POST" onsubmit="return confirm('이 프로젝트를 복사할까요? (변수 설정만 복사, 데이터 제외)')">
           <button type="submit" class="btn btn-outline" style="font-size:.8rem;padding:7px 14px;color:rgba(255,255,255,.7);border-color:rgba(255,255,255,.2);">📋 복사</button>
         </form>
-        <a href="{{ url_for('logout') }}" class="btn btn-outline" style="font-size:.8rem;padding:7px 14px;color:rgba(255,255,255,.7);border-color:rgba(255,255,255,.2);">로그아웃</a>
+        <form method="POST" action="{{ url_for('logout') }}" style="display:inline;margin:0"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-outline" style="font-size:.8rem;padding:7px 14px;color:rgba(255,255,255,.7);border-color:rgba(255,255,255,.2);">로그아웃</button></form>
       </div>
     </div>
   </div>
@@ -783,7 +783,7 @@ function avg(arr) {
 // Populate all phase dropdowns from actual data
 function populatePhaseDropdowns() {
   const phases = [...new Set(MDATA.map(m => m.phase).filter(Boolean))].sort();
-  const opts = phases.map(p => `<option value="${p}">${p}</option>`).join('');
+  const opts = phases.map(p => `<option value="${escapeHTML(p)}">${escapeHTML(p)}</option>`).join('');
   ['cmp-pre','cmp-post','radar-phase'].forEach(id => {
     const el = document.getElementById(id);
     if (el && el.tagName === 'SELECT') el.innerHTML = opts;

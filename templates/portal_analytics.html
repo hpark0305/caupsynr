@@ -3,7 +3,7 @@
 
 {% block head %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <style>
 /* ── Sidebar layout ── */
 .lin-wrap{display:flex;height:calc(100vh - var(--nav-h,72px));overflow:hidden;background:var(--bg);}
@@ -561,7 +561,7 @@ function loadFile(file) {
     workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true });
     const sheets = workbook.SheetNames;
     const sel = document.getElementById('sheet-select');
-    sel.innerHTML = sheets.map(s => `<option value="${s}">${s}</option>`).join('');
+    sel.innerHTML = sheets.map(s => `<option value="${escapeHTML(s)}">${escapeHTML(s)}</option>`).join('');
     document.getElementById('sheet-section').style.display = sheets.length > 1 ? 'block' : 'none';
     loadSheet(sheets[0]);
   };
@@ -629,10 +629,10 @@ function populateControls() {
   const selY = document.getElementById('col-y');
   const selG = document.getElementById('col-group');
 
-  selX.innerHTML = headers.map(h => `<option value="${h}">${h}</option>`).join('');
-  selY.innerHTML = numericCols.map(h => `<option value="${h}" selected>${h}</option>`).join('');
+  selX.innerHTML = headers.map(h => `<option value="${escapeHTML(h)}">${escapeHTML(h)}</option>`).join('');
+  selY.innerHTML = numericCols.map(h => `<option value="${escapeHTML(h)}" selected>${escapeHTML(h)}</option>`).join('');
   selG.innerHTML = '<option value="">그룹 없음</option>' +
-    headers.filter(h => !numericCols.includes(h)).map(h => `<option value="${h}">${h}</option>`).join('');
+    headers.filter(h => !numericCols.includes(h)).map(h => `<option value="${escapeHTML(h)}">${escapeHTML(h)}</option>`).join('');
 
   // Auto-select first non-numeric as X
   const firstStr = headers.find(h => !numericCols.includes(h));
@@ -661,7 +661,7 @@ function renderDataTable() {
   html += '<th class="row-num">#</th>';
   headers.forEach(h => {
     const cls = h === xCol ? 'col-x-head' : yCols.includes(h) ? 'col-y-head' : '';
-    html += `<th class="${cls}">${h}</th>`;
+    html += `<th class="${cls}">${escapeHTML(h)}</th>`;
   });
   html += '</tr></thead><tbody>';
 
@@ -672,7 +672,7 @@ function renderDataTable() {
       const v = row[h];
       const disp = (v === null || v === undefined || v === '') ? '' :
                    (typeof v === 'number') ? v.toLocaleString('ko-KR') : String(v);
-      html += `<td class="${cls}">${disp}</td>`;
+      html += `<td class="${cls}">${escapeHTML(disp)}</td>`;
     });
     html += '</tr>';
   });
@@ -816,16 +816,16 @@ function buildBarData(xCol, yCols, gCol, labels) {
 function addMetricCard(parent, label, value, sub, accent) {
   const d = document.createElement('div');
   d.className = 'metric-card' + (accent ? ' accent' : '');
-  d.innerHTML = `<div class="mc-label">${label}</div>
-    <div class="mc-value">${typeof value==='number'?value.toLocaleString('ko-KR'):value}</div>
-    ${sub?`<div class="mc-sub">${sub}</div>`:''}`;
+  d.innerHTML = `<div class="mc-label">${escapeHTML(label)}</div>
+    <div class="mc-value">${escapeHTML(typeof value==='number'?value.toLocaleString('ko-KR'):value)}</div>
+    ${sub?`<div class="mc-sub">${escapeHTML(sub)}</div>`:''}`;
   parent.appendChild(d);
 }
 
 function addChartCard(grid, id, title, wide) {
   const card = document.createElement('div');
   card.className = 'chart-card' + (wide ? ' wide' : '');
-  card.innerHTML = `<h4>${title}</h4><canvas id="${id}"></canvas>`;
+  card.innerHTML = `<h4>${escapeHTML(title)}</h4><canvas id="${id}"></canvas>`;
   grid.appendChild(card);
 }
 

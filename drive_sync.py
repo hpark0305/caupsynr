@@ -94,14 +94,19 @@ def list_all(folder_ids):
         try:
             out.append(_list_folder(svc, fid))
         except Exception as e:
-            out.append({"id": fid, "name": fid, "files": [], "error": str(e)})
+            out.append({"id": fid, "name": fid, "files": [], "error": "폴더를 불러올 수 없습니다."})
     return out
 
 
-def get_file(file_id):
+def get_file(file_id, allowed_folder_ids):
     """Download (or export) a Drive file. Returns (bytes, mimetype, filename)."""
     svc = _service()
-    meta = svc.files().get(fileId=file_id, fields="name,mimeType", supportsAllDrives=True).execute()
+    meta = svc.files().get(fileId=file_id, fields="name,mimeType,parents,trashed,size", supportsAllDrives=True).execute()
+    # The portal lists direct children only; don't expose other service-account files.
+    if meta.get('trashed') or not set(meta.get('parents', [])) & set(allowed_folder_ids):
+        raise PermissionError('File outside configured folders')
+    if int(meta.get('size', 0)) > 50 * 1024 * 1024:
+        raise ValueError('File too large')
     name, mime = meta["name"], meta.get("mimeType", "")
 
     from googleapiclient.http import MediaIoBaseDownload
@@ -122,5 +127,7 @@ def get_file(file_id):
     done = False
     while not done:
         _, done = downloader.next_chunk()
+        if buf.tell() > 50 * 1024 * 1024:
+            raise ValueError('File too large')
     buf.seek(0)
     return buf.read(), out_mime, name

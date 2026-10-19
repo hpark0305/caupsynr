@@ -76,7 +76,9 @@ CREATE TABLE IF NOT EXISTS mindmate_app_open (
 CREATE INDEX IF NOT EXISTS idx_mm_open_pkey     ON mindmate_app_open(participant_key);
 CREATE INDEX IF NOT EXISTS idx_mm_open_received ON mindmate_app_open(received_at DESC);
 
--- 서비스 롤 키로 접근하므로(anon 아님) RLS 비활성 — 다른 테이블과 동일 정책
-ALTER TABLE mindmate_music_log    DISABLE ROW LEVEL SECURITY;
-ALTER TABLE mindmate_daily_survey DISABLE ROW LEVEL SECURITY;
-ALTER TABLE mindmate_app_open     DISABLE ROW LEVEL SECURITY;
+-- RLS 활성화: 서비스 롤은 RLS를 우회하므로 비활성화할 필요가 없습니다.
+ALTER TABLE mindmate_music_log    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mindmate_daily_survey ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mindmate_app_open     ENABLE ROW LEVEL SECURITY;
+
+-- After all schema files, apply supabase_security_access.sql to revoke client grants.

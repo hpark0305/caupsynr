@@ -41,7 +41,7 @@
     </div>
   </div>
   <div class="lin-sidebar-bottom">
-    <a href="{{ url_for('logout') }}" class="lin-nav-item" style="margin:0;"><span class="lin-nav-icon" style="font-size:.8rem;">↩</span><span style="font-size:.79rem;">로그아웃</span></a>
+    <form method="POST" action="{{ url_for('logout') }}" style="display:inline;margin:0"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="lin-nav-item" style="margin:0;"><span class="lin-nav-icon" style="font-size:.8rem;">↩</span><span style="font-size:.79rem;">로그아웃</span></button></form>
   </div>
 </aside>
 {% include "_portal_mobile_nav.html" %}

@@ -160,20 +160,22 @@ create index if not exists idx_proj_researcher on projects(researcher_email);
 create index if not exists idx_collab_project  on project_collaborators(project_id);
 
 -- ══════════════════════════════════════════════════════════════
--- Row Level Security — disable for service role key access
+-- Row Level Security — enabled; service role bypasses RLS
 -- (The app uses the service role key, not anon)
 -- ══════════════════════════════════════════════════════════════
-alter table accounts              disable row level security;
-alter table projects              disable row level security;
-alter table project_participants  disable row level security;
-alter table measurements          disable row level security;
-alter table project_variables     disable row level security;
-alter table portal_files          disable row level security;
-alter table news                  disable row level security;
-alter table research_topics_extra disable row level security;
-alter table contact_messages      disable row level security;
-alter table sessions              disable row level security;
-alter table audit_log             disable row level security;
-alter table project_collaborators disable row level security;
-alter table reset_tokens          disable row level security;
-alter table project_protocols     disable row level security;
+alter table accounts              enable row level security;
+alter table projects              enable row level security;
+alter table project_participants  enable row level security;
+alter table measurements          enable row level security;
+alter table project_variables     enable row level security;
+alter table portal_files          enable row level security;
+alter table news                  enable row level security;
+alter table research_topics_extra enable row level security;
+alter table contact_messages      enable row level security;
+alter table sessions              enable row level security;
+alter table audit_log             enable row level security;
+alter table project_collaborators enable row level security;
+alter table reset_tokens          enable row level security;
+alter table project_protocols     enable row level security;
+
+-- After all schema files, apply supabase_security_access.sql to revoke client grants.

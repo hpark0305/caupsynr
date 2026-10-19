@@ -70,8 +70,8 @@
       <div style="display:flex;gap:10px;align-items:center;">
         <a href="{{ url_for('portal_project_tests_export', project_id=project.id) }}"
            class="btn btn-outline" style="font-size:.8rem;padding:7px 14px;color:rgba(255,255,255,.7);border-color:rgba(255,255,255,.2);">CSV 내보내기</a>
-        <a href="{{ url_for('logout') }}" class="btn btn-outline"
-           style="font-size:.8rem;padding:7px 14px;color:rgba(255,255,255,.7);border-color:rgba(255,255,255,.2);">로그아웃</a>
+        <form method="POST" action="{{ url_for('logout') }}" style="display:inline;margin:0"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-outline"
+           style="font-size:.8rem;padding:7px 14px;color:rgba(255,255,255,.7);border-color:rgba(255,255,255,.2);">로그아웃</button></form>
       </div>
     </div>
   </div>

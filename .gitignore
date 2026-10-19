@@ -2,6 +2,12 @@ __pycache__/
 *.pyc
 *.pyo
 .env
+.env.*
+!.env.example
+*.pem
+*.key
+*.db-wal
+*.db-shm
 .venv
 venv/
 env/

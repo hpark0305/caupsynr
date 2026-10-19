@@ -178,7 +178,13 @@
     });
   });
 
-  // Auto-inject CSRF token into all POST forms
+  function escapeHTML(value) {
+    const node = document.createElement('span');
+    node.textContent = value == null ? '' : String(value);
+    return node.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  // Auto-inject CSRF token only into same-origin POST forms.
   (function() {
     var csrfMeta = document.createElement('meta');
     csrfMeta.name = 'csrf-token';
@@ -187,7 +193,7 @@
 
     function addCsrf() {
       document.querySelectorAll('form').forEach(function(form) {
-        if ((form.method || '').toUpperCase() === 'POST' && !form.querySelector('[name="csrf_token"]')) {
+        if ((form.method || '').toUpperCase() === 'POST' && new URL(form.action, location.href).origin === location.origin && !form.querySelector('[name="csrf_token"]')) {
           var inp = document.createElement('input');
           inp.type = 'hidden';
           inp.name = 'csrf_token';
