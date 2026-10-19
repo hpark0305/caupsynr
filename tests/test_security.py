@@ -134,6 +134,98 @@ class SecurityTests(unittest.TestCase):
             }, headers={'X-API-Key': portal.APP_API_KEY})
             self.assertEqual(response.status_code, 400)
 
+    def test_contact_does_not_claim_success_when_storage_fails(self):
+        token = self.token()
+        with patch.object(portal, 'sb', return_value=[]):
+            response = self.client.post('/contact', data={'message': 'synthetic inquiry'},
+                                        headers={'X-CSRFToken': token})
+        self.assertEqual(response.status_code, 503)
+        self.assertNotIn('문의가 접수됐습니다.', response.get_data(as_text=True))
+        self.assertIn('문의를 저장하지 못했습니다.', response.get_data(as_text=True))
+
+    def test_contact_success_requires_saved_row(self):
+        response = self.post('/contact', {'message': 'synthetic inquiry'})
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('문의가 접수됐습니다.', response.get_data(as_text=True))
+        self.assertEqual(len(portal.sb('GET', 'contact_messages')), 1)
+
+    def mindmate_send(self, payload, encoding='json'):
+        return self.client.post('/api/mindmate/followup', **{encoding: payload},
+                                headers={'X-API-Key': portal.APP_API_KEY})
+
+    def test_mindmate_rejects_invalid_phone_before_database_access(self):
+        for phone in ('abc', '---', '123', '1'*16, '010abc00000000', '０１０００００００００',
+                      None, 1000000000, ['01000000000'], {'phone': '01000000000'}):
+            with self.subTest(phone=phone), patch.object(portal, 'sb') as database:
+                response = self.mindmate_send({'order': 'appOpen', 'PhoneNumber': phone})
+                self.assertEqual(response.status_code, 400)
+                database.assert_not_called()
+
+    def test_mindmate_phone_hash_mapping_is_unchanged(self):
+        import hashlib
+        import hmac
+        expected = hmac.new(portal.MINDMATE_PEPPER.encode(), b'01000000000', hashlib.sha256).hexdigest()
+        for phone in ('01000000000', '010-0000-0000', '(010) 0000 0000'):
+            self.assertEqual(portal._participant_key(phone), expected)
+
+    def test_mindmate_all_orders_accept_form_and_json_without_extra_pii(self):
+        cases = [
+            ('writeData_constant', {'Date': '2026-10-19', 'StartTime': '09:00', 'MusicName': 'test'}, 'mindmate_music_log'),
+            ('updateData_daily', {'Date': '2026-10-19', 'Servey_Daily_1': '3'}, 'mindmate_daily_survey'),
+            ('updateData_daily_json', {'jsonData': json.dumps({'dataCount': 1, 'date': '2026-10-20',
+                'UserName': 'PII_MARKER', 'metadata': {'PhoneNumber': 'PII_MARKER'}})}, 'mindmate_daily_survey'),
+            ('appOpen', {}, 'mindmate_app_open'),
+        ]
+        for encoding in ('data', 'json'):
+            for order, fields, table in cases:
+                with self.subTest(encoding=encoding, order=order):
+                    payload = dict(fields, order=order, PhoneNumber='01000000000',
+                                   UserName='PII_MARKER', Department='PII_MARKER',
+                                   metadata=json.dumps({'UserName': 'PII_MARKER'}))
+                    response = self.mindmate_send(payload, encoding)
+                    self.assertEqual(response.status_code, 201, response.get_json())
+                    rows = portal.sb('GET', table)
+                    self.assertTrue(rows)
+                    for row in rows:
+                        self.assertNotIn('PII_MARKER', json.dumps(row))
+                        self.assertNotIn('01000000000', json.dumps(row))
+                    self.assertEqual(rows[-1]['participant_key'], portal._participant_key('01000000000'))
+
+    def test_mindmate_nested_pii_metadata_is_not_retained(self):
+        response = self.mindmate_send({'order': 'appOpen', 'PhoneNumber': '01000000000',
+                                      'metadata': {'UserName': 'PII_MARKER', 'PhoneNumber': 'PII_MARKER'}})
+        self.assertEqual(response.status_code, 201)
+        rows = portal.sb('GET', 'mindmate_app_open')
+        self.assertNotIn('PII_MARKER', json.dumps(rows))
+
+    def test_mindmate_rejects_structured_values_in_known_fields(self):
+        cases = [
+            {'order': ['appOpen']},
+            {'order': 'writeData_constant', 'Date': {'UserName': 'PII_MARKER'}, 'StartTime': '09:00'},
+            {'order': 'updateData_daily', 'Date': '2026-10-19', 'Servey_Daily_1': ['PII_MARKER']},
+            {'order': 'updateData_daily_json', 'jsonData': {'date': '2026-10-19'}},
+            {'order': 'updateData_daily_json', 'jsonData': json.dumps({'date': {'UserName': 'PII_MARKER'}})},
+            {'order': 'updateData_daily_json', 'jsonData': '{bad'},
+        ]
+        for fields in cases:
+            with self.subTest(fields=fields), patch.object(portal, 'sb') as database:
+                response = self.mindmate_send(dict(fields, PhoneNumber='01000000000'))
+                self.assertEqual(response.status_code, 400)
+                database.assert_not_called()
+
+    def test_mindmate_partial_sync_preserves_answers_and_deduplicates(self):
+        base = {'PhoneNumber': '01000000000', 'Date': '2026-10-19'}
+        for _ in range(2):
+            response = self.mindmate_send(dict(base, order='updateData_daily', Servey_Daily_1='4'))
+            self.assertEqual(response.status_code, 201)
+        response = self.mindmate_send(dict(base, order='updateData_daily_json', jsonData=json.dumps({
+            'dataCount': 1, 'date': '2026-10-19', 'isFiveDays': 'true'})))
+        self.assertEqual(response.status_code, 201)
+        rows = portal.sb('GET', 'mindmate_daily_survey')
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['servey_daily_1'], '4')
+        self.assertEqual(rows[0]['is_five_days'], 'true')
+
     def test_idle_and_absolute_session_timeout(self):
         for field, age in [('last_seen', 1801), ('created_at', 28801)]:
             self.sign_in()

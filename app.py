@@ -1376,9 +1376,12 @@ def contact():
         if len(name) > 200 or len(email) > 254 or len(subject) > 500 or len(message) > 10000:
             abort(400)
         if message:
-            sb("POST", "contact_messages", data={
+            saved = sb("POST", "contact_messages", data={
                 "name": name, "email": email, "subject": subject, "message": message
             })
+            if not saved:
+                flash("문의를 저장하지 못했습니다. 잠시 후 다시 시도해주세요.", "error")
+                return render_template("contact.html", success=False), 503
             success = True
         else:
             flash("메시지를 입력해주세요.", "error")
@@ -2954,16 +2957,44 @@ def api_neurobreeze_meditation():
 _MINDMATE_ID_NS = _uuid.UUID("f2b6f0a0-6c9e-4f7c-9a2e-2f6b6c1f9a10")
 
 def _participant_key(phone_number):
-    digits = re.sub(r"\D", "", str(phone_number or ""))
+    if not isinstance(phone_number, str) or not re.fullmatch(r"[0-9+() .\-]{7,40}", phone_number):
+        raise ValueError("invalid PhoneNumber")
+    digits = re.sub(r"\D", "", phone_number)
+    if not 7 <= len(digits) <= 15:
+        raise ValueError("invalid PhoneNumber")
     return hmac.new(MINDMATE_PEPPER.encode(), digits.encode(), hashlib.sha256).hexdigest()
 
 def _deterministic_id(*parts):
     return str(_uuid.uuid5(_MINDMATE_ID_NS, "|".join(str(p) for p in parts)))
 
-_MINDMATE_PII_KEYS = {"username", "phonenumber", "department", "order"}
+_MINDMATE_FIELDS = {
+    "writeData_constant": {"Date", "StartTime", "EndTime", "MusicName", "MusicType"},
+    "updateData_daily": {
+        "Date", "WorkType", "IsServeyDaily", "IsMindHealing", "Servey_MindHealing_1",
+        "IsFiveDays", "Servey_Five_Result",
+        *(f"Servey_Daily_{i}" for i in range(1, 4)),
+        *(f"Servey_Five_{i}" for i in range(1, 13)),
+    },
+    "updateData_daily_json": {"jsonData"},
+    "appOpen": set(),
+}
+_MINDMATE_BATCH_FIELDS = {"dataCount", "date", "workType", "isServeyDaily", "isMindHealing", "isFiveDays"}
+
+def _mindmate_allowed_fields(payload, allowed):
+    selected = {k: v for k, v in payload.items() if k in allowed}
+    if any(v is not None and not isinstance(v, (str, int, float, bool)) for v in selected.values()):
+        raise ValueError("fields must be scalar values")
+    return selected
 
 def _strip_pii(payload):
-    return {k: v for k, v in payload.items() if k.lower() not in _MINDMATE_PII_KEYS}
+    # Keep only the documented fields, including inside the JSON-encoded batch.
+    selected = _mindmate_allowed_fields(payload, _MINDMATE_FIELDS[payload["order"]])
+    if payload["order"] == "updateData_daily_json":
+        batch = json.loads(selected.get("jsonData", "{}"))
+        if not isinstance(batch, dict):
+            raise ValueError("invalid jsonData")
+        selected["jsonData"] = json.dumps(_mindmate_allowed_fields(batch, _MINDMATE_BATCH_FIELDS), ensure_ascii=False)
+    return selected
 
 def _mindmate_payload():
     """form-encoded와 JSON body 둘 다 허용."""
@@ -2992,11 +3023,17 @@ def api_mindmate_followup():
 
     payload = _mindmate_payload()
     order = payload.get("order", "")
+    if not isinstance(order, str) or order not in _MINDMATE_FIELDS:
+        return jsonify(error="unknown order"), 400
     phone = payload.get("PhoneNumber", "")
     if not phone:
         return jsonify({"error": "PhoneNumber required"}), 400
-    pkey = _participant_key(phone)
-    raw = json.dumps(_strip_pii(payload), ensure_ascii=False)
+    try:
+        pkey = _participant_key(phone)
+        payload = _strip_pii(payload)
+    except (ValueError, TypeError):
+        return jsonify(error="invalid PhoneNumber or payload fields"), 400
+    raw = json.dumps(payload, ensure_ascii=False)
 
     if order == "writeData_constant":
         date, start_time = payload.get("Date", ""), payload.get("StartTime", "")
