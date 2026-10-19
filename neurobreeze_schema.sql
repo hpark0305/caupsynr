@@ -57,3 +57,9 @@ CREATE TABLE IF NOT EXISTS neurobreeze_meditation (
 CREATE INDEX IF NOT EXISTS idx_nb_med_project  ON neurobreeze_meditation(project_id);
 CREATE INDEX IF NOT EXISTS idx_nb_med_user     ON neurobreeze_meditation(user_name);
 CREATE INDEX IF NOT EXISTS idx_nb_med_received ON neurobreeze_meditation(received_at DESC);
+
+-- Flask alone accesses these tables with its server key.
+ALTER TABLE neurobreeze_eeg ENABLE ROW LEVEL SECURITY;
+ALTER TABLE neurobreeze_meditation ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON neurobreeze_eeg, neurobreeze_meditation FROM PUBLIC, anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON neurobreeze_eeg, neurobreeze_meditation TO service_role;

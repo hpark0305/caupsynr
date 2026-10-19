@@ -1,5 +1,6 @@
 """Offline security regression tests: synthetic accounts/data, no production env."""
 import io
+import json
 import os
 import re
 import sqlite3
@@ -7,6 +8,7 @@ import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from html.parser import HTMLParser
 from unittest.mock import patch, MagicMock
 from urllib.parse import parse_qs, urlsplit
 
@@ -23,7 +25,7 @@ with patch.dict(os.environ, {
 }), patch('dotenv.load_dotenv'), patch('requests.sessions.Session.request', side_effect=AssertionError('Network forbidden')):
     import app as portal
 
-from security_utils import SafeCSVWriter, validate_archive, validate_image, neutralize_excel_formulas, validate_production_settings
+from security_utils import SafeCSVWriter, validate_archive, validate_image, neutralize_excel_formulas, validate_production_settings, password_policy_error
 
 
 class SecurityTests(unittest.TestCase):
@@ -362,6 +364,128 @@ class SecurityTests(unittest.TestCase):
             with self.assertRaises(PermissionError):
                 portal.drive_sync.get_file('id', ['allowed'])
         svc.files.return_value.get_media.assert_not_called()
+
+    def test_every_mutating_route_requires_csrf_or_api_key(self):
+        checked = 0
+        for rule in portal.app.url_map.iter_rules():
+            if 'POST' not in rule.methods:
+                continue
+            path = re.sub(r'<(?:[^:<>]+:)?[^<>]+>', 'audit-nonexistent', rule.rule)
+            response = self.client.post(path, json={})
+            self.assertEqual(response.status_code, 401 if path.startswith('/api/') else 400, path)
+            checked += 1
+        self.assertGreater(checked, 40)
+
+    def test_session_claim_tampering_cannot_impersonate_admin(self):
+        cookie = self.client.get_cookie('session').value
+        serializer = portal.app.session_interface.get_signing_serializer(portal.app)
+        data = serializer.loads(cookie)
+        data['researcher'] = 'admin@example.test'
+        # Even a validly signed claim must match the server's session owner.
+        self.client.set_cookie('session', serializer.dumps(data))
+        self.assertEqual(self.client.get('/portal/contacts').status_code, 302)
+
+    def test_failed_login_does_not_disclose_account_existence(self):
+        for email in ('owner@example.test', 'absent@example.test'):
+            body = self.post('/login', {'email': email, 'password': 'incorrect'}).get_data(as_text=True)
+            self.assertIn('이메일 또는 비밀번호가 올바르지 않습니다.', body)
+            self.assertNotIn('Traceback', body)
+
+    def test_new_password_invalidates_all_old_sessions(self):
+        first = self.client.get_cookie('session').value
+        self.sign_in()
+        second = self.client.get_cookie('session').value
+        portal._set_account('owner@example.test', 'Cedar-river-lantern-47!')
+        for old in (first, second):
+            self.client.set_cookie('session', old)
+            self.assertEqual(self.client.get('/portal').status_code, 302)
+
+    def test_new_password_policy_rejects_obvious_weak_values(self):
+        for value in ('short', 'a'*12, 'abcd'*4, 'Password123456!', 'owner-flower-cloud', 'x'*129, 'cedar\x00riverlantern'):
+            self.assertIsNotNone(password_policy_error(value, 'owner@example.test'), value)
+        for value in ('Cedar-river-lantern-47!', '노을 진 강가에서 조용히 걷는 오후'):
+            self.assertIsNone(password_policy_error(value, 'owner@example.test'))
+
+    def test_password_change_removes_all_server_sessions(self):
+        self.sign_in()
+        response = self.post('/portal/settings/password', {'current': 'A-long-test-password!',
+            'new_pw': 'Cedar-river-lantern-47!', 'confirm': 'Cedar-river-lantern-47!'})
+        self.assertEqual(response.location, '/login')
+        self.assertEqual(portal.sb('GET', 'portal_auth_sessions', params='?researcher_email=eq.owner%40example.test'), [])
+        self.assertTrue(portal.check_password_hash(portal._get_account('owner@example.test'), 'Cedar-river-lantern-47!'))
+
+    def test_weak_password_change_preserves_existing_credentials(self):
+        stored = portal._get_account('owner@example.test')
+        for value in ('Password123456!', 'a'*12):
+            response = self.post('/portal/settings/password', {'current': 'A-long-test-password!', 'new_pw': value, 'confirm': value})
+            self.assertEqual(response.location, '/portal/settings')
+            self.assertEqual(portal._get_account('owner@example.test'), stored)
+
+    def test_failed_account_write_is_not_reported_as_success(self):
+        with portal.app.test_request_context(), patch.object(portal, 'sb', return_value=[]):
+            with self.assertRaises(portal.HTTPException) as raised:
+                portal._set_account('new@example.test', 'Cedar-river-lantern-47!')
+            self.assertEqual(raised.exception.code, 503)
+
+    def test_account_creation_enforces_password_policy(self):
+        self.sign_in('admin@example.test')
+        self.post('/portal/settings/add-account', {'email': 'new@example.test', 'password': 'Password123456!'})
+        self.assertIsNone(portal._get_account('new@example.test'))
+        self.post('/portal/settings/add-account', {'email': 'new@example.test', 'password': 'Cedar-river-lantern-47!'})
+        self.assertTrue(portal.check_password_hash(portal._get_account('new@example.test'), 'Cedar-river-lantern-47!'))
+
+    def test_password_change_rejects_reusing_current_password(self):
+        value = 'Cedar-river-lantern-47!'
+        portal._set_account('owner@example.test', value)
+        self.sign_in()
+        stored = portal._get_account('owner@example.test')
+        response = self.post('/portal/settings/password', {'current': value, 'new_pw': value, 'confirm': value})
+        self.assertEqual(response.location, '/portal/settings')
+        self.assertEqual(portal._get_account('owner@example.test'), stored)
+
+    def test_password_change_attempts_are_rate_limited(self):
+        portal.limiter.enabled = True
+        portal.limiter.reset()
+        try:
+            responses = [self.post('/portal/settings/password', {'current': 'incorrect'}) for _ in range(11)]
+            self.assertEqual(responses[-1].status_code, 429)
+        finally:
+            portal.limiter.enabled = False
+
+    def test_settings_only_show_available_authorized_actions(self):
+        body = self.client.get('/portal/settings').get_data(as_text=True)
+        self.assertNotIn('action="/portal/settings/add-account"', body)
+        self.assertNotIn('href="/portal/settings/backup"', body)
+        self.assertNotIn('action="/portal/settings/restore"', body)
+        self.sign_in('admin@example.test')
+        body = self.client.get('/portal/settings').get_data(as_text=True)
+        self.assertIn('action="/portal/settings/add-account"', body)
+        self.assertIn('type="password" name="password"', body)
+        with portal.app.test_request_context():
+            body = portal.render_template('portal_settings.html', researcher='admin@example.test', is_admin=True, use_supabase=True)
+        self.assertIn('운영 데이터는 Supabase', body)
+        self.assertNotIn('href="/portal/settings/backup"', body)
+        self.assertNotIn('action="/portal/settings/restore"', body)
+
+    def test_stored_text_is_data_not_executable_handler_code(self):
+        attack = "');globalThis.securityProbe=1;//\"<svg onload=alert(1)>"
+        portal.sb('PATCH', 'measurements', data={'notes': attack, 'phase': attack, 'data': {'score': 3}}, params='?id=eq.own-m')
+        portal.sb('PATCH', 'project_variables', data={'name': attack, 'label': attack, 'unit': attack}, params='?id=eq.own-v')
+        elements = []
+        class Elements(HTMLParser):
+            def handle_starttag(self, tag, attrs):
+                elements.append((tag, dict(attrs)))
+        response = self.client.get('/portal/projects/own')
+        self.assertEqual(response.status_code, 200)
+        Elements().feed(response.get_data(as_text=True))
+        args = [json.loads(a['data-edit-args']) for _, a in elements if 'data-edit-args' in a]
+        self.assertTrue(any(a[:3] == ['own-m', attack, attack] for a in args))
+        self.assertTrue(any(a[:3] == ['own-v', attack, attack] for a in args))
+        for tag, attrs in elements:
+            for key, value in attrs.items():
+                if key.startswith('on'):
+                    self.assertNotIn('securityProbe', value)
+                    self.assertNotIn('alert(1)', value)
 
 
 if __name__ == '__main__':

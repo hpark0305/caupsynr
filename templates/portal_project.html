@@ -231,7 +231,7 @@
             </td>
             <td style="color:var(--muted);">{{ (m.notes or '—')[:30] }}</td>
             <td>
-              <button onclick="openEditMeasurement('{{ m.id }}','{{ m.phase or '' }}','{{ m.notes or '' }}',{{ m.data | tojson if m.data else '{}' }})" style="font-size:.72rem;padding:3px 9px;background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;cursor:pointer;margin-right:4px;">편집</button>
+              <button data-edit-args='{{ [m.id, m.phase or "", m.notes or "", m.data or {}] | tojson }}' onclick="openEditMeasurement(...JSON.parse(this.dataset.editArgs))" style="font-size:.72rem;padding:3px 9px;background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;cursor:pointer;margin-right:4px;">편집</button>
             </td>
             <td>
               <form action="{{ url_for('portal_measurement_toggle_exclude', project_id=project.id, m_id=m.id) }}" method="POST">
@@ -462,8 +462,8 @@
             <td><span style="font-size:.75rem;background:var(--surface2);padding:2px 8px;border-radius:100px;">{{ v.var_type }}</span></td>
             <td style="color:var(--muted);">{{ v.unit or '—' }}</td>
             <td style="white-space:nowrap;">
-              <button onclick="openEditVar('{{ v.id }}','{{ v.name }}','{{ v.label or '' }}','{{ v.var_type }}','{{ v.unit or '' }}')" style="font-size:.72rem;padding:3px 9px;background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;cursor:pointer;margin-right:4px;">편집</button>
-              <form style="display:inline;" action="{{ url_for('portal_variable_delete', project_id=project.id, var_id=v.id) }}" method="POST" onsubmit="return confirm('변수 {{ v.name }}을 삭제할까요?')">
+              <button data-edit-args='{{ [v.id, v.name, v.label or "", v.var_type, v.unit or ""] | tojson }}' onclick="openEditVar(...JSON.parse(this.dataset.editArgs))" style="font-size:.72rem;padding:3px 9px;background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;cursor:pointer;margin-right:4px;">편집</button>
+              <form style="display:inline;" action="{{ url_for('portal_variable_delete', project_id=project.id, var_id=v.id) }}" method="POST" data-variable-name="{{ v.name }}" onsubmit="return confirm('변수 ' + this.dataset.variableName + '을 삭제할까요?')">
                 <button type="submit" style="font-size:.72rem;padding:3px 9px;background:none;border:1px solid #e74c3c;color:#e74c3c;border-radius:8px;cursor:pointer;">삭제</button>
               </form>
             </td>
@@ -760,6 +760,7 @@
 <script>
 const MEASUREMENTS = {{ measurements | tojson }};
 const VARIABLES    = {{ variables | tojson }};
+const PROJECT_ID   = {{ project.id | tojson }};
 let chartInst = null;
 
 function showTab(name, btn) {
@@ -994,7 +995,7 @@ function openEditMeasurement(id, phase, notes, data) {
     });
   }
   document.getElementById('edit-measurement-form').action =
-    `/portal/projects/{{ project.id }}/measurements/${id}/edit`;
+    `/portal/projects/${encodeURIComponent(PROJECT_ID)}/measurements/${encodeURIComponent(id)}/edit`;
   document.getElementById('edit-measurement-modal').classList.add('open');
 }
 
@@ -1004,7 +1005,7 @@ function openEditVar(id, name, label, varType, unit) {
   document.getElementById('edit-var-unit').value = unit;
   document.getElementById('edit-var-type').value = varType;
   document.getElementById('edit-variable-form').action =
-    `/portal/projects/{{ project.id }}/variables/${id}/edit`;
+    `/portal/projects/${encodeURIComponent(PROJECT_ID)}/variables/${encodeURIComponent(id)}/edit`;
   document.getElementById('edit-variable-modal').classList.add('open');
 }
 

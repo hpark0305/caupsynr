@@ -81,4 +81,7 @@ ALTER TABLE mindmate_music_log    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE mindmate_daily_survey ENABLE ROW LEVEL SECURITY;
 ALTER TABLE mindmate_app_open     ENABLE ROW LEVEL SECURITY;
 
+REVOKE ALL ON mindmate_music_log, mindmate_daily_survey, mindmate_app_open FROM PUBLIC, anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON mindmate_music_log, mindmate_daily_survey, mindmate_app_open TO service_role;
+
 -- After all schema files, apply supabase_security_access.sql to revoke client grants.

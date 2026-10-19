@@ -88,7 +88,7 @@
       <button class="filter-btn active" onclick="filterProject('all',this)">전체</button>
       <button class="filter-btn" onclick="filterProject('none',this)">미연결</button>
       {% for p in projects %}
-      <button class="filter-btn" onclick="filterProject('{{ p.id }}',this)">{{ p.name }}</button>
+      <button class="filter-btn" data-project-id="{{ p.id }}" onclick="filterProject(this.dataset.projectId,this)">{{ p.name }}</button>
       {% endfor %}
     </div>
     {% endif %}

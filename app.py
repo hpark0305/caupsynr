@@ -8,7 +8,7 @@ from urllib.parse import quote, parse_qsl
 from werkzeug.exceptions import HTTPException
 from zipfile import BadZipFile
 import drive_sync
-from security_utils import DOCUMENT_EXTENSIONS, validate_archive, validate_image, SafeCSVWriter, neutralize_excel_formulas, validate_production_settings
+from security_utils import DOCUMENT_EXTENSIONS, validate_archive, validate_image, SafeCSVWriter, neutralize_excel_formulas, validate_production_settings, password_policy_error
 from scipy import stats as _scipy_stats
 import numpy as _np
 from datetime import datetime, timedelta
@@ -397,7 +397,7 @@ def init_db():
         if existing == 0:
             seed_email = os.getenv("SEED_ADMIN_EMAIL","")
             seed_pw    = os.getenv("SEED_ADMIN_PASSWORD","")
-            if seed_email and len(seed_pw) >= 12:
+            if seed_email and not password_policy_error(seed_pw, seed_email):
                 conn.execute("INSERT INTO accounts (email,password) VALUES (?,?)",
                              (seed_email, generate_password_hash(seed_pw)))
                 conn.commit()
@@ -686,8 +686,11 @@ def _get_account(email):
     return rows[0]["password"] if rows else None
 
 def _set_account(email, password, already_hashed=False):
+    if not already_hashed and password_policy_error(password, email):
+        raise ValueError('Password does not meet policy')
     hashed = password if already_hashed else generate_password_hash(password, method='pbkdf2:sha256')
-    sb("POST", "accounts", data={"email": email, "password": hashed}, upsert=True)
+    if not sb("POST", "accounts", data={"email": email, "password": hashed}, upsert=True):
+        abort(503)
 
 def _account_exists(email):
     rows = sb("GET", "accounts", params=f"?email=eq.{_q(email)}&select=email")
@@ -696,7 +699,7 @@ def _account_exists(email):
 def _seed_supabase_account():
     """Bootstrap only explicitly configured credentials; never reset on a failed read."""
     email, password = os.getenv('PORTAL_EMAIL', ''), os.getenv('PORTAL_PASSWORD', '')
-    if not (_USE_SUPABASE and email and len(password) >= 12):
+    if not (_USE_SUPABASE and email and not password_policy_error(password, email)):
         return
     response = _requests.get(f'{SUPABASE_URL}/rest/v1/accounts?select=email&limit=1',
                              headers=_sb_headers(), timeout=10)
@@ -2672,10 +2675,12 @@ def portal_drive_file(file_id):
 @app.route("/portal/settings")
 @login_required
 def portal_settings():
-    return render_template("portal_settings.html", researcher=session["researcher"])
+    return render_template("portal_settings.html", researcher=session["researcher"],
+                           is_admin=_is_admin(), use_supabase=_USE_SUPABASE)
 
 @app.route("/portal/settings/password", methods=["POST"])
 @login_required
+@limiter.limit('10 per minute', methods=['POST'])
 def portal_change_password():
     current=request.form.get("current","").strip()
     new_pw=request.form.get("new_pw","").strip()
@@ -2684,11 +2689,18 @@ def portal_change_password():
     stored = _get_account(email)
     if not stored or not check_password_hash(stored, current): flash("현재 비밀번호가 틀렸어요.", "error"); return redirect(url_for("portal_settings"))
     if new_pw!=confirm: flash("새 비밀번호가 일치하지 않아요.", "error"); return redirect(url_for("portal_settings"))
-    if len(new_pw)<12: flash("비밀번호는 12자 이상이어야 해요.", "error"); return redirect(url_for("portal_settings"))
+    error = password_policy_error(new_pw, email)
+    if error:
+        flash(error, 'error')
+        return redirect(url_for('portal_settings'))
+    if check_password_hash(stored, new_pw):
+        flash('현재와 다른 새 비밀번호를 사용해주세요.', 'error')
+        return redirect(url_for('portal_settings'))
     _set_account(email, new_pw)
+    sb('DELETE', 'portal_auth_sessions', params=f'?researcher_email=eq.{_q(email)}')
     session.clear()
-    flash("비밀번호가 변경됐어요.")
-    return redirect(url_for("portal_settings"))
+    flash("비밀번호가 변경됐어요. 다시 로그인해주세요.")
+    return redirect(url_for("login"))
 
 @app.route("/portal/settings/add-account", methods=["POST"])
 @login_required
@@ -2696,8 +2708,10 @@ def portal_add_account():
     new_email=request.form.get("email","").strip()
     new_pw=request.form.get("password","").strip()
     if not new_email or not new_pw: flash("이메일과 비밀번호를 입력해주세요.", "error"); return redirect(url_for("portal_settings"))
-    if len(new_pw) < 12:
-        abort(400)
+    error = password_policy_error(new_pw, new_email)
+    if error:
+        flash(error, 'error')
+        return redirect(url_for('portal_settings'))
     if _account_exists(new_email): flash("이미 존재하는 계정이에요.", "error"); return redirect(url_for("portal_settings"))
     _set_account(new_email, new_pw)
     flash(f"{new_email} 계정이 추가됐어요.")

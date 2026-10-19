@@ -79,7 +79,7 @@ table.dt td input.cell-input{width:100%;border:2px solid var(--accent);border-ra
             <th onclick="sortBy('phase')" id="th-phase">회차</th>
             <th onclick="sortBy('measured_at')" id="th-measured_at">측정일</th>
             {% for col in col_schema %}
-            <th onclick="sortBy('{{ col.name }}')" id="th-{{ col.name }}">{{ col.name }}</th>
+            <th data-column="{{ col.name }}" onclick="sortBy(this.dataset.column)" id="th-{{ col.name }}">{{ col.name }}</th>
             {% endfor %}
             <th style="width:36px;"></th>
           </tr>
@@ -95,7 +95,7 @@ table.dt td input.cell-input{width:100%;border:2px solid var(--accent);border-ra
             {% for col in col_schema %}
             <td class="editable" data-col="{{ col.name }}" data-id="{{ m.id }}">{{ m.data.get(col.name, '') if m.data else '' }}</td>
             {% endfor %}
-            <td><button class="row-del" onclick="deleteRow('{{ m.id }}', this)" title="행 삭제">✕</button></td>
+            <td><button class="row-del" data-row-id="{{ m.id }}" onclick="deleteRow(this.dataset.rowId, this)" title="행 삭제">✕</button></td>
           </tr>
           {% endfor %}
         </tbody>

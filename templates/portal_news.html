@@ -111,7 +111,7 @@
               <div style="display:flex;gap:8px;">
                 <button type="submit" class="btn btn-primary" style="font-size:.82rem;padding:7px 16px;">저장</button>
                 <button type="button" class="btn btn-outline" style="font-size:.82rem;padding:7px 16px;"
-                        onclick="toggleEdit({{ n.id }})">취소</button>
+                        data-news-id="{{ n.id }}" onclick="toggleEdit(this.dataset.newsId)">취소</button>
               </div>
             </form>
           </div>
@@ -120,7 +120,7 @@
         <!-- Action buttons -->
         <div class="news-actions">
           <button class="btn btn-outline" style="font-size:.75rem;padding:5px 12px;white-space:nowrap;"
-                  onclick="toggleEdit({{ n.id }})">수정</button>
+                  data-news-id="{{ n.id }}" onclick="toggleEdit(this.dataset.newsId)">수정</button>
           <form action="{{ url_for('portal_news_delete', news_id=n.id) }}" method="POST"
                 onsubmit="return confirm('이 공지를 삭제하시겠어요?')">
             <button type="submit"

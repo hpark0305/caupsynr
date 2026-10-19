@@ -179,3 +179,23 @@ alter table reset_tokens          enable row level security;
 alter table project_protocols     enable row level security;
 
 -- After all schema files, apply supabase_security_access.sql to revoke client grants.
+
+-- Task storage was previously defined only in local SQLite initialization.
+create table if not exists tasks (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid,
+  title text not null,
+  description text,
+  assigned_to text,
+  due_date text,
+  status text default 'todo',
+  priority text default 'normal',
+  created_by text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+create index if not exists idx_tasks_project on tasks(project_id);
+create index if not exists idx_tasks_creator on tasks(created_by);
+alter table tasks enable row level security;
+revoke all on tasks from PUBLIC, anon, authenticated;
+grant select, insert, update, delete on tasks to service_role;

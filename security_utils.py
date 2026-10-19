@@ -1,5 +1,7 @@
 """Validation at file and spreadsheet trust boundaries."""
 import csv
+import re
+import unicodedata
 import zipfile
 import warnings
 
@@ -7,6 +9,26 @@ from PIL import Image
 
 DOCUMENT_EXTENSIONS = {'.pdf', '.txt', '.csv', '.tsv', '.json', '.md', '.xlsx', '.xls',
                        '.docx', '.pptx', '.hwp', '.hwpx', '.png', '.jpg', '.jpeg', '.webp'}
+
+
+def password_policy_error(password, email=''):
+    """Reject obvious weak new passwords without changing existing login rules."""
+    if not 12 <= len(password) <= 128:
+        return '비밀번호는 12~128자로 입력해주세요.'
+    normalized = unicodedata.normalize('NFKC', password).casefold()
+    if any(unicodedata.category(c).startswith('C') for c in password):
+        return '비밀번호에는 제어 문자를 사용할 수 없어요.'
+    compact = ''.join(c for c in normalized if c.isalnum())
+    if len(set(compact)) < 4 or re.fullmatch(r'(.{1,4})\1+', compact):
+        return '같은 문자나 짧은 패턴을 반복한 비밀번호는 사용할 수 없어요.'
+    # A small local denylist is not a comprehensive breached-password check.
+    weak = ('password', 'qwerty', '123456', 'abcdef', 'letmein', 'changeme', '비밀번호')
+    if any(word in compact for word in weak):
+        return '쉽게 추측할 수 있는 단어·연속 문자열 대신 긴 문구를 사용해주세요.'
+    account = ''.join(c for c in email.partition('@')[0].casefold() if c.isalnum())
+    if len(account) >= 4 and account in compact:
+        return '이메일 아이디가 포함되지 않은 비밀번호를 사용해주세요.'
+    return None
 
 
 def validate_production_settings(environ):

@@ -65,7 +65,7 @@
     <div class="ev-photo-grid">
       {% for photo in photos %}
       <div class="ev-photo-item"
-           onclick="openLightbox('{{ url_for('static', filename='images/gallery/' + event.key + '/' + photo) }}')">
+           data-photo-url="{{ url_for('static', filename='images/gallery/' + event.key + '/' + photo) }}" onclick="openLightbox(this.dataset.photoUrl)">
         <img src="{{ url_for('static', filename='images/gallery/' + event.key + '/' + photo) }}"
              alt="{{ photo }}" loading="lazy">
         {% if session.get('researcher') %}

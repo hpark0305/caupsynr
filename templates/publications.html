@@ -33,7 +33,7 @@
       <div class="pub-filter" id="year-filter">
         <button class="year-btn active" onclick="filterYear('all')">All Years</button>
         {% for year in pub_years %}
-        <button class="year-btn" onclick="filterYear('{{ year }}')">{{ year }}</button>
+        <button class="year-btn" data-year="{{ year }}" onclick="filterYear(this.dataset.year)">{{ year }}</button>
         {% endfor %}
       </div>
 

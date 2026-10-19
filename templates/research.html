@@ -17,7 +17,7 @@
 
     <div class="ri-grid">
       {% for r in research_topics %}
-      <div class="ri-card" onclick="activate('{{ r.key }}')" style="cursor:pointer;">
+      <div class="ri-card" data-key="{{ r.key }}" onclick="activate(this.dataset.key)" style="cursor:pointer;">
         <div class="ri-card-top" style="background:{{ r.gradient }};">
           {% if r.key == 'brainwave' %}
           <svg class="ri-card-icon" viewBox="0 0 64 64" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
@@ -67,7 +67,7 @@
 
 <div class="research-progress" id="research-progress">
   {% for r in research_topics %}
-  <button class="rp-dot" data-key="{{ r.key }}" onclick="activate('{{ r.key }}')" title="{{ r.title }}"></button>
+  <button class="rp-dot" data-key="{{ r.key }}" onclick="activate(this.dataset.key)" title="{{ r.title }}"></button>
   {% endfor %}
 </div>
 
