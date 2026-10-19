@@ -52,7 +52,8 @@ class PrivateStorage:
         self._request('DELETE', '/object/' + BUCKET, json={'prefixes': [key]})
 
     def list(self, prefix):
-        self._path(prefix)
+        if prefix:
+            self._path(prefix)
         result = []
         while True:
             response = self._request('POST', '/object/list/' + BUCKET, json={

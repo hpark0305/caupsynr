@@ -97,6 +97,7 @@ def security_headers(response):
         response.headers['Strict-Transport-Security'] = 'max-age=31536000'
     if request.path.startswith(('/portal', '/api', '/login', '/reset-password')) or session.get('researcher'):
         response.headers['Cache-Control'] = 'no-store'
+        response.headers['X-Robots-Tag'] = 'noindex, nofollow, noarchive'
     return response
 
 @app.errorhandler(HTTPException)
@@ -524,8 +525,7 @@ def init_db():
         conn.commit()
 
 def audit(action, table=None, target_id=None, detail=None, before=None, after=None):
-    """Write an entry to the audit_log table. Never raises (a broken audit log
-    shouldn't break the action it's logging) — but failures are printed, not swallowed."""
+    """Return whether the audit entry was stored; sensitive reads must check this."""
     try:
         researcher = session.get("researcher", "system")
         before_val = json.dumps(before, ensure_ascii=False) if before is not None else None
@@ -542,8 +542,10 @@ def audit(action, table=None, target_id=None, detail=None, before=None, after=No
         })
         if not result:
             print(f"audit() 저장 실패: action={action}, table={table}, target_id={target_id}")
+        return bool(result)
     except Exception as e:
         print(f"audit() 예외로 기록 실패: action={action}, table={table}, target_id={target_id} — {e}")
+        return False
 
 _SAFE_IDENT = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
 _ALLOWED_TABLES = {
@@ -3431,7 +3433,7 @@ def portal_mindmate():
             researcher=session["researcher"], tab=tab, q=q, rows=[], total=0)
 
     table = "mindmate_music_log" if tab == "music" else "mindmate_daily_survey"
-    params = "?select=*&order=date.desc&limit=3000"
+    params = "?select=id,participant_key,date,updated_at&order=date.desc&limit=3000"
     if q: params += f"&participant_key=ilike.{_q(q)}%25"
     rows = sb("GET", table, params=params) or []
     for r in rows:
@@ -3439,6 +3441,39 @@ def portal_mindmate():
 
     return render_template("portal_mindmate.html",
         researcher=session["researcher"], tab=tab, q=q, rows=rows, total=len(rows))
+
+_MM_DETAIL_FIELDS = {
+    'music': [('date', '날짜'), ('start_time', '시작 시간'), ('end_time', '종료 시간'),
+              ('music_name', '음원명'), ('music_type', '음원 유형')],
+    'survey': [('date', '날짜'), ('work_type', '근무 형태'), ('is_survey_daily', '일일 설문 여부')]
+              + [(f'servey_daily_{i}', f'일일 설문 {i}') for i in range(1, 4)]
+              + [('is_mind_healing', '마음돌봄 여부'), ('servey_mindhealing_1', '마음돌봄 설문'),
+                 ('is_five_days', '5일 정기설문 여부')]
+              + [(f'servey_five_{i}', f'5일 설문 {i}') for i in range(1, 13)]
+              + [('servey_five_result', '5일 설문 결과')],
+    'open': [('received_at', '수신 시각')],
+}
+_MM_DETAIL_TABLES = {'music': 'mindmate_music_log', 'survey': 'mindmate_daily_survey',
+                     'open': 'mindmate_app_open'}
+
+@app.route('/portal/mindmate/detail/<kind>/<record_id>', methods=['POST'])
+@login_required
+def portal_mindmate_detail(kind, record_id):
+    # No project attribution exists yet; login_required also enforces admin-only access.
+    if kind not in _MM_DETAIL_TABLES:
+        abort(404)
+    table = _MM_DETAIL_TABLES[kind]
+    fields = _MM_DETAIL_FIELDS[kind]
+    cols = ','.join(['id', 'participant_key'] + [key for key, _ in fields])
+    rows = sb('GET', table, params=f'?id=eq.{_q(record_id)}&select={cols}&limit=1')
+    if not rows:
+        abort(404)
+    row = rows[0]
+    if not audit('view_mindmate_response', table, record_id,
+                 json.dumps({'participant': _mm_label(row.get('participant_key'))}, ensure_ascii=False)):
+        abort(503)
+    return jsonify(ok=True, participant=_mm_label(row.get('participant_key')),
+                   fields=[{'label': label, 'value': row.get(key)} for key, label in fields])
 
 @app.route("/portal/mindmate/music/delete", methods=["POST"])
 @login_required
@@ -3474,6 +3509,11 @@ def portal_mindmate_export():
         table, cols, fname = "mindmate_daily_survey", _MM_SURVEY_COLS, "mindmate_daily_survey.csv"
     rows = sb("GET", table, params="?select=*&order=date.desc") or []
 
+    if not audit('export_mindmate', table, detail=json.dumps({'rows': len(rows)})):
+        abort(503)
+    # The original payload is not an export field: older raw values may contain identifiers.
+    cols = [col for col in cols if col != 'raw']
+
     buf = io.StringIO()
     buf.write("﻿")  # UTF-8 BOM: 엑셀에서 바로 열 수 있게
     w = SafeCSVWriter(buf)
@@ -3504,9 +3544,9 @@ def portal_mindmate_live():
 @login_required
 def portal_mindmate_live_data():
     music  = sb("GET","mindmate_music_log",
-        params="?select=id,participant_key,date,music_name,updated_at&order=updated_at.desc&limit=50") or []
+        params="?select=id,participant_key,date,updated_at&order=updated_at.desc&limit=50") or []
     survey = sb("GET","mindmate_daily_survey",
-        params="?select=id,participant_key,date,work_type,source,updated_at&order=updated_at.desc&limit=50") or []
+        params="?select=id,participant_key,date,source,updated_at&order=updated_at.desc&limit=50") or []
     opens  = sb("GET","mindmate_app_open",
         params="?select=id,participant_key,received_at&order=received_at.desc&limit=50") or []
 
@@ -3515,7 +3555,7 @@ def portal_mindmate_live_data():
         events.append({
             "id": r.get("id"), "type": "music", "label": _MM_ACTIVITY_TYPES["music"],
             "participant": _mm_label(r.get("participant_key")),
-            "date": r.get("date"), "detail": r.get("music_name") or "",
+            "date": r.get("date"),
             "at": r.get("updated_at"),
         })
     for r in survey:
@@ -3523,14 +3563,14 @@ def portal_mindmate_live_data():
         events.append({
             "id": r.get("id"), "type": kind, "label": _MM_ACTIVITY_TYPES[kind],
             "participant": _mm_label(r.get("participant_key")),
-            "date": r.get("date"), "detail": r.get("work_type") or "",
+            "date": r.get("date"),
             "at": r.get("updated_at"),
         })
     for r in opens:
         events.append({
             "id": r.get("id"), "type": "open", "label": _MM_ACTIVITY_TYPES["open"],
             "participant": _mm_label(r.get("participant_key")),
-            "date": (r.get("received_at") or "")[:10], "detail": "",
+            "date": (r.get("received_at") or "")[:10],
             "at": r.get("received_at"),
         })
     events.sort(key=lambda e: e["at"] or "", reverse=True)

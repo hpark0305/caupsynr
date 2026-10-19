@@ -354,6 +354,93 @@ class SecurityTests(unittest.TestCase):
         self.assertEqual(rows[0]['servey_daily_1'], '4')
         self.assertEqual(rows[0]['is_five_days'], 'true')
 
+    def seed_private_response(self):
+        self.mindmate_send({'PhoneNumber': '01000000000', 'Date': '2026-10-19',
+                            'order': 'updateData_daily', 'Servey_Daily_1': 'PRIVATE_RESPONSE_MARKER'})
+        row = portal.sb('GET', 'mindmate_daily_survey')[0]
+        portal.sb('PATCH', 'mindmate_daily_survey', params='?id=eq.' + row['id'],
+                  data={'raw': json.dumps({'UserName': 'LEGACY_IDENTITY_MARKER'})})
+        self.assertIn('LEGACY_IDENTITY_MARKER', str(portal.sb('GET', 'mindmate_daily_survey')[0]['raw']))
+        self.sign_in('admin@example.test')
+        return row['id']
+
+    def test_mindmate_summaries_do_not_preload_sensitive_answers(self):
+        self.seed_private_response()
+        for path in ('/portal/mindmate', '/portal/mindmate?tab=live', '/portal/mindmate/live/data'):
+            response = self.client.get(path)
+            self.assertEqual(response.status_code, 200)
+            self.assertIn('noindex', response.headers['X-Robots-Tag'])
+            self.assertNotIn(b'PRIVATE_RESPONSE_MARKER', response.data)
+            self.assertNotIn(b'LEGACY_IDENTITY_MARKER', response.data)
+        self.assertFalse(portal.sb('GET', 'audit_log', params='?action=eq.view_mindmate_response'))
+
+    def test_mindmate_detail_records_viewer_target_and_time_without_answer(self):
+        rid = self.seed_private_response()
+        response = self.post('/portal/mindmate/detail/survey/' + rid, json={})
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('PRIVATE_RESPONSE_MARKER', response.get_data(as_text=True))
+        self.assertNotIn('LEGACY_IDENTITY_MARKER', response.get_data(as_text=True))
+        self.assertEqual(response.headers['Cache-Control'], 'no-store')
+        row = portal.sb('GET', 'audit_log', params='?action=eq.view_mindmate_response')[0]
+        self.assertEqual(row['researcher'], 'admin@example.test')
+        self.assertEqual(row['target_table'], 'mindmate_daily_survey')
+        self.assertEqual(row['target_id'], rid)
+        self.assertTrue(row['created_at'])
+        self.assertIn('참여자-', row['detail'])
+        self.assertNotIn('PRIVATE_RESPONSE_MARKER', json.dumps(row))
+
+    def test_mindmate_detail_requires_csrf_and_admin_and_valid_record(self):
+        rid = self.seed_private_response()
+        path = '/portal/mindmate/detail/survey/' + rid
+        self.assertEqual(self.client.get(path).status_code, 405)
+        self.assertEqual(self.client.post(path, json={}).status_code, 400)
+        for role in ('owner', 'viewer', 'editor', 'other'):
+            self.sign_in(role + '@example.test')
+            self.assertEqual(self.post(path, json={}).status_code, 403)
+        self.sign_in('admin@example.test')
+        for path in ('/portal/mindmate/detail/accounts/' + rid, '/portal/mindmate/detail/survey/missing'):
+            self.assertEqual(self.post(path, json={}).status_code, 404)
+        self.assertFalse(portal.sb('GET', 'audit_log', params='?action=eq.view_mindmate_response'))
+
+    def test_mindmate_detail_fails_closed_when_audit_write_fails(self):
+        rid = self.seed_private_response()
+        actual = portal.sb
+        def failed_log(method, table, **kwargs):
+            return [] if method == 'POST' and table == 'audit_log' else actual(method, table, **kwargs)
+        with patch.object(portal, 'sb', side_effect=failed_log):
+            response = self.post('/portal/mindmate/detail/survey/' + rid, json={})
+        self.assertEqual(response.status_code, 503)
+        self.assertNotIn(b'PRIVATE_RESPONSE_MARKER', response.data)
+
+    def test_mindmate_reopened_response_is_audited_again(self):
+        rid = self.seed_private_response()
+        for _ in range(2):
+            self.assertEqual(self.post('/portal/mindmate/detail/survey/' + rid, json={}).status_code, 200)
+        logs = portal.sb('GET', 'audit_log', params='?action=eq.view_mindmate_response')
+        self.assertEqual(len(logs), 2)
+
+    def test_mindmate_export_is_audited_and_excludes_legacy_raw(self):
+        self.seed_private_response()
+        response = self.client.get('/portal/mindmate/export')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'PRIVATE_RESPONSE_MARKER', response.data)
+        self.assertNotIn(b'LEGACY_IDENTITY_MARKER', response.data)
+        self.assertEqual(len(portal.sb('GET', 'audit_log', params='?action=eq.export_mindmate')), 1)
+        with patch.object(portal, 'audit', return_value=False):
+            self.assertEqual(self.client.get('/portal/mindmate/export').status_code, 503)
+
+    def test_mindmate_live_music_hides_details_until_audited_read(self):
+        self.mindmate_send({'PhoneNumber': '01000000000', 'Date': '2026-10-19', 'StartTime': '09:00',
+                            'order': 'writeData_constant', 'MusicName': 'PRIVATE_MUSIC_MARKER'})
+        self.sign_in('admin@example.test')
+        self.assertNotIn(b'PRIVATE_MUSIC_MARKER', self.client.get('/portal/mindmate?tab=music').data)
+        events = self.client.get('/portal/mindmate/live/data').json['events']
+        self.assertEqual(events[0]['type'], 'music')
+        self.assertNotIn('PRIVATE_MUSIC_MARKER', json.dumps(events))
+        response = self.post('/portal/mindmate/detail/music/' + events[0]['id'], json={})
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'PRIVATE_MUSIC_MARKER', response.data)
+
     def test_idle_and_absolute_session_timeout(self):
         for field, age in [('last_seen', 1801), ('created_at', 28801)]:
             self.sign_in()

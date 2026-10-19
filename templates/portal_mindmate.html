@@ -16,6 +16,11 @@ input[type=checkbox]{cursor:pointer;width:15px;height:15px;}
 .mm-entry:first-child{border-top:none;}
 .mm-entry:hover{background:var(--accent-light);}
 .mm-entry-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.mm-detail-button{display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex:1;text-align:left;background:none;border:0;color:var(--fg-1);font:inherit;cursor:pointer;padding:6px 0;}
+.mm-detail-button:focus-visible{outline:2px solid var(--accent);outline-offset:4px;}
+.mm-detail{user-select:text;cursor:auto;}
+.mm-detail-status{font-size:.8rem;color:var(--muted);padding-top:12px;}
+@media(prefers-reduced-motion:reduce){.live-dot{animation:none!important;}.mm-arrow{transition:none;}}
 .mm-badge{background:var(--accent-light);color:var(--accent);font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:100px;}
 .mm-time{font-size:.78rem;color:var(--muted);}
 .mm-arrow{font-size:.7rem;color:var(--fg-4);margin-left:auto;transition:transform .2s;}
@@ -84,43 +89,11 @@ input[type=checkbox]{cursor:pointer;width:15px;height:15px;}
     </div>
 
     {% if tab == 'live' %}
-    <div style="font-size:.8rem;color:var(--muted);margin-bottom:18px;" id="statusLine">불러오는 중…</div>
+    <p style="font-size:.8rem;color:var(--muted);margin-bottom:12px;">최근 수신된 활동입니다. 현재 앱에 접속 중임을 보장하지 않습니다. 상세를 열면 열람 기록이 남습니다.</p>
+    <div style="font-size:.8rem;color:var(--muted);margin-bottom:18px;" id="statusLine" role="status">불러오는 중…</div>
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;" id="liveListBox">
       <div style="text-align:center;padding:60px 20px;color:var(--muted);">불러오는 중…</div>
     </div>
-    <script>
-    function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-    function fmtTime(t){ return t ? String(t).slice(0,19).replace('T',' ') : ''; }
-    function renderLiveList(events){
-      const box = document.getElementById('liveListBox');
-      if (!events.length){
-        box.innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--muted);"><div style="font-size:2.5rem;margin-bottom:12px;">📭</div><div>최근 활동이 없습니다.</div></div>';
-        return;
-      }
-      box.innerHTML = events.map(e => `
-        <div class="mm-event">
-          <span class="mm-type mm-type-${esc(e.type)}">${esc(e.label)}</span>
-          <span style="font-weight:700;font-size:.88rem;">${esc(e.participant)}</span>
-          <span style="font-size:.8rem;color:var(--muted);">${esc(e.date)}${e.detail ? ' · ' + esc(e.detail) : ''}</span>
-          <span style="font-size:.78rem;color:var(--muted);margin-left:auto;">${esc(fmtTime(e.at))}</span>
-        </div>`).join('');
-    }
-    async function pollLiveData(){
-      try {
-        const res = await fetch('/portal/mindmate/live/data');
-        const json = await res.json();
-        if (json.ok) {
-          renderLiveList(json.events);
-          document.getElementById('statusLine').textContent =
-            `최근 ${json.events.length}건 · 마지막 갱신 ${new Date().toLocaleTimeString('ko-KR')}`;
-        }
-      } catch (e) {
-        document.getElementById('statusLine').textContent = '갱신 실패 — 잠시 후 다시 시도합니다.';
-      }
-    }
-    pollLiveData();
-    setInterval(pollLiveData, 10000);
-    </script>
     {% else %}
 
     <!-- 필터 -->
@@ -154,56 +127,23 @@ input[type=checkbox]{cursor:pointer;width:15px;height:15px;}
 
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;">
         {% for r in rows %}
-        <div class="mm-entry" onclick="toggleRow('r{{ loop.index }}', event)">
+        <div class="mm-entry">
           <div class="mm-entry-head">
             <input type="checkbox" name="ids" value="{{ r.get('id','') }}" class="row-check" onclick="event.stopPropagation();" onchange="updateBar()">
+            <button type="button" class="mm-detail-button" data-kind="{{ 'music' if tab == 'music' else 'survey' }}" data-record-id="{{ r.get('id','') }}" aria-expanded="false" aria-controls="detail-r{{ loop.index }}">
             <span style="font-weight:700;font-size:.9rem;">{{ r.label }}</span>
             <span class="mm-badge">{{ r.get('date','') }}</span>
-            {% if tab == 'music' %}
-            <span class="mm-time">{{ r.get('start_time','') }} ~ {{ r.get('end_time','') }} · {{ r.get('music_name','') }}</span>
-            {% else %}
-            <span class="mm-time">{{ r.get('work_type','') }}</span>
-            {% endif %}
+            <span class="mm-time">{{ r.get('updated_at','') }}</span>
             <span class="mm-arrow" id="arrow-r{{ loop.index }}">▶</span>
+            </button>
           </div>
-          <div id="detail-r{{ loop.index }}" style="display:none;">
-            <table class="kv-table">
-              {% if tab == 'music' %}
-              <tr><th>날짜</th><td>{{ r.get('date','') }}</td></tr>
-              <tr><th>시작 시간</th><td>{{ r.get('start_time','') }}</td></tr>
-              <tr><th>종료 시간</th><td>{{ r.get('end_time','') }}</td></tr>
-              <tr><th>음원명</th><td>{{ r.get('music_name','') }}</td></tr>
-              <tr><th>음원 유형</th><td>{{ r.get('music_type','') }}</td></tr>
-              {% else %}
-              <tr><th>날짜</th><td>{{ r.get('date','') }}</td></tr>
-              <tr><th>근무 형태</th><td>{{ r.get('work_type','') }}</td></tr>
-              <tr><th>일일 설문 여부</th><td>{{ r.get('is_survey_daily','') }}</td></tr>
-              <tr><th>일일 설문 1</th><td>{{ r.get('servey_daily_1','') }}</td></tr>
-              <tr><th>일일 설문 2</th><td>{{ r.get('servey_daily_2','') }}</td></tr>
-              <tr><th>일일 설문 3</th><td>{{ r.get('servey_daily_3','') }}</td></tr>
-              <tr><th>마음돌봄 여부</th><td>{{ r.get('is_mind_healing','') }}</td></tr>
-              <tr><th>마음돌봄 설문</th><td>{{ r.get('servey_mindhealing_1','') }}</td></tr>
-              <tr><th>5일 정기설문 여부</th><td>{{ r.get('is_five_days','') }}</td></tr>
-              {% for i in range(1,13) %}
-              <tr><th>5일 설문 {{ i }}</th><td>{{ r.get('servey_five_' ~ i, '') }}</td></tr>
-              {% endfor %}
-              <tr><th>5일 설문 결과</th><td>{{ r.get('servey_five_result','') }}</td></tr>
-              {% endif %}
-            </table>
-          </div>
+          <div id="detail-r{{ loop.index }}" class="mm-detail" hidden></div>
         </div>
         {% endfor %}
       </div>
     </form>
 
     <script>
-    function toggleRow(id, ev){
-      if (ev && ev.target && ev.target.type === 'checkbox') return;
-      var d=document.getElementById('detail-'+id), a=document.getElementById('arrow-'+id);
-      var o=d.style.display!=='none';
-      d.style.display=o?'none':'block';
-      a.classList.toggle('open', !o);
-    }
     function updateBar(){var c=document.querySelectorAll('.row-check:checked').length;document.getElementById('selectedCount').textContent=c+'건 선택됨';document.getElementById('deleteBar').classList.toggle('show',c>0);}
     function clearSelection(){document.querySelectorAll('.row-check').forEach(function(c){c.checked=false;});updateBar();}
     </script>
@@ -221,6 +161,7 @@ input[type=checkbox]{cursor:pointer;width:15px;height:15px;}
   </div>
   </div>
 </div>
+<script src="{{ url_for('static', filename='js/mindmate.js') }}" defer></script>
 <script>
 function toggleNav(key){var btn=document.getElementById('nav-'+key),group=document.getElementById('sub-'+key);if(!btn||!group)return;var open=group.classList.contains('open');group.classList.toggle('open',!open);btn.classList.toggle('expanded',!open);}
 </script>
