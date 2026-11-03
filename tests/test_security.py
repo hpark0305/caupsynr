@@ -624,6 +624,52 @@ class SecurityTests(unittest.TestCase):
         for method in ('TRACE', 'PUT', 'DELETE'):
             self.assertEqual(self.client.open('/', method=method).status_code, 405)
 
+    def test_csp_limits_script_and_data_destinations(self):
+        policy = self.client.get('/').headers['Content-Security-Policy']
+        directives = dict(d.strip().split(' ', 1) for d in policy.split(';'))
+        self.assertEqual(directives['connect-src'], "'self'")
+        self.assertEqual(directives['frame-ancestors'], "'none'")
+        self.assertEqual(directives['object-src'], "'none'")
+        self.assertNotIn('*', policy)
+        self.assertEqual(set(directives['script-src'].split()),
+                         {"'self'", "'unsafe-inline'", 'https://cdn.sheetjs.com'})
+
+    def test_templates_load_no_third_party_script_except_sheetjs(self):
+        for template in Path(portal.app.root_path, 'templates').glob('*.html'):
+            for src in re.findall(r'<script[^>]+src="(https?://[^"]+)"', template.read_text(encoding='utf-8')):
+                self.assertTrue(src.startswith('https://cdn.sheetjs.com/'), (template.name, src))
+
+    def test_vendored_scripts_are_served(self):
+        for name in ('chart-4.4.1.umd.min.js', 'gsap-3.12.5.min.js'):
+            response = self.client.get('/static/vendor/' + name)
+            self.assertEqual(response.status_code, 200, name)
+            response.close()
+
+    def test_rate_limit_key_uses_cloudflare_header_only_on_render(self):
+        headers = {'CF-Connecting-IP': '203.0.113.7', 'X-Forwarded-For': '198.51.100.1'}
+        with portal.app.test_request_context('/', headers=headers, environ_base={'REMOTE_ADDR': '10.0.0.1'}):
+            with patch.object(portal, '_ON_RENDER', True):
+                self.assertEqual(portal.client_ip(), '203.0.113.7')
+            with patch.object(portal, '_ON_RENDER', False):
+                self.assertEqual(portal.client_ip(), '10.0.0.1')
+        with portal.app.test_request_context('/', headers={'X-Forwarded-For': '198.51.100.1'},
+                                             environ_base={'REMOTE_ADDR': '10.0.0.1'}):
+            with patch.object(portal, '_ON_RENDER', True):
+                self.assertEqual(portal.client_ip(), '10.0.0.1')
+
+    def test_login_hashes_even_for_unknown_accounts(self):
+        with patch.object(portal, 'check_password_hash', wraps=portal.check_password_hash) as checker:
+            self.post('/login', {'email': 'nobody@example.test', 'password': 'whatever-password'})
+        checker.assert_called_once()
+
+    def test_robots_and_healthz(self):
+        robots = self.client.get('/robots.txt')
+        self.assertEqual(robots.status_code, 200)
+        self.assertIn('Disallow: /portal', robots.get_data(as_text=True))
+        with patch.object(portal, 'sb', side_effect=AssertionError('no database')):
+            health = self.client.get('/healthz')
+        self.assertEqual(health.get_json(), {'ok': True})
+
     def test_path_traversal_and_symlinks_blocked(self):
         root = Path(self.temp.name) / 'root'
         root.mkdir()

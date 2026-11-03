@@ -59,7 +59,29 @@ app.config['WTF_CSRF_TIME_LIMIT'] = 3600
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50 MB upload limit
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)  # keep researchers logged in
 csrf = CSRFProtect(app)
-limiter = Limiter(get_remote_address, app=app, default_limits=[],
+
+_ON_RENDER = os.getenv('RENDER', '').lower() == 'true'
+# Per client IP across all app-ingestion endpoints; app relays send at most a few hundred events/day.
+API_RATE_LIMIT = os.getenv('API_RATE_LIMIT', '300 per minute')
+
+def client_ip():
+    """Client address for rate limiting.
+
+    On Render every request arrives through Cloudflare and Render's proxy, so
+    request.remote_addr is a shared internal 10.x address and all visitors
+    would share one rate-limit bucket. Cloudflare overwrites CF-Connecting-IP
+    on every request to a Render web service, so a caller cannot forge it
+    there (https://render.com/articles/host-pocketbase-on-render).
+    X-Forwarded-For is never trusted: Cloudflare appends to it.
+    Off Render the header is ignored because nothing guarantees who set it.
+    """
+    if _ON_RENDER:
+        forwarded = request.headers.get('CF-Connecting-IP', '').strip()
+        if forwarded and len(forwarded) <= 45:
+            return forwarded
+    return get_remote_address()
+
+limiter = Limiter(client_ip, app=app, default_limits=[],
                   storage_uri=os.getenv("RATELIMIT_STORAGE_URI", "memory://"))
 
 DB_PATH = os.getenv("PORTAL_DB_PATH", os.path.join(os.path.dirname(os.path.abspath(__file__)), 'portal.db'))
@@ -86,12 +108,32 @@ def _stored_path(root, *parts):
         abort(400)
     return path
 
+# Templates still use inline <script> blocks and on* handlers, so
+# 'unsafe-inline' remains for scripts; the policy's value is limiting where
+# code can load from and where data can be sent (connect/img/form/frame).
+# SheetJS is the only third-party script left (portal analytics page).
+CONTENT_SECURITY_POLICY = '; '.join([
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' https://cdn.sheetjs.com",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
+    "font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net",
+    "img-src 'self' data: blob:",
+    "connect-src 'self'",
+    "media-src 'self'",
+    "worker-src 'self' blob:",
+    "frame-src 'none'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "frame-ancestors 'none'",
+    "form-action 'self'",
+])
+
 @app.after_request
 def security_headers(response):
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-    response.headers['Content-Security-Policy'] = "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+    response.headers['Content-Security-Policy'] = CONTENT_SECURITY_POLICY
     response.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()'
     if app.config['SESSION_COOKIE_SECURE']:
         response.headers['Strict-Transport-Security'] = 'max-age=31536000'
@@ -776,6 +818,8 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated
 
+_DUMMY_PASSWORD_HASH = generate_password_hash(os.urandom(16).hex(), method='pbkdf2:sha256')
+
 def _auth_stamp(password_hash):
     return hmac.new(app.secret_key.encode(), password_hash.encode(), hashlib.sha256).hexdigest()
 
@@ -1292,6 +1336,17 @@ def _articles_by_year():
     return result
 
 # ─── Public routes ───────────────────────────────────────────
+@app.route("/robots.txt")
+def robots_txt():
+    # Public pages stay indexable; private areas are also marked noindex per response.
+    body = "User-agent: *\nDisallow: /portal\nDisallow: /api/\nDisallow: /login\nDisallow: /reset-password\n"
+    return Response(body, mimetype='text/plain')
+
+@app.route("/healthz")
+def healthz():
+    """Liveness probe for Render's health check. Touches no database or storage."""
+    return jsonify(ok=True)
+
 @app.route("/")
 def home():
     recent = sorted(ARTICLES, key=lambda x: -x["year"])[:5]
@@ -1563,7 +1618,9 @@ def login():
         email    = request.form.get("email","").strip()
         password = request.form.get("password","").strip()
         stored = _get_account(email)
-        if stored and check_password_hash(stored, password):
+        # Hash even for unknown emails so response time does not reveal which accounts exist.
+        valid = check_password_hash(stored or _DUMMY_PASSWORD_HASH, password)
+        if stored and valid:
             _start_login_session(email, stored)
             return redirect(url_for("portal"))
         error = "이메일 또는 비밀번호가 올바르지 않습니다."
@@ -2910,6 +2967,7 @@ def _batch_response(total, saved, invalid, failed):
 
 @app.route("/api/sessions", methods=["POST"])
 @csrf.exempt
+@limiter.limit(API_RATE_LIMIT)
 def api_receive_session():
     if request.headers.get("X-API-Key","")!=APP_API_KEY:
         return jsonify({"error":"Unauthorized"}),401
@@ -2930,6 +2988,7 @@ def api_receive_session():
 # ── Wardy 앱 이벤트 수신 API ──────────────────────────
 @app.route("/api/wardy/events", methods=["POST"])
 @csrf.exempt
+@limiter.limit(API_RATE_LIMIT)
 def api_wardy_events():
     if request.headers.get("X-API-Key", "") != APP_API_KEY:
         return jsonify({"error": "Unauthorized"}), 401
@@ -2961,6 +3020,7 @@ def api_wardy_events():
 # ── NeuroBreeze API ────────────────────────────────────
 @app.route("/api/neurobreeze/eeg", methods=["POST"])
 @csrf.exempt
+@limiter.limit(API_RATE_LIMIT)
 def api_neurobreeze_eeg():
     if request.headers.get("X-API-Key","") != APP_API_KEY:
         return jsonify({"error":"Unauthorized"}), 401
@@ -2993,6 +3053,7 @@ def api_neurobreeze_eeg():
 
 @app.route("/api/neurobreeze/meditation", methods=["POST"])
 @csrf.exempt
+@limiter.limit(API_RATE_LIMIT)
 def api_neurobreeze_meditation():
     if request.headers.get("X-API-Key","") != APP_API_KEY:
         return jsonify({"error":"Unauthorized"}), 401
@@ -3119,6 +3180,7 @@ def _merge_upsert(table, row_id, fields, overwrite_always=("raw", "updated_at", 
 
 @app.route("/api/mindmate/followup", methods=["POST"])
 @csrf.exempt
+@limiter.limit(API_RATE_LIMIT)
 def api_mindmate_followup():
     if request.headers.get("X-API-Key","") != APP_API_KEY:
         return jsonify({"error":"Unauthorized"}), 401

@@ -2,7 +2,7 @@
 {% block title %}데이터 분석 · 연구자 포털{% endblock %}
 
 {% block head %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='vendor/chart-4.4.1.umd.min.js') }}"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <style>
 /* ── Sidebar layout ── */
