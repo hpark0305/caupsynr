@@ -3469,13 +3469,16 @@ def _participant_key(phone_number):
     # str whose characters were all in [0-9+() .-]; production relays failed
     # that check (HTTP 400 for every Mind Mate request), so only the shape of
     # the input and the digit count are validated here.
+    # The Mind Mate privacy policy says the app sends SystemInfo.deviceUniqueIdentifier
+    # (iOS: 36-char UUID, Android: 32 hex chars) in this field, not a phone number,
+    # so device-ID shapes must pass. Only obviously broken values are rejected.
     if isinstance(phone_number, bool) or not isinstance(phone_number, (str, int)):
         raise ValueError("invalid PhoneNumber")
     text = str(phone_number)
-    if len(text) > 40:
+    if len(text) > 64:
         raise ValueError("invalid PhoneNumber")
     digits = re.sub(r"\D", "", text)
-    if not 7 <= len(digits) <= 15:
+    if not 1 <= len(digits) <= 64:
         raise ValueError("invalid PhoneNumber")
     return hmac.new(MINDMATE_PEPPER.encode(), digits.encode(), hashlib.sha256).hexdigest()
 

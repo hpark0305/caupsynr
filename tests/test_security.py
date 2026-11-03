@@ -282,7 +282,7 @@ class SecurityTests(unittest.TestCase):
                                 headers={'X-API-Key': portal.APP_API_KEY})
 
     def test_mindmate_rejects_invalid_phone_before_database_access(self):
-        for phone in ('abc', '---', '123', '1'*16, '1' * 41, None, True, 1.5, 123,
+        for phone in ('abc', '---', '', '1' * 65, None, True, 1.5,
                       ['01000000000'], {'phone': '01000000000'}):
             with self.subTest(phone=phone), patch.object(portal, 'sb') as database:
                 response = self.mindmate_send({'order': 'appOpen', 'PhoneNumber': phone})
@@ -291,8 +291,8 @@ class SecurityTests(unittest.TestCase):
 
     def test_mindmate_rejection_log_never_contains_the_number(self):
         with self.assertLogs(portal.app.logger, level='WARNING') as logs:
-            self.mindmate_send({'order': 'appOpen', 'PhoneNumber': '12345'})
-        self.assertNotIn('12345', '\n'.join(logs.output))
+            self.mindmate_send({'order': 'appOpen', 'PhoneNumber': 'no-digits-here'})
+        self.assertNotIn('no-digits-here', '\n'.join(logs.output))
 
     @staticmethod
     def legacy_key(phone_number):
@@ -314,7 +314,9 @@ class SecurityTests(unittest.TestCase):
         # accepted and hash exactly as before 2026-10-19 so rows stay linked.
         for phone in ('01000000000', '010-0000-0000', '010.0000.0000', '+82 10-0000-0000',
                       '010–0000–0000', '010 0000 0000', ' 01000000000 ', '010/0000/0000',
-                      '０１０００００００００', 1000000000):
+                      '０１０００００００００', 1000000000,
+                      # SystemInfo.deviceUniqueIdentifier shapes (per the Mind Mate privacy policy)
+                      '6F9619FF-8B86-D011-B42D-00C04FC964FF', 'a3f9c2e81b7d4e05b6c1d2e3f4a5b6c7'):
             with self.subTest(phone=phone):
                 self.assertEqual(portal._participant_key(phone), self.legacy_key(phone))
                 response = self.mindmate_send({'order': 'appOpen', 'PhoneNumber': phone})
