@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from collections import OrderedDict
 from functools import wraps
 from dotenv import load_dotenv
-import os, sqlite3, uuid as _uuid, json, csv, io, re, hashlib, hmac, time
+import os, sqlite3, uuid as _uuid, json, csv, io, re, hashlib, hmac, time, unicodedata
 import requests as _requests
 from urllib.parse import quote, parse_qsl
 from werkzeug.exceptions import HTTPException
@@ -3042,12 +3042,29 @@ def api_neurobreeze_meditation():
 _MINDMATE_ID_NS = _uuid.UUID("f2b6f0a0-6c9e-4f7c-9a2e-2f6b6c1f9a10")
 
 def _participant_key(phone_number):
-    if not isinstance(phone_number, str) or not re.fullmatch(r"[0-9+() .\-]{7,40}", phone_number):
+    # Key derivation MUST stay byte-identical to the pre-2026-10-19 code
+    # (digits of str(value), Unicode-aware \D) so existing participant_key
+    # values keep matching. The 2026-10-19 hardening additionally required a
+    # str whose characters were all in [0-9+() .-]; production relays failed
+    # that check (HTTP 400 for every Mind Mate request), so only the shape of
+    # the input and the digit count are validated here.
+    if isinstance(phone_number, bool) or not isinstance(phone_number, (str, int)):
         raise ValueError("invalid PhoneNumber")
-    digits = re.sub(r"\D", "", phone_number)
+    text = str(phone_number)
+    if len(text) > 40:
+        raise ValueError("invalid PhoneNumber")
+    digits = re.sub(r"\D", "", text)
     if not 7 <= len(digits) <= 15:
         raise ValueError("invalid PhoneNumber")
     return hmac.new(MINDMATE_PEPPER.encode(), digits.encode(), hashlib.sha256).hexdigest()
+
+
+def _phone_shape(value):
+    """Non-identifying description of a rejected PhoneNumber for logs."""
+    text = str(value) if isinstance(value, (str, int)) and not isinstance(value, bool) else ''
+    return {'type': type(value).__name__, 'length': len(text),
+            'digits': sum(c.isdigit() for c in text),
+            'other_chars': sorted({unicodedata.category(c) for c in text if not c.isdigit()})}
 
 def _deterministic_id(*parts):
     return str(_uuid.uuid5(_MINDMATE_ID_NS, "|".join(str(p) for p in parts)))
@@ -3115,8 +3132,16 @@ def api_mindmate_followup():
         return jsonify({"error": "PhoneNumber required"}), 400
     try:
         pkey = _participant_key(phone)
+    except (ValueError, TypeError):
+        # Log only the shape of the value (type, lengths, Unicode categories), never the number.
+        app.logger.warning('Mind Mate rejected PhoneNumber: order=%s shape=%s', order, _phone_shape(phone))
+        return jsonify(error="invalid PhoneNumber or payload fields"), 400
+    try:
         payload = _strip_pii(payload)
     except (ValueError, TypeError):
+        bad = sorted(k for k, v in payload.items()
+                     if k in _MINDMATE_FIELDS[order] and v is not None and not isinstance(v, (str, int, float, bool)))
+        app.logger.warning('Mind Mate rejected payload fields: order=%s non_scalar=%s', order, bad)
         return jsonify(error="invalid PhoneNumber or payload fields"), 400
     raw = json.dumps(payload, ensure_ascii=False)
 

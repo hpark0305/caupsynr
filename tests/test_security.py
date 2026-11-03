@@ -282,12 +282,25 @@ class SecurityTests(unittest.TestCase):
                                 headers={'X-API-Key': portal.APP_API_KEY})
 
     def test_mindmate_rejects_invalid_phone_before_database_access(self):
-        for phone in ('abc', '---', '123', '1'*16, '010abc00000000', '０１０００００００００',
-                      None, 1000000000, ['01000000000'], {'phone': '01000000000'}):
+        for phone in ('abc', '---', '123', '1'*16, '1' * 41, None, True, 1.5, 123,
+                      ['01000000000'], {'phone': '01000000000'}):
             with self.subTest(phone=phone), patch.object(portal, 'sb') as database:
                 response = self.mindmate_send({'order': 'appOpen', 'PhoneNumber': phone})
                 self.assertEqual(response.status_code, 400)
                 database.assert_not_called()
+
+    def test_mindmate_rejection_log_never_contains_the_number(self):
+        with self.assertLogs(portal.app.logger, level='WARNING') as logs:
+            self.mindmate_send({'order': 'appOpen', 'PhoneNumber': '12345'})
+        self.assertNotIn('12345', '\n'.join(logs.output))
+
+    @staticmethod
+    def legacy_key(phone_number):
+        """participant_key derivation deployed before 2026-10-19 (kept for continuity)."""
+        import hashlib
+        import hmac
+        digits = re.sub(r"\D", "", str(phone_number or ""))
+        return hmac.new(portal.MINDMATE_PEPPER.encode(), digits.encode(), hashlib.sha256).hexdigest()
 
     def test_mindmate_phone_hash_mapping_is_unchanged(self):
         import hashlib
@@ -295,6 +308,25 @@ class SecurityTests(unittest.TestCase):
         expected = hmac.new(portal.MINDMATE_PEPPER.encode(), b'01000000000', hashlib.sha256).hexdigest()
         for phone in ('01000000000', '010-0000-0000', '(010) 0000 0000'):
             self.assertEqual(portal._participant_key(phone), expected)
+
+    def test_mindmate_key_matches_legacy_derivation_for_relay_formats(self):
+        # Formats a Google Apps Script / Unity relay can produce. Each must be
+        # accepted and hash exactly as before 2026-10-19 so rows stay linked.
+        for phone in ('01000000000', '010-0000-0000', '010.0000.0000', '+82 10-0000-0000',
+                      '010–0000–0000', '010 0000 0000', ' 01000000000 ', '010/0000/0000',
+                      '０１０００００００００', 1000000000):
+            with self.subTest(phone=phone):
+                self.assertEqual(portal._participant_key(phone), self.legacy_key(phone))
+                response = self.mindmate_send({'order': 'appOpen', 'PhoneNumber': phone})
+                self.assertEqual(response.status_code, 201, response.get_json())
+
+    def test_mindmate_form_encoded_relay_accepted(self):
+        # GAS UrlFetchApp with an object payload sends application/x-www-form-urlencoded.
+        response = self.mindmate_send({'order': 'writeData_constant', 'PhoneNumber': '010-0000-0000',
+                                       'Date': '261019', 'StartTime': '09:00:00', 'EndTime': '09:10:00',
+                                       'MusicName': 'synthetic', 'MusicType': '1',
+                                       'UserName': 'PII_MARKER', 'Department': 'PII_MARKER'}, 'data')
+        self.assertEqual(response.status_code, 201, response.get_json())
 
     def test_mindmate_all_orders_accept_form_and_json_without_extra_pii(self):
         cases = [
