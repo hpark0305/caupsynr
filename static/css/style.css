@@ -2396,3 +2396,32 @@ body.is-portal .site-footer { display: none; }
 [data-theme="dark"] .consent-box a, :root:not([data-theme]) .consent-box a { color: var(--violet-soft); }
 .consent-check { display: flex; align-items: center; gap: 8px; font-size: .84rem; font-weight: 650; color: var(--fg-1); cursor: pointer; }
 .consent-check input { width: 16px; height: 16px; }
+
+/* ── App intro pages (Wardy, NeuroBreeze, Mind Mate) ── */
+.apd-hero .apd-title, .apd-hero .apd-subtitle { color: #fff; }
+.apd-hero .apd-subtitle { opacity: .86; }
+.apd-hero .apd-label-text { color: rgba(255,255,255,.9); }
+.apd-hero .apd-tag { color: #fff; background: rgba(255,255,255,.16); border-color: rgba(255,255,255,.28); }
+.apd-intro { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(260px, 1fr); gap: 48px; align-items: start; }
+.apd-lead { font-family: var(--font-kr); font-size: 1.14rem; line-height: 1.9; color: var(--fg-1); word-break: keep-all; margin: 0 0 18px; }
+.apd-lead-en { font-size: .95rem; line-height: 1.75; color: var(--fg-3); margin: 0; }
+.apd-glance { margin: 0; padding: 6px 22px; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); }
+.apd-glance div { display: grid; grid-template-columns: 72px 1fr; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--border-light); }
+.apd-glance div:last-child { border-bottom: 0; }
+.apd-glance dt { color: var(--fg-4); font-size: .78rem; font-weight: 700; }
+.apd-glance dd { margin: 0; color: var(--fg-1); font-size: .9rem; font-weight: 600; word-break: keep-all; }
+.apd-feat-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.apd-feat { padding: 26px 22px; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--bg); }
+.apd-feat-icon { width: 52px; height: 52px; display: grid; place-items: center; font-size: 1.6rem; border-radius: 14px; background: var(--accent-light); margin-bottom: 16px; }
+.apd-feat h3 { margin: 0 0 8px; font-size: 1.02rem; font-weight: 750; letter-spacing: -.02em; color: var(--fg-1); font-family: var(--font-kr); }
+.apd-feat p { margin: 0; color: var(--fg-3); font-size: .9rem; line-height: 1.7; word-break: keep-all; }
+.apd-steps { list-style: none; margin: 0 auto; padding: 0; max-width: 980px; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; counter-reset: none; }
+.apd-steps li { display: flex; flex-direction: column; gap: 12px; padding: 20px 18px; border-radius: var(--r-lg); border: 1px solid var(--border); background: var(--surface); color: var(--fg-2); font-size: .9rem; line-height: 1.6; word-break: keep-all; }
+.apd-step-num { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; background: var(--violet); color: #fff; font-weight: 800; font-size: .85rem; }
+.apd-two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+.apd-panel { padding: 28px; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--bg); }
+.apd-panel h3 { margin: 0 0 12px; font-size: 1.15rem; font-weight: 750; color: var(--fg-1); font-family: var(--font-kr); }
+.apd-panel ul { margin: 0 0 12px 18px; padding: 0; color: var(--fg-2); font-size: .92rem; line-height: 1.75; word-break: keep-all; }
+.apd-panel li + li { margin-top: 6px; }
+@media (max-width: 960px) { .apd-feat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .apd-intro { grid-template-columns: 1fr; gap: 28px; } }
+@media (max-width: 560px) { .apd-feat-grid { grid-template-columns: 1fr; } }

@@ -958,3 +958,30 @@ class SecurityTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class AppPagesTests(unittest.TestCase):
+    """Public app intro pages and the unified app count."""
+
+    def setUp(self):
+        self.client = portal.app.test_client()
+
+    def test_new_app_pages_render_intro_sections(self):
+        for key, marker in (('wardy', '모듈과 단계별 레벨'), ('neurobreeze', 'KCT0010473'), ('mindmate', '일일 체크인')):
+            with self.subTest(key=key):
+                body = self.client.get('/apps/' + key).get_data(as_text=True)
+                for text in ('주요 기능', '이렇게 사용합니다', '데이터는 이렇게 다룹니다', marker):
+                    self.assertIn(text, body)
+                self.assertIn('/privacy/' + key, body)
+
+    def test_legacy_app_pages_unchanged(self):
+        body = self.client.get('/apps/pls').get_data(as_text=True)
+        self.assertIn('한국어 소개', body)
+        self.assertNotIn('주요 기능', body)
+
+    def test_app_count_is_six_everywhere(self):
+        self.assertEqual(len(portal.APPS), 6)
+        home = self.client.get('/').get_data(as_text=True)
+        self.assertNotIn('Mental Health Apps', home)
+        self.assertIn('Apps Developed', home)
+        self.assertNotIn('Mental-Health Apps Released', home)
