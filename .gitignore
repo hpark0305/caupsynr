@@ -36,3 +36,9 @@ gallery_data.json
 
 # NeuroBreeze APK + extracted contents (large binaries, not for git)
 neurobreeze/
+
+# Local Claude Code worktrees (never part of the site)
+.claude/worktrees/
+
+# Personal files that do not belong in the public lab repository
+ewha-final.html

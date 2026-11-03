@@ -589,7 +589,9 @@ class SecurityTests(unittest.TestCase):
             portal._get_account(bad)
             query = parse_qs(urlsplit(get.call_args.args[0]).query)
             self.assertEqual(query['email'], ['eq.'+bad])
-            self.assertEqual(set(query), {'email', 'select'})
+            # Only paging/ordering keys may be added; the value cannot add a filter.
+            self.assertEqual(set(query), {'email', 'select', 'order', 'limit', 'offset'})
+            self.assertEqual(query['order'], ['email.asc'])
         self.assertIsNone(portal._get_account(bad))
 
     def test_sql_values_parameterized_and_columns_validated(self):
@@ -623,6 +625,100 @@ class SecurityTests(unittest.TestCase):
             self.assertEqual(self.client.get(path).status_code, 404, path)
         for method in ('TRACE', 'PUT', 'DELETE'):
             self.assertEqual(self.client.open('/', method=method).status_code, 405)
+
+    def test_csp_limits_script_and_data_destinations(self):
+        policy = self.client.get('/').headers['Content-Security-Policy']
+        directives = dict(d.strip().split(' ', 1) for d in policy.split(';'))
+        self.assertEqual(directives['connect-src'], "'self'")
+        self.assertEqual(directives['frame-ancestors'], "'none'")
+        self.assertEqual(directives['object-src'], "'none'")
+        self.assertNotIn('*', policy)
+        self.assertEqual(set(directives['script-src'].split()),
+                         {"'self'", "'unsafe-inline'", 'https://cdn.sheetjs.com'})
+
+    def test_templates_load_no_third_party_script_except_sheetjs(self):
+        for template in Path(portal.app.root_path, 'templates').glob('*.html'):
+            for src in re.findall(r'<script[^>]+src="(https?://[^"]+)"', template.read_text(encoding='utf-8')):
+                self.assertTrue(src.startswith('https://cdn.sheetjs.com/'), (template.name, src))
+
+    def test_vendored_scripts_are_served(self):
+        for name in ('chart-4.4.1.umd.min.js', 'gsap-3.12.5.min.js'):
+            response = self.client.get('/static/vendor/' + name)
+            self.assertEqual(response.status_code, 200, name)
+            response.close()
+
+    def test_rate_limit_key_uses_cloudflare_header_only_on_render(self):
+        headers = {'CF-Connecting-IP': '203.0.113.7', 'X-Forwarded-For': '198.51.100.1'}
+        with portal.app.test_request_context('/', headers=headers, environ_base={'REMOTE_ADDR': '10.0.0.1'}):
+            with patch.object(portal, '_ON_RENDER', True):
+                self.assertEqual(portal.client_ip(), '203.0.113.7')
+            with patch.object(portal, '_ON_RENDER', False):
+                self.assertEqual(portal.client_ip(), '10.0.0.1')
+        with portal.app.test_request_context('/', headers={'X-Forwarded-For': '198.51.100.1'},
+                                             environ_base={'REMOTE_ADDR': '10.0.0.1'}):
+            with patch.object(portal, '_ON_RENDER', True):
+                self.assertEqual(portal.client_ip(), '10.0.0.1')
+
+    def test_login_hashes_even_for_unknown_accounts(self):
+        with patch.object(portal, 'check_password_hash', wraps=portal.check_password_hash) as checker:
+            self.post('/login', {'email': 'nobody@example.test', 'password': 'whatever-password'})
+        checker.assert_called_once()
+
+    def test_robots_and_healthz(self):
+        robots = self.client.get('/robots.txt')
+        self.assertEqual(robots.status_code, 200)
+        self.assertIn('Disallow: /portal', robots.get_data(as_text=True))
+        with patch.object(portal, 'sb', side_effect=AssertionError('no database')):
+            health = self.client.get('/healthz')
+        self.assertEqual(health.get_json(), {'ok': True})
+
+    def test_supabase_get_reads_past_the_1000_row_cap(self):
+        rows = [{'id': f'{i:05d}'} for i in range(2345)]
+        calls = []
+
+        def fake_get(url, **kwargs):
+            q = parse_qs(urlsplit(url).query)
+            calls.append(q)
+            limit = min(int(q['limit'][0]), 1000)  # server-side Max rows
+            offset = int(q['offset'][0])
+            response = MagicMock()
+            response.json.return_value = rows[offset:offset + limit]
+            return response
+        with patch.object(portal, '_USE_SUPABASE', True), patch.object(portal._requests, 'get', side_effect=fake_get):
+            self.assertEqual(len(portal.sb('GET', 'mindmate_music_log', params='?select=*&order=date.desc')), 2345)
+            self.assertTrue(all(c['order'] == ['date.desc'] for c in calls))
+            calls.clear()
+            self.assertEqual(len(portal.sb('GET', 'wardy_events', params='?select=*&limit=1500')), 1500)
+            self.assertEqual([c['limit'][0] for c in calls], ['1000', '500'])
+            calls.clear()
+            self.assertEqual(len(portal.sb('GET', 'wardy_events', params='?select=*&id=eq.00007')), 2345)
+            self.assertEqual(calls[0]['order'], ['id.asc'])
+
+    def test_unassigned_app_rows_visible_and_deletable_only_by_admin(self):
+        portal.sb('POST', 'wardy_events', data={'id': 'relay-w', 'project_id': None,
+                                                 'user_name': 'relay-user', 'state': 'open'})
+        self.assertNotIn('relay-user', self.client.get('/portal/wardy').get_data(as_text=True))
+        self.post('/portal/wardy/delete', {'ids': 'relay-w'})
+        self.assertTrue(portal.sb('GET', 'wardy_events', params='?id=eq.relay-w'))
+        self.sign_in('admin@example.test')
+        body = self.client.get('/portal/wardy').get_data(as_text=True)
+        self.assertIn('relay-user', body)
+        self.assertNotIn('other-user', body)
+        self.assertIn('relay-user', self.client.get('/portal/wardy/export').get_data(as_text=True))
+
+    def test_per_app_key_accepted_only_for_its_endpoint(self):
+        payload = {'state': 'open', 'user_name': 'synthetic'}
+        with patch.dict(os.environ, {'WARDY_API_KEY': 'wardy-only-key-for-tests'}):
+            ok = self.client.post('/api/wardy/events', json=payload, headers={'X-API-Key': 'wardy-only-key-for-tests'})
+            self.assertEqual(ok.status_code, 201)
+            other = self.client.post('/api/neurobreeze/eeg', json={'user_name': 'x'},
+                                     headers={'X-API-Key': 'wardy-only-key-for-tests'})
+            self.assertEqual(other.status_code, 401)
+            shared = self.client.post('/api/wardy/events', json=payload, headers={'X-API-Key': portal.APP_API_KEY})
+            self.assertEqual(shared.status_code, 201)
+            with patch.object(portal, '_SHARED_KEY_DISABLED', True):
+                self.assertEqual(self.client.post('/api/wardy/events', json=payload,
+                                                  headers={'X-API-Key': portal.APP_API_KEY}).status_code, 401)
 
     def test_path_traversal_and_symlinks_blocked(self):
         root = Path(self.temp.name) / 'root'
