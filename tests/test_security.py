@@ -589,7 +589,9 @@ class SecurityTests(unittest.TestCase):
             portal._get_account(bad)
             query = parse_qs(urlsplit(get.call_args.args[0]).query)
             self.assertEqual(query['email'], ['eq.'+bad])
-            self.assertEqual(set(query), {'email', 'select'})
+            # Only paging/ordering keys may be added; the value cannot add a filter.
+            self.assertEqual(set(query), {'email', 'select', 'order', 'limit', 'offset'})
+            self.assertEqual(query['order'], ['email.asc'])
         self.assertIsNone(portal._get_account(bad))
 
     def test_sql_values_parameterized_and_columns_validated(self):
@@ -669,6 +671,54 @@ class SecurityTests(unittest.TestCase):
         with patch.object(portal, 'sb', side_effect=AssertionError('no database')):
             health = self.client.get('/healthz')
         self.assertEqual(health.get_json(), {'ok': True})
+
+    def test_supabase_get_reads_past_the_1000_row_cap(self):
+        rows = [{'id': f'{i:05d}'} for i in range(2345)]
+        calls = []
+
+        def fake_get(url, **kwargs):
+            q = parse_qs(urlsplit(url).query)
+            calls.append(q)
+            limit = min(int(q['limit'][0]), 1000)  # server-side Max rows
+            offset = int(q['offset'][0])
+            response = MagicMock()
+            response.json.return_value = rows[offset:offset + limit]
+            return response
+        with patch.object(portal, '_USE_SUPABASE', True), patch.object(portal._requests, 'get', side_effect=fake_get):
+            self.assertEqual(len(portal.sb('GET', 'mindmate_music_log', params='?select=*&order=date.desc')), 2345)
+            self.assertTrue(all(c['order'] == ['date.desc'] for c in calls))
+            calls.clear()
+            self.assertEqual(len(portal.sb('GET', 'wardy_events', params='?select=*&limit=1500')), 1500)
+            self.assertEqual([c['limit'][0] for c in calls], ['1000', '500'])
+            calls.clear()
+            self.assertEqual(len(portal.sb('GET', 'wardy_events', params='?select=*&id=eq.00007')), 2345)
+            self.assertEqual(calls[0]['order'], ['id.asc'])
+
+    def test_unassigned_app_rows_visible_and_deletable_only_by_admin(self):
+        portal.sb('POST', 'wardy_events', data={'id': 'relay-w', 'project_id': None,
+                                                 'user_name': 'relay-user', 'state': 'open'})
+        self.assertNotIn('relay-user', self.client.get('/portal/wardy').get_data(as_text=True))
+        self.post('/portal/wardy/delete', {'ids': 'relay-w'})
+        self.assertTrue(portal.sb('GET', 'wardy_events', params='?id=eq.relay-w'))
+        self.sign_in('admin@example.test')
+        body = self.client.get('/portal/wardy').get_data(as_text=True)
+        self.assertIn('relay-user', body)
+        self.assertNotIn('other-user', body)
+        self.assertIn('relay-user', self.client.get('/portal/wardy/export').get_data(as_text=True))
+
+    def test_per_app_key_accepted_only_for_its_endpoint(self):
+        payload = {'state': 'open', 'user_name': 'synthetic'}
+        with patch.dict(os.environ, {'WARDY_API_KEY': 'wardy-only-key-for-tests'}):
+            ok = self.client.post('/api/wardy/events', json=payload, headers={'X-API-Key': 'wardy-only-key-for-tests'})
+            self.assertEqual(ok.status_code, 201)
+            other = self.client.post('/api/neurobreeze/eeg', json={'user_name': 'x'},
+                                     headers={'X-API-Key': 'wardy-only-key-for-tests'})
+            self.assertEqual(other.status_code, 401)
+            shared = self.client.post('/api/wardy/events', json=payload, headers={'X-API-Key': portal.APP_API_KEY})
+            self.assertEqual(shared.status_code, 201)
+            with patch.object(portal, '_SHARED_KEY_DISABLED', True):
+                self.assertEqual(self.client.post('/api/wardy/events', json=payload,
+                                                  headers={'X-API-Key': portal.APP_API_KEY}).status_code, 401)
 
     def test_path_traversal_and_symlinks_blocked(self):
         root = Path(self.temp.name) / 'root'

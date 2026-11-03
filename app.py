@@ -12,7 +12,7 @@ import drive_sync
 from security_utils import DOCUMENT_EXTENSIONS, validate_archive, validate_image, SafeCSVWriter, neutralize_excel_formulas, validate_production_settings, password_policy_error
 from scipy import stats as _scipy_stats
 import numpy as _np
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_wtf.csrf import CSRFProtect
@@ -157,12 +157,38 @@ def safe_http_error(error):
 def safe_server_error(error):
     return jsonify(ok=False, error='서버 처리 중 오류가 발생했습니다.'), 500
 
+# Optional per-app keys. Each app relay can be moved to its own key, after
+# which APP_API_KEY can be rotated (or set APP_API_KEY_SHARED_DISABLED=true)
+# without touching the other apps. Unset per-app keys change nothing.
+_APP_KEY_ENV = {
+    'api_wardy_events': 'WARDY_API_KEY',
+    'api_neurobreeze_eeg': 'NEUROBREEZE_API_KEY',
+    'api_neurobreeze_meditation': 'NEUROBREEZE_API_KEY',
+    'api_mindmate_followup': 'MINDMATE_API_KEY',
+    'api_receive_session': 'SESSIONS_API_KEY',
+}
+_SHARED_KEY_DISABLED = os.getenv('APP_API_KEY_SHARED_DISABLED', '').lower() == 'true'
+# Defaults that once lived in this public repository's history.
+_PUBLISHED_DEFAULT_KEYS = {'tsl-app-key-2025'}
+if APP_API_KEY in _PUBLISHED_DEFAULT_KEYS:
+    app.logger.warning('SECURITY: APP_API_KEY equals a value published in the git history; rotate it.')
+
+def _api_key_ok():
+    sent = request.headers.get('X-API-Key', '').encode()
+    candidates = [] if _SHARED_KEY_DISABLED else [APP_API_KEY]
+    specific = os.getenv(_APP_KEY_ENV.get(request.endpoint or '', ''), '') if request.endpoint in _APP_KEY_ENV else ''
+    if specific:
+        candidates.append(specific)
+    # Compare against every candidate so timing does not reveal which one matched.
+    results = [hmac.compare_digest(sent, key.encode()) for key in candidates if key]
+    return any(results)
+
 @app.before_request
 def validate_api_body():
     if not request.path.startswith('/api/') or request.method != 'POST':
         return
     request.max_content_length = 2 * 1024 * 1024
-    if not hmac.compare_digest(request.headers.get('X-API-Key', '').encode(), APP_API_KEY.encode()):
+    if not _api_key_ok():
         return jsonify(error='Unauthorized'), 401
     if request.content_length and request.content_length > 2 * 1024 * 1024:
         abort(413)
@@ -621,7 +647,14 @@ def _parse_sb_params(params):
                 order_by = f"{col} {direction}"
         elif _SAFE_IDENT.match(key) and val.startswith("eq."):
             filters[key] = val[3:]
+        elif _SAFE_IDENT.match(key) and val == "is.null":
+            filters[key] = None
     return filters, order_by, select_fields
+
+def _sqlite_where(filters):
+    """WHERE clause for _parse_sb_params filters; None means IS NULL."""
+    clauses = [f"{k} IS NULL" if v is None else f"{k}=?" for k, v in filters.items()]
+    return " AND ".join(clauses), [v for v in filters.values() if v is not None]
 
 def _sb_headers(prefer=None):
     h = {
@@ -632,6 +665,47 @@ def _sb_headers(prefer=None):
     if prefer:
         h["Prefer"] = prefer
     return h
+
+# Supabase's Data API returns at most "Max rows" (default 1000) per request and
+# silently drops the rest, so a plain GET of 1,722 Mind Mate music rows used to
+# export only 1,000. Every GET is therefore read in pages until the caller's
+# limit (or the end of the table) is reached.
+SB_PAGE = 1000
+SB_MAX_ROWS = 200_000  # safety stop for a runaway loop, far above current table sizes
+_SB_ORDER_KEY = {'accounts': 'email', 'research_topics_extra': 'key', 'reset_tokens': 'token'}
+
+def _sb_get_paged(table, params):
+    """GET all rows matching `params`, honouring any explicit limit/offset.
+
+    Query fragments are edited as raw strings so their existing percent
+    encoding is untouched. A stable order is required for offset paging, so
+    the table's key is used when the caller gave none.
+    """
+    keep, limit, start = [], None, 0
+    for part in (p for p in params.lstrip('?').split('&') if p):
+        key, _, value = part.partition('=')
+        if key == 'limit':
+            limit = max(0, int(value))
+        elif key == 'offset':
+            start = max(0, int(value))
+        else:
+            keep.append(part)
+    if not any(p.startswith('order=') for p in keep):
+        keep.append('order=' + _SB_ORDER_KEY.get(table, 'id') + '.asc')
+    rows = []
+    while len(rows) < SB_MAX_ROWS:
+        want = SB_PAGE if limit is None else min(SB_PAGE, limit - len(rows))
+        if want <= 0:
+            break
+        query = '?' + '&'.join(keep + [f'limit={want}', f'offset={start}'])
+        r = _requests.get(f"{SUPABASE_URL}/rest/v1/{table}{query}", headers=_sb_headers(), timeout=10)
+        r.raise_for_status()
+        page = r.json() or []
+        rows.extend(page)
+        start += len(page)
+        if len(page) < want:
+            break
+    return rows
 
 def sb(method, table, data=None, params="", upsert=False):
     if table not in _ALLOWED_TABLES:
@@ -645,9 +719,7 @@ def sb(method, table, data=None, params="", upsert=False):
         url = f"{SUPABASE_URL}/rest/v1/{table}{params}"
         try:
             if method == "GET":
-                r = _requests.get(url, headers=_sb_headers(), timeout=10)
-                r.raise_for_status()
-                return r.json() or []
+                return _sb_get_paged(table, params)
             elif method == "POST":
                 d = dict(data or {})
                 if table != "accounts":
@@ -683,8 +755,8 @@ def sb(method, table, data=None, params="", upsert=False):
             sql = f"SELECT {select_fields} FROM {table}"
             vals = []
             if filters:
-                sql += " WHERE " + " AND ".join(f"{k}=?" for k in filters)
-                vals = list(filters.values())
+                where, vals = _sqlite_where(filters)
+                sql += " WHERE " + where
             if order_by:
                 sql += f" ORDER BY {order_by}"
             paging = dict(parse_qsl(params.lstrip('?')))
@@ -736,14 +808,16 @@ def sb(method, table, data=None, params="", upsert=False):
             d = dict(data)
             if "data" in d and isinstance(d["data"], dict):
                 d["data"] = json.dumps(d["data"], ensure_ascii=False)
-            sql = f"UPDATE {table} SET {', '.join(f'{k}=?' for k in d)} WHERE {' AND '.join(f'{k}=?' for k in filters)}"
-            conn.execute(sql, list(d.values()) + list(filters.values()))
+            where, where_vals = _sqlite_where(filters)
+            sql = f"UPDATE {table} SET {', '.join(f'{k}=?' for k in d)} WHERE {where}"
+            conn.execute(sql, list(d.values()) + where_vals)
             conn.commit()
             return []
         elif method == "DELETE":
             if not filters: return []
-            sql = f"DELETE FROM {table} WHERE {' AND '.join(f'{k}=?' for k in filters)}"
-            conn.execute(sql, list(filters.values()))
+            where, where_vals = _sqlite_where(filters)
+            sql = f"DELETE FROM {table} WHERE {where}"
+            conn.execute(sql, where_vals)
             conn.commit()
             return []
     except Exception as e:
@@ -946,6 +1020,22 @@ def _project_rows(table, params=''):
         rows.extend(sb('GET', table, params=query) or [])
     return rows
 
+def _app_log_rows(table, params='', sort_key=None, reverse=False):
+    """App-ingested rows (Wardy, NeuroBreeze) visible to this researcher.
+
+    The apps' relays send no project_id, so ingested rows are unassigned until
+    linked to a project. Project members see their projects' rows; portal
+    admins (PORTAL_ADMIN_EMAILS) additionally see unassigned rows, as they
+    already do for Mind Mate. Without this, every Wardy row was invisible.
+    """
+    rows = _project_rows(table, params)
+    if _is_admin() and not request.args.get('project_id'):
+        parts = [p for p in params.lstrip('?').split('&') if p and not p.startswith('project_id=')]
+        rows.extend(sb('GET', table, params='?' + '&'.join(parts + ['project_id=is.null'])) or [])
+    if sort_key:
+        rows.sort(key=lambda r: str(r.get(sort_key) or ''), reverse=reverse)
+    return rows
+
 def _require_project_owner(project_id):
     """Returns (project_dict, None) if OK, (None, redirect_response) if unauthorized."""
     proj = sb("GET","projects",params=f"?id=eq.{_q(project_id)}")
@@ -997,10 +1087,12 @@ def _delete_owned_rows(table, ids, redirect_endpoint, **redirect_kwargs):
         if not rows:
             continue
         pid = rows[0].get("project_id")
-        if not pid or _project_role(pid) != 'owner':
+        # Unassigned app rows have no owner; only portal admins may remove them.
+        if (pid and _project_role(pid) != 'owner') or (not pid and not _is_admin()):
             skipped += 1
             continue
         sb("DELETE", table, params=f"?id=eq.{_q(rid)}")
+        audit('delete', table, rid, detail=json.dumps({'project_id': pid}))
         deleted += 1
     if skipped:
         flash(f"{deleted}건 삭제됐습니다. ({skipped}건은 권한이 없어 건너뛰었어요.)")
@@ -1655,7 +1747,7 @@ def portal():
 
     project_map = {p.get("id"): p.get("name") or "이름 없는 프로젝트" for p in projects}
     overdue_tasks, open_tasks, recent_tasks = [], [], []
-    today = datetime.utcnow().strftime("%Y-%m-%d")
+    today = datetime.now(timezone.utc).replace(tzinfo=None).strftime("%Y-%m-%d")
     missing_measurements = []
     for p in (projects if isinstance(projects,list) else []):
         pid = p.get("id","")
@@ -1691,7 +1783,8 @@ def portal():
             continue
         select = f"project_id,{time_col}" if has_project else time_col
         query = f"?select={_q(select)}&order={_q(time_col)}.desc&limit=6"
-        rows = _project_rows(table, query) if has_project else sb('GET', table, params=query)
+        rows = (_app_log_rows(table, query, sort_key=time_col, reverse=True)[:6]
+                if has_project else sb('GET', table, params=query))
         for row in rows:
             recent_activity.append({
                 "label": label,
@@ -2969,7 +3062,7 @@ def _batch_response(total, saved, invalid, failed):
 @csrf.exempt
 @limiter.limit(API_RATE_LIMIT)
 def api_receive_session():
-    if request.headers.get("X-API-Key","")!=APP_API_KEY:
+    if not _api_key_ok():
         return jsonify({"error":"Unauthorized"}),401
     payload = request.get_json(silent=True) or {}
     sid = str(_uuid.uuid4())
@@ -2990,7 +3083,7 @@ def api_receive_session():
 @csrf.exempt
 @limiter.limit(API_RATE_LIMIT)
 def api_wardy_events():
-    if request.headers.get("X-API-Key", "") != APP_API_KEY:
+    if not _api_key_ok():
         return jsonify({"error": "Unauthorized"}), 401
 
     body = request.get_json(silent=True)
@@ -3022,7 +3115,7 @@ def api_wardy_events():
 @csrf.exempt
 @limiter.limit(API_RATE_LIMIT)
 def api_neurobreeze_eeg():
-    if request.headers.get("X-API-Key","") != APP_API_KEY:
+    if not _api_key_ok():
         return jsonify({"error":"Unauthorized"}), 401
     body = request.get_json(silent=True)
     if not body:
@@ -3055,7 +3148,7 @@ def api_neurobreeze_eeg():
 @csrf.exempt
 @limiter.limit(API_RATE_LIMIT)
 def api_neurobreeze_meditation():
-    if request.headers.get("X-API-Key","") != APP_API_KEY:
+    if not _api_key_ok():
         return jsonify({"error":"Unauthorized"}), 401
     body = request.get_json(silent=True)
     if not body:
@@ -3175,14 +3268,14 @@ def _merge_upsert(table, row_id, fields, overwrite_always=("raw", "updated_at", 
         if k in overwrite_always or v not in (None, ""):
             merged[k] = v
     merged["id"] = row_id
-    merged["updated_at"] = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+    merged["updated_at"] = datetime.now(timezone.utc).replace(tzinfo=None).strftime("%Y-%m-%dT%H:%M:%S")
     return sb("POST", table, data=merged, upsert=True)
 
 @app.route("/api/mindmate/followup", methods=["POST"])
 @csrf.exempt
 @limiter.limit(API_RATE_LIMIT)
 def api_mindmate_followup():
-    if request.headers.get("X-API-Key","") != APP_API_KEY:
+    if not _api_key_ok():
         return jsonify({"error":"Unauthorized"}), 401
 
     payload = _mindmate_payload()
@@ -3306,12 +3399,14 @@ def portal_wardy():
     user_name  = request.args.get("user_name", "").strip()
     state      = request.args.get("state", "").strip()
 
-    params = "?select=*&order=event_time.asc"
+    # Newest 3000 events (the page previously showed the oldest ones), then chronological.
+    params = "?select=*&order=received_at.desc"
     if project_id: params += f"&project_id=eq.{_q(project_id)}"
     if user_name:  params += f"&user_name=ilike.{_q(user_name)}%25"
     if state:      params += f"&state=ilike.{_q(state)}"
     params += "&limit=3000"
-    all_events = _project_rows("wardy_events", params=params) or []
+    all_events = _app_log_rows("wardy_events", params=params) or []
+    all_events.sort(key=lambda e: (str(e.get("event_time") or e.get("received_at") or ""), e.get("seq") or 0))
     total = len(all_events)
 
     # 참여자별로 그룹핑 (가장 최근 이벤트 순 정렬)
@@ -3369,7 +3464,7 @@ def portal_wardy_export():
     if project_id: params += f"&project_id=eq.{_q(project_id)}"
     if user_name:  params += f"&user_name=ilike.{_q(user_name)}%25"
     if state:      params += f"&state=ilike.{_q(state)}"
-    events = _project_rows("wardy_events", params=params) or []
+    events = _app_log_rows("wardy_events", params=params, sort_key="received_at") or []
 
     buf = io.StringIO()
     w = SafeCSVWriter(buf)
@@ -3415,11 +3510,11 @@ def portal_neurobreeze():
     user_name  = request.args.get("user_name","").strip()
     tab        = request.args.get("tab","eeg")  # eeg | meditation
 
-    base_params = "?select=*&order=received_at.asc&limit=3000"
+    base_params = "?select=*&order=received_at.desc&limit=3000"  # newest 3000, shown oldest-first
     if project_id: base_params += f"&project_id=eq.{_q(project_id)}"
     if user_name:  base_params += f"&user_name=ilike.{_q(user_name)}%25"
-    eeg_rows        = _project_rows("neurobreeze_eeg", params=base_params) or []
-    meditation_rows = _project_rows("neurobreeze_meditation", params=base_params) or []
+    eeg_rows        = _app_log_rows("neurobreeze_eeg", params=base_params, sort_key="received_at") or []
+    meditation_rows = _app_log_rows("neurobreeze_meditation", params=base_params, sort_key="received_at") or []
 
     projects = _accessible_projects(session["researcher"]) or []
 
@@ -3461,7 +3556,7 @@ def portal_neurobreeze_export():
     params = "?select=*&order=received_at.asc"
     if project_id: params += f"&project_id=eq.{_q(project_id)}"
     if user_name:  params += f"&user_name=ilike.{_q(user_name)}%25"
-    rows = _project_rows(table, params=params) or []
+    rows = _app_log_rows(table, params=params, sort_key="received_at") or []
 
     buf = io.StringIO()
     w = SafeCSVWriter(buf)
@@ -3940,7 +4035,7 @@ def portal_tasks():
 
     # 고정 멤버 목록 (연구실 구성원)
     members = ["최윤정", "남궁혜인", "연지영", "이채영"]
-    now_date = datetime.utcnow().strftime("%Y-%m-%d")
+    now_date = datetime.now(timezone.utc).replace(tzinfo=None).strftime("%Y-%m-%d")
     return render_template("portal_tasks.html",
         researcher=me, tasks=all_tasks,
         projects=my_projects, members=members,
@@ -3978,7 +4073,7 @@ def portal_task_status(task_id):
     status = new_status.get("status", "todo")
     if status not in ('todo', 'doing', 'done'):
         abort(400)
-    sb("PATCH", "tasks", data={"status": status, "updated_at": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")},
+    sb("PATCH", "tasks", data={"status": status, "updated_at": datetime.now(timezone.utc).replace(tzinfo=None).strftime("%Y-%m-%dT%H:%M:%S")},
        params=f"?id=eq.{_q(task_id)}")
     return jsonify({"ok": True})
 
@@ -3992,7 +4087,7 @@ def portal_task_edit(task_id):
         "due_date":    request.form.get("due_date", "").strip() or None,
         "priority":    request.form.get("priority", "normal"),
         "status":      request.form.get("status", "todo"),
-        "updated_at":  datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"),
+        "updated_at":  datetime.now(timezone.utc).replace(tzinfo=None).strftime("%Y-%m-%dT%H:%M:%S"),
     }, params=f"?id=eq.{_q(task_id)}")
     flash("태스크가 수정됐습니다.")
     return redirect(url_for("portal_tasks"))
