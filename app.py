@@ -1344,6 +1344,27 @@ APPS = [
         "dl_kr":  None,
         "dl_en":  None,
         "privacy_url": "/privacy/wardy",
+        # Intro-page content: only facts from the privacy policy, app records and the lab.
+        "intro_kr":  "Wardy는 간호학생과 신규 간호사가 병동에서 마주치는 임상 상황을 게임처럼 반복해 볼 수 있도록 만든 시뮬레이션 교육 앱입니다. 실제 환자 정보 없이 가상의 시나리오로 판단과 처치 순서를 연습하고, 단계별 레벨을 거치며 임상 적응에 필요한 감각을 익히도록 설계했습니다.",
+        "glance": [
+            ["대상", "간호학생 · 신규 간호사"],
+            ["플랫폼", "iOS (App Store)"],
+            ["구성", "모듈 3개, 모듈별 단계 레벨"],
+            ["분류", "간호 임상 적응 시뮬레이션 게임"],
+        ],
+        "features": [
+            {"icon": "🗂️", "title": "모듈과 단계별 레벨", "desc": "3개 모듈 안에서 레벨을 하나씩 올라가며 쉬운 상황에서 복잡한 상황으로 넘어갑니다."},
+            {"icon": "⏱️", "title": "제한 시간 안의 판단", "desc": "레벨마다 주어진 시간 안에 처치를 마쳐야 하며, 성공·실패·시간 초과로 결과가 나뉩니다."},
+            {"icon": "🔁", "title": "반복 연습", "desc": "실패하거나 중간에 그만둔 레벨은 언제든 다시 도전해 같은 상황을 여러 번 연습할 수 있습니다."},
+            {"icon": "🧑‍⚕️", "title": "나만의 캐릭터와 진행도", "desc": "닉네임과 캐릭터를 정하고, 학습 진행도와 누적 플레이 시간이 기기에 저장됩니다."},
+        ],
+        "steps": ["닉네임과 캐릭터 설정", "모듈 선택", "레벨 선택", "제한 시간 안에 시나리오 수행", "성공·실패 결과 확인 후 다음 레벨 또는 재도전"],
+        "research": [],
+        "data_summary": [
+            "닉네임과 학습 기록(모듈·레벨, 진행 상태, 점수, 플레이 시간)이 교육·연구 분석을 위해 연구실 기록 시스템으로 전송될 수 있습니다.",
+            "광고 추적, 정밀 위치, 결제정보, 연락처, 실제 환자 정보는 수집하지 않습니다.",
+        ],
+        "stores": [],
         "subsections": [],
     },
     {
@@ -1356,12 +1377,32 @@ APPS = [
         "desc_kr":   "NeuroBreeze는 뉴로피드백 기반 명상과 호흡·바디스캔 프로그램을 통해 일상 속 마음 돌봄을 지원하는 디지털 멘탈 헬스 앱입니다.",
         "desc_en":   "NeuroBreeze is a digital mental health application that supports everyday self-care through neurofeedback-based meditation, breathing, and body-scan programs.",
         "tags":      ["Neurofeedback", "Meditation", "Self-care"],
-        "screenshot": "images/neurobreeze-icon.jpg",
+        "screenshot": None,  # neurobreeze-icon.jpg is Unity's default icon, not an app screen
         "content_img_kr": None,
         "content_img_en": None,
         "dl_kr":  None,
         "dl_en":  None,
         "privacy_url": "/privacy/neurobreeze",
+        "intro_kr":  "NeuroBreeze는 뇌파(EEG)를 실시간으로 읽어 명상 상태를 되돌려 주는 뉴로피드백 명상 앱입니다. 호흡과 바디스캔 프로그램을 함께 제공해, 기기를 쓰는 날도 쓰지 않는 날도 일상에서 이완과 스트레스 관리를 이어갈 수 있도록 했습니다.",
+        "glance": [
+            ["대상", "일상 속 이완·스트레스 관리가 필요한 성인"],
+            ["플랫폼", "iOS · Android (App Store, One Store)"],
+            ["구성", "뉴로피드백 명상 · 호흡 · 바디스캔"],
+            ["연구", "임상연구정보서비스(CRIS) 등록 무작위 대조 연구에서 사용"],
+        ],
+        "features": [
+            {"icon": "🧠", "title": "뉴로피드백 명상", "desc": "뇌파 측정 기기를 연결하면 명상 중 알파파 변화가 화면 피드백으로 바로 나타납니다."},
+            {"icon": "🌬️", "title": "호흡 프로그램", "desc": "여러 호흡 모드 중 편한 방식을 골라 호흡 속도를 따라가며 몸을 이완합니다."},
+            {"icon": "🧘", "title": "바디스캔", "desc": "몸의 감각을 차례로 살피는 안내에 따라 긴장을 알아차리고 풀어 갑니다."},
+            {"icon": "📈", "title": "세션 전후 비교", "desc": "세션 시작과 끝의 알파파 지표를 비교해 이번 명상에서 어떤 변화가 있었는지 확인합니다."},
+        ],
+        "steps": ["뇌파 측정 기기 연결", "명상·호흡 모드 선택", "실시간 알파파 피드백을 보며 명상", "세션 전후 알파파 변화 확인"],
+        "research": ["임상연구정보서비스(CRIS) 등록번호 KCT0010473 무작위 대조 연구에서 중재 앱으로 사용되었습니다."],
+        "data_summary": [
+            "이름과 이용 기록 전송은 이용자가 동의한 경우에만 이루어지며, 동의하지 않아도 기본 기능을 쓸 수 있습니다.",
+            "앱 설정에서 언제든 동의를 철회할 수 있습니다. 연락처, 전화번호, 정밀 위치, 결제정보는 수집하지 않습니다.",
+        ],
+        "stores": [],
         "subsections": [],
     },
     {
@@ -1380,6 +1421,26 @@ APPS = [
         "dl_kr":  None,
         "dl_en":  None,
         "privacy_url": "/privacy/mindmate",
+        "intro_kr":  "Mind Mate는 병원에 막 입사한 신규 간호사가 근무와 수면, 스트레스를 매일 짧게 기록하고, 명상과 바이노럴 비트 같은 마음돌봄 활동으로 스스로를 돌볼 수 있도록 만든 앱입니다. 교대근무 일정에 맞춰 기록을 남기고, 정기 설문으로 자신의 상태 변화를 돌아볼 수 있습니다.",
+        "glance": [
+            ["대상", "신규 간호사"],
+            ["플랫폼", "iOS · Android"],
+            ["구성", "일일 기록 · 마음돌봄 · 정기 설문"],
+            ["분류", "디지털 정신건강 · 스트레스 관리"],
+        ],
+        "features": [
+            {"icon": "📅", "title": "근무 일정에 맞춘 기록", "desc": "근무 시작일과 근무표를 입력하면 그날의 근무 형태와 함께 상태를 기록합니다."},
+            {"icon": "📝", "title": "일일 체크인", "desc": "수면과 스트레스 등 오늘의 상태를 몇 개의 짧은 질문으로 남깁니다."},
+            {"icon": "🎧", "title": "마음돌봄 콘텐츠", "desc": "명상과 바이노럴 비트 콘텐츠를 들으며 근무 전후 마음을 가라앉힙니다."},
+            {"icon": "🔍", "title": "정기 설문", "desc": "정해진 주기로 조금 더 자세한 설문에 답하고 결과로 변화를 확인합니다."},
+        ],
+        "steps": ["근무 시작일과 근무표 입력", "매일 근무·수면·스트레스 체크인", "명상·바이노럴 비트로 마음돌봄", "정기 설문으로 변화 돌아보기"],
+        "research": [],
+        "data_summary": [
+            "기록은 기기에 저장되며, 연구를 위해 연구실이 관리하는 기록 시스템과 연구 서버로 전송될 수 있습니다.",
+            "연구 서버에는 기기 식별값 원문을 저장하지 않고, 되돌릴 수 없는 가명 식별값으로만 기록을 구분합니다.",
+        ],
+        "stores": [],
         "subsections": [],
     },
 ]
@@ -1500,7 +1561,7 @@ COPYRIGHTS = [
 RECOGNITION = [
     {"metric": "80+", "label": "Peer-reviewed Publications", "note": "SSCI / SCIE journals since 2007"},
     {"metric": "8",   "label": "Registered Software Copyrights", "note": "PFA serious games & mobile apps"},
-    {"metric": "3",   "label": "Mental-Health Apps Released", "note": "PLS · TLS · Mind Therapy"},
+    {"metric": "6",   "label": "Apps Developed", "note": "PLS · TLS · Mind Therapy · Wardy · NeuroBreeze · Mind Mate"},
     {"metric": "10+", "label": "Years of Funded Research", "note": "Disaster trauma & digital health"},
 ]
 

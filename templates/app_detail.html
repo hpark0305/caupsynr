@@ -25,8 +25,96 @@
   </div>
 </div>
 
+{% if app.intro_kr %}
+<!-- ── Rich intro (new apps) ── -->
+<section class="apd-section">
+  <div class="container apd-intro">
+    <div>
+      <span class="label" style="display:block;margin-bottom:12px;">소개</span>
+      <p class="apd-lead" lang="ko">{{ app.intro_kr }}</p>
+      {% if app.desc_en %}<p class="apd-lead-en">{{ app.desc_en }}</p>{% endif %}
+    </div>
+    {% if app.glance %}
+    <dl class="apd-glance" aria-label="한눈에 보기">
+      {% for k, v in app.glance %}<div><dt>{{ k }}</dt><dd>{{ v }}</dd></div>{% endfor %}
+    </dl>
+    {% endif %}
+  </div>
+</section>
+
+{% if app.features %}
+<section class="apd-section apd-section-alt">
+  <div class="container">
+    <div style="text-align:center;margin-bottom:40px;">
+      <span class="label" style="display:block;margin-bottom:12px;">Features</span>
+      <h2>주요 기능</h2>
+    </div>
+    <div class="apd-feat-grid">
+      {% for f in app.features %}
+      <div class="apd-feat">
+        <div class="apd-feat-icon" aria-hidden="true">{{ f.icon }}</div>
+        <h3>{{ f.title }}</h3>
+        <p>{{ f.desc }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{% if app.steps %}
+<section class="apd-section">
+  <div class="container">
+    <div style="text-align:center;margin-bottom:36px;">
+      <span class="label" style="display:block;margin-bottom:12px;">How it works</span>
+      <h2>이렇게 사용합니다</h2>
+    </div>
+    <ol class="apd-steps">
+      {% for step in app.steps %}<li><span class="apd-step-num">{{ loop.index }}</span><span>{{ step }}</span></li>{% endfor %}
+    </ol>
+  </div>
+</section>
+{% endif %}
+
+{% if app.research or app.data_summary %}
+<section class="apd-section apd-section-alt">
+  <div class="container apd-two">
+    {% if app.research %}
+    <div class="apd-panel">
+      <span class="label" style="display:block;margin-bottom:10px;">Research</span>
+      <h3>연구 근거</h3>
+      <ul>{% for r in app.research %}<li>{{ r }}</li>{% endfor %}</ul>
+    </div>
+    {% endif %}
+    {% if app.data_summary %}
+    <div class="apd-panel">
+      <span class="label" style="display:block;margin-bottom:10px;">Privacy</span>
+      <h3>데이터는 이렇게 다룹니다</h3>
+      <ul>{% for d in app.data_summary %}<li>{{ d }}</li>{% endfor %}</ul>
+      {% if app.privacy_url %}<a href="{{ app.privacy_url }}" class="btn btn-outline" style="margin-top:8px;">개인정보처리방침 전문</a>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endif %}
+
+{% if app.stores %}
+<section class="apd-section" style="text-align:center;">
+  <div class="container-sm">
+    <span class="label" style="display:block;margin-bottom:16px;">Download</span>
+    <h2 style="margin-bottom:28px;">앱 받기</h2>
+    <div class="apd-dl-row">
+      {% for st in app.stores %}
+      <a href="{{ st.url }}" target="_blank" rel="noopener" class="apd-dl-btn"><span class="apd-dl-text"><small>{{ st.store }}</small><strong>{{ st.label }}</strong></span></a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+{% endif %}
+
 <!-- ── English description ── -->
-{% if app.desc_en %}
+{% if app.desc_en and not app.intro_kr %}
 <section class="apd-section">
   <div class="container-sm" style="text-align:center;">
     <p class="apd-desc">{{ app.desc_en }}</p>
@@ -35,7 +123,7 @@
 {% endif %}
 
 <!-- ── Korean description ── -->
-{% if app.desc_kr %}
+{% if app.desc_kr and not app.intro_kr %}
 <section class="apd-section apd-section-alt">
   <div class="container-sm" style="text-align:center;">
     <span class="label" style="display:block;margin-bottom:12px;">한국어 소개</span>
@@ -105,7 +193,7 @@
 </section>
 {% endif %}
 
-{% if app.privacy_url %}
+{% if app.privacy_url and not app.data_summary %}
 <section class="apd-section apd-section-alt" style="text-align:center;">
   <div class="container-sm">
     <span class="label" style="display:block;margin-bottom:12px;">Privacy</span>
@@ -155,9 +243,9 @@
 <!-- ── CTA footer ── -->
 <section class="apd-section" style="text-align:center;">
   <div class="container-sm">
-    <span class="label" style="display:block;margin-bottom:12px;">Research-based</span>
-    <h2 style="margin-bottom:16px;">Built on clinical evidence</h2>
-    <p style="color:var(--muted);margin-bottom:32px;">This application has been developed through rigorous research and validated in clinical studies.</p>
+    <span class="label" style="display:block;margin-bottom:12px;">Trauma Stress Lab</span>
+    <h2 style="margin-bottom:16px;">연구실의 다른 앱과 연구</h2>
+    <p style="color:var(--muted);margin-bottom:32px;">이 앱은 중앙대학교 적십자간호대학 정신건강간호연구실에서 개발했습니다. 문의는 caupsynr@gmail.com으로 보내 주세요.</p>
     <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
       <a href="{{ url_for('publications') }}" class="btn btn-outline">Related Publications</a>
       <a href="{{ url_for('apps') }}" class="btn btn-primary">← All Apps</a>
