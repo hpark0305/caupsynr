@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, Response, abort
+from flask import Flask, has_request_context, render_template, request, redirect, url_for, session, flash, jsonify, Response, abort
 from collections import OrderedDict
 from functools import wraps
 from dotenv import load_dotenv
@@ -10,6 +10,7 @@ from zipfile import BadZipFile
 from file_storage import PrivateStorage, StorageUnavailable
 import drive_sync
 import wardy_analytics
+import totp
 from security_utils import DOCUMENT_EXTENSIONS, validate_archive, validate_image, SafeCSVWriter, neutralize_excel_formulas, validate_production_settings, password_policy_error
 from scipy import stats as _scipy_stats
 import numpy as _np
@@ -55,6 +56,9 @@ app.config.update(
     MAX_FORM_PARTS=2000,
     MAX_FORM_MEMORY_SIZE=512 * 1024,
 )
+# 2FA: enrolled accounts always need a one-time code. With REQUIRE_2FA=true,
+# accounts without 2FA are sent to enrolment right after signing in.
+REQUIRE_2FA = os.getenv("REQUIRE_2FA", "").lower() == "true"
 ADMIN_EMAILS = {s.strip().lower() for s in os.getenv("PORTAL_ADMIN_EMAILS", "").split(",") if s.strip()}
 app.config['WTF_CSRF_TIME_LIMIT'] = 3600
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50 MB upload limit
@@ -129,6 +133,29 @@ CONTENT_SECURITY_POLICY = '; '.join([
     "form-action 'self'",
 ])
 
+# 접속기록: every view or download of participant-level data by a researcher
+# (who, when, from where, which data, what action). Endpoints that already
+# write their own audit entry (Mind Mate detail/export) are not repeated here.
+_ACCESS_LOGGED = {
+    'portal_wardy': 'view', 'portal_wardy_export': 'download',
+    'portal_neurobreeze': 'view', 'portal_neurobreeze_export': 'download',
+    'portal_mindmate': 'view', 'portal_mindmate_live_data': 'view',
+    'portal_project': 'view', 'portal_participant_detail': 'view', 'portal_all_participants': 'view',
+    'portal_project_data': 'view', 'portal_project_export': 'download', 'portal_project_export_range': 'download',
+    'portal_project_export_excel': 'download', 'portal_project_data_export': 'download',
+    'portal_project_tests_export': 'download', 'portal_files_download': 'download',
+}
+
+@app.after_request
+def log_personal_data_access(response):
+    action = _ACCESS_LOGGED.get(request.endpoint or '')
+    if action and request.method == 'GET' and response.status_code == 200 and session.get('researcher'):
+        args = {k: v for k, v in request.args.items() if v}
+        target = (request.view_args or {}).get('participant_id') or (request.view_args or {}).get('project_id') \
+            or (request.view_args or {}).get('file_id') or args.get('project_id')
+        audit(action, request.endpoint, target, detail=json.dumps(args, ensure_ascii=False) if args else None)
+    return response
+
 @app.context_processor
 def inject_current_year():
     return {'current_year': datetime.now(timezone(timedelta(hours=9))).year}
@@ -153,6 +180,9 @@ def safe_http_error(error):
                 403: '접근 권한이 없습니다.', 404: '요청한 항목을 찾을 수 없습니다.',
                 405: '허용되지 않는 요청 방식입니다.', 413: '파일 또는 요청이 너무 큽니다.',
                 429: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.'}
+    if error.code == 429 and request.endpoint in ('login', 'login_2fa'):
+        page = 'login.html' if request.endpoint == 'login' else 'login_2fa.html'
+        return render_template(page, error='로그인 시도가 너무 많습니다. 15분 뒤에 다시 시도해주세요.'), 429
     response = error.get_response()
     response.data = json.dumps({'ok': False, 'error': messages.get(error.code, '요청을 처리하지 못했습니다.')}, ensure_ascii=False)
     response.content_type = 'application/json; charset=utf-8'
@@ -187,6 +217,30 @@ def _api_key_ok():
     # Compare against every candidate so timing does not reveal which one matched.
     results = [hmac.compare_digest(sent, key.encode()) for key in candidates if key]
     return any(results)
+
+# After psynr.cau.ac.kr is connected, CANONICAL_HOST=psynr.cau.ac.kr sends page
+# views on any other host (caupsynr.onrender.com) there. API POSTs are never
+# redirected: the app relays still post to the onrender.com address.
+CANONICAL_HOST = os.getenv("CANONICAL_HOST", "").strip().lower()
+
+# Optional source-IP restriction for researcher pages (안전성 확보조치 기준 제6조①),
+# e.g. PORTAL_ALLOWED_CIDRS=165.194.0.0/16. Unset = no restriction (2FA still applies).
+import ipaddress as _ipaddress
+_PORTAL_ALLOWED = [_ipaddress.ip_network(c.strip(), strict=False)
+                   for c in os.getenv("PORTAL_ALLOWED_CIDRS", "").split(",") if c.strip()]
+
+@app.before_request
+def canonical_host_and_portal_network():
+    if (CANONICAL_HOST and request.method in ("GET", "HEAD") and request.host.lower() != CANONICAL_HOST
+            and not request.path.startswith(("/api/", "/healthz"))):
+        return redirect(f"https://{CANONICAL_HOST}{request.full_path.rstrip('?')}", code=301)
+    if _PORTAL_ALLOWED and request.path.startswith(("/portal", "/login", "/api/docs")):
+        try:
+            addr = _ipaddress.ip_address(client_ip())
+        except ValueError:
+            abort(403)
+        if not any(addr in net for net in _PORTAL_ALLOWED):
+            abort(403)
 
 @app.before_request
 def validate_api_body():
@@ -569,6 +623,10 @@ def init_db():
         ("audit_log",       "ALTER TABLE audit_log ADD COLUMN before_val TEXT"),
         ("audit_log",       "ALTER TABLE audit_log ADD COLUMN after_val TEXT"),
         ("mindmate_daily_survey", "ALTER TABLE mindmate_daily_survey ADD COLUMN source TEXT"),
+        ("accounts",        "ALTER TABLE accounts ADD COLUMN totp_secret TEXT"),
+        ("accounts",        "ALTER TABLE accounts ADD COLUMN totp_last INTEGER"),
+        ("audit_log",       "ALTER TABLE audit_log ADD COLUMN ip TEXT"),
+        ("audit_log",       "ALTER TABLE audit_log ADD COLUMN user_agent TEXT"),
     ]
     with sqlite3.connect(DB_PATH) as conn:
         for _, stmt in _migrations:
@@ -603,7 +661,7 @@ def audit(action, table=None, target_id=None, detail=None, before=None, after=No
         researcher = session.get("researcher", "system")
         before_val = json.dumps(before, ensure_ascii=False) if before is not None else None
         after_val  = json.dumps(after,  ensure_ascii=False) if after  is not None else None
-        result = sb("POST", "audit_log", data={
+        row = {
             "id": str(_uuid.uuid4()),
             "researcher": researcher,
             "action": action,
@@ -612,7 +670,12 @@ def audit(action, table=None, target_id=None, detail=None, before=None, after=No
             "detail": detail,
             "before_val": before_val,
             "after_val": after_val,
-        })
+        }
+        if has_request_context():
+            # 접속기록: account, time (DB default), source IP, task performed, target.
+            row["ip"] = client_ip()
+            row["user_agent"] = (request.headers.get("User-Agent") or "")[:300]
+        result = sb("POST", "audit_log", data=row)
         if not result:
             print(f"audit() 저장 실패: action={action}, table={table}, target_id={target_id}")
         return bool(result)
@@ -934,9 +997,13 @@ def login_required(f):
             if request.is_json:
                 return jsonify(ok=False, error='Login required'), 401
             return redirect(url_for("login"))
+        if session.get('must_enroll') and request.endpoint not in _ENROLL_ENDPOINTS:
+            return redirect(url_for('portal_2fa'))
         _authorize_portal_request()
         return f(*args, **kwargs)
     return decorated
+
+_ENROLL_ENDPOINTS = {'portal_2fa', 'portal_2fa_start', 'portal_2fa_confirm'}
 
 _DUMMY_PASSWORD_HASH = generate_password_hash(os.urandom(16).hex(), method='pbkdf2:sha256')
 
@@ -993,7 +1060,7 @@ def _authorize_portal_request():
     """Check URL and hidden-field IDs before any authenticated handler runs."""
     endpoint = request.endpoint or ''
     write = request.method not in ('GET', 'HEAD', 'OPTIONS')
-    admin_routes = {'portal_add_account', 'portal_db_backup', 'portal_db_restore',
+    admin_routes = {'portal_add_account', 'portal_db_backup', 'portal_2fa_reset', 'portal_db_restore',
                     'portal_contacts', 'portal_audit', 'portal_drive', 'portal_drive_file',
                     'pubs_new', 'publications_new', 'apps_new', 'portal_research_edit'}
     if (endpoint in admin_routes or endpoint.startswith(('gallery_', 'portal_news', 'portal_mindmate'))) and not _is_admin():
@@ -1597,6 +1664,10 @@ def app_detail(key):
     if not app_data: return redirect(url_for('apps'))
     return render_template("app_detail.html", app=app_data)
 
+@app.route("/privacy")
+def site_privacy():
+    return render_template("site_privacy.html", effective_date="2026년 11월 3일")
+
 @app.route("/privacy/wardy")
 def wardy_privacy():
     return render_template("wardy_privacy.html")
@@ -1620,6 +1691,9 @@ def contact():
         message = request.form.get("message","").strip()
         if len(name) > 200 or len(email) > 254 or len(subject) > 500 or len(message) > 10000:
             abort(400)
+        if message and request.form.get("privacy_consent") != "yes":
+            flash("개인정보 수집·이용에 동의해야 문의를 보낼 수 있습니다. 동의하지 않으면 이메일로 직접 연락해주세요.", "error")
+            return render_template("contact.html", success=False), 400
         if message:
             saved = sb("POST", "contact_messages", data={
                 "name": name, "email": email, "subject": subject, "message": message
@@ -1748,8 +1822,23 @@ def gallery_delete_event(key):
     return redirect(url_for('gallery'))
 
 # ─── Auth ────────────────────────────────────────────────────
+def _login_key():
+    return 'acct:' + request.form.get('email', '').strip().lower()[:254]
+
+def _pending_key():
+    return 'acct:' + (session.get('pending_2fa') or {}).get('email', '').lower()
+
+def _failed(response):
+    return response.status_code == 401
+
+def _get_totp(email):
+    rows = sb("GET", "accounts", params=f"?email=eq.{_q(email)}&select=totp_secret,totp_last") if email else []
+    return rows[0] if rows else {}
+
 @app.route("/login", methods=["GET","POST"])
 @limiter.limit("10 per minute", methods=["POST"])
+# Per-account lockout after repeated failures (안전성 확보조치 기준 제5조: 인증 실패 시 접근 제한).
+@limiter.limit("5 per 15 minutes", key_func=_login_key, methods=["POST"], deduct_when=_failed)
 def login():
     error = None
     if request.method == "POST":
@@ -1759,13 +1848,47 @@ def login():
         # Hash even for unknown emails so response time does not reveal which accounts exist.
         valid = check_password_hash(stored or _DUMMY_PASSWORD_HASH, password)
         if stored and valid:
+            if _get_totp(email).get("totp_secret"):
+                session.clear()
+                session["pending_2fa"] = {"email": email, "exp": int(time.time()) + 300}
+                return redirect(url_for("login_2fa"))
             _start_login_session(email, stored)
+            audit("login_success", "accounts", email, detail="password")
+            if REQUIRE_2FA:
+                session["must_enroll"] = True
+                return redirect(url_for("portal_2fa"))
             return redirect(url_for("portal"))
-        error = "이메일 또는 비밀번호가 올바르지 않습니다."
+        audit("login_failure", "accounts", email[:254], detail="password")
+        return render_template("login.html", error="이메일 또는 비밀번호가 올바르지 않습니다."), 401
     return render_template("login.html", error=error)
+
+@app.route("/login/2fa", methods=["GET", "POST"])
+@limiter.limit("10 per minute", methods=["POST"])
+@limiter.limit("5 per 15 minutes", key_func=_pending_key, methods=["POST"], deduct_when=_failed)
+def login_2fa():
+    pending = session.get("pending_2fa")
+    if not pending or int(pending.get("exp", 0)) < time.time():
+        session.pop("pending_2fa", None)
+        flash("인증 시간이 지났습니다. 다시 로그인해주세요.", "error")
+        return redirect(url_for("login"))
+    if request.method == "POST":
+        email = pending["email"]
+        row = _get_totp(email)
+        counter = totp.verify(row.get("totp_secret"), request.form.get("code", ""), row.get("totp_last"))
+        stored = _get_account(email)
+        if counter is not None and stored:
+            sb("PATCH", "accounts", data={"totp_last": counter}, params=f"?email=eq.{_q(email)}")
+            _start_login_session(email, stored)
+            audit("login_success", "accounts", email, detail="password+totp")
+            return redirect(url_for("portal"))
+        audit("login_failure", "accounts", email, detail="totp")
+        return render_template("login_2fa.html", error="인증 코드가 올바르지 않습니다."), 401
+    return render_template("login_2fa.html", error=None)
 
 @app.route("/logout", methods=['POST'])
 def logout():
+    if session.get('researcher'):
+        audit("logout", "accounts", session.get('researcher'))
     if session.get('auth_session_id') and session.get('researcher'):
         sb('DELETE', 'portal_auth_sessions', params=f"?id=eq.{_q(session['auth_session_id'])}&researcher_email=eq.{_q(session['researcher'])}")
     session.clear()
@@ -2992,6 +3115,71 @@ def portal_drive_file(file_id):
 def portal_settings():
     return render_template("portal_settings.html", researcher=session["researcher"],
                            is_admin=_is_admin(), use_supabase=_USE_SUPABASE)
+
+@app.route("/portal/settings/2fa")
+@login_required
+def portal_2fa():
+    email = session["researcher"]
+    enrolling = session.get("totp_enroll")
+    return render_template("portal_2fa.html", researcher=email, is_admin=_is_admin(),
+                           enabled=bool(_get_totp(email).get("totp_secret")),
+                           must_enroll=session.get("must_enroll", False), required=REQUIRE_2FA,
+                           secret=enrolling, uri=totp.provisioning_uri(enrolling, email) if enrolling else None)
+
+@app.route("/portal/settings/2fa/start", methods=["POST"])
+@login_required
+def portal_2fa_start():
+    # The pending secret lives only in this user's signed, HttpOnly session until confirmed.
+    session["totp_enroll"] = totp.new_secret()
+    return redirect(url_for("portal_2fa"))
+
+@app.route("/portal/settings/2fa/confirm", methods=["POST"])
+@login_required
+@limiter.limit("10 per 15 minutes", methods=["POST"])
+def portal_2fa_confirm():
+    email, secret = session["researcher"], session.get("totp_enroll")
+    counter = totp.verify(secret, request.form.get("code", "")) if secret else None
+    if counter is None:
+        flash("인증 코드가 맞지 않습니다. 앱에 표시된 6자리 숫자를 다시 입력해주세요.", "error")
+        return redirect(url_for("portal_2fa"))
+    sb("PATCH", "accounts", data={"totp_secret": secret, "totp_last": counter}, params=f"?email=eq.{_q(email)}")
+    if _get_totp(email).get("totp_secret") != secret:
+        abort(503)
+    session.pop("totp_enroll", None)
+    session.pop("must_enroll", None)
+    audit("2fa_enabled", "accounts", email)
+    flash("2단계 인증이 켜졌습니다. 다음 로그인부터 인증 코드가 필요합니다.")
+    return redirect(url_for("portal_2fa"))
+
+@app.route("/portal/settings/2fa/disable", methods=["POST"])
+@login_required
+@limiter.limit("10 per 15 minutes", methods=["POST"])
+def portal_2fa_disable():
+    email = session["researcher"]
+    if REQUIRE_2FA:
+        flash("이 포털은 2단계 인증이 필수라 끌 수 없습니다. 기기를 바꾸려면 관리자에게 초기화를 요청하세요.", "error")
+        return redirect(url_for("portal_2fa"))
+    row, stored = _get_totp(email), _get_account(email)
+    ok_pw = stored and check_password_hash(stored, request.form.get("password", ""))
+    if not (ok_pw and totp.verify(row.get("totp_secret"), request.form.get("code", ""), row.get("totp_last")) is not None):
+        flash("비밀번호 또는 인증 코드가 올바르지 않습니다.", "error")
+        return redirect(url_for("portal_2fa"))
+    sb("PATCH", "accounts", data={"totp_secret": None, "totp_last": None}, params=f"?email=eq.{_q(email)}")
+    audit("2fa_disabled", "accounts", email)
+    flash("2단계 인증을 껐습니다.")
+    return redirect(url_for("portal_2fa"))
+
+@app.route("/portal/settings/2fa/reset", methods=["POST"])
+@login_required
+def portal_2fa_reset():
+    """Admin-only: clear another researcher's 2FA (lost phone). They re-enrol at next sign-in."""
+    target = request.form.get("email", "").strip()
+    if not target or not _account_exists(target) or target.lower() == session["researcher"].lower():
+        abort(400)
+    sb("PATCH", "accounts", data={"totp_secret": None, "totp_last": None}, params=f"?email=eq.{_q(target)}")
+    audit("2fa_reset_by_admin", "accounts", target)
+    flash(f"{target} 계정의 2단계 인증을 초기화했습니다.")
+    return redirect(url_for("portal_2fa"))
 
 @app.route("/portal/settings/password", methods=["POST"])
 @login_required

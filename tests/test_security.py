@@ -236,7 +236,7 @@ class SecurityTests(unittest.TestCase):
         portal.limiter.enabled = True
         portal.limiter.reset()
         try:
-            statuses = [self.post('/contact', {'message': 'test'}).status_code for _ in range(6)]
+            statuses = [self.post('/contact', {'message': 'test', 'privacy_consent': 'yes'}).status_code for _ in range(6)]
             self.assertEqual(statuses[:5], [200]*5)
             self.assertEqual(statuses[-1], 429)
         finally:
@@ -265,14 +265,14 @@ class SecurityTests(unittest.TestCase):
     def test_contact_does_not_claim_success_when_storage_fails(self):
         token = self.token()
         with patch.object(portal, 'sb', return_value=[]):
-            response = self.client.post('/contact', data={'message': 'synthetic inquiry'},
+            response = self.client.post('/contact', data={'message': 'synthetic inquiry', 'privacy_consent': 'yes'},
                                         headers={'X-CSRFToken': token})
         self.assertEqual(response.status_code, 503)
         self.assertNotIn('문의가 접수됐습니다.', response.get_data(as_text=True))
         self.assertIn('문의를 저장하지 못했습니다.', response.get_data(as_text=True))
 
     def test_contact_success_requires_saved_row(self):
-        response = self.post('/contact', {'message': 'synthetic inquiry'})
+        response = self.post('/contact', {'message': 'synthetic inquiry', 'privacy_consent': 'yes'})
         self.assertEqual(response.status_code, 200)
         self.assertIn('문의가 접수됐습니다.', response.get_data(as_text=True))
         self.assertEqual(len(portal.sb('GET', 'contact_messages')), 1)

@@ -2387,3 +2387,12 @@ body.is-portal .site-footer { display: none; }
 .ingest-age { color: var(--wd-tone, var(--fg-3)); font-size: .78rem; font-weight: 700; text-align: right; }
 .ingest-meta { grid-column: 1 / -1; color: var(--fg-4); font-size: .72rem; }
 @media (max-width: 640px) { .lin-sidebar { display: none; } }
+
+/* Contact form: personal-information notice and required consent */
+.consent-box { margin: 4px 0 16px; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--bg); }
+.consent-box p { font-size: .78rem; line-height: 1.6; color: var(--fg-3); margin: 0 0 10px; }
+.consent-box p strong { color: var(--fg-1); margin-right: 4px; }
+.consent-box a { color: var(--violet-deep); text-decoration: underline; }
+[data-theme="dark"] .consent-box a, :root:not([data-theme]) .consent-box a { color: var(--violet-soft); }
+.consent-check { display: flex; align-items: center; gap: 8px; font-size: .84rem; font-weight: 650; color: var(--fg-1); cursor: pointer; }
+.consent-check input { width: 16px; height: 16px; }
