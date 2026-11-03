@@ -9,6 +9,7 @@ from werkzeug.exceptions import HTTPException
 from zipfile import BadZipFile
 from file_storage import PrivateStorage, StorageUnavailable
 import drive_sync
+import wardy_analytics
 from security_utils import DOCUMENT_EXTENSIONS, validate_archive, validate_image, SafeCSVWriter, neutralize_excel_formulas, validate_production_settings, password_policy_error
 from scipy import stats as _scipy_stats
 import numpy as _np
@@ -127,6 +128,10 @@ CONTENT_SECURITY_POLICY = '; '.join([
     "frame-ancestors 'none'",
     "form-action 'self'",
 ])
+
+@app.context_processor
+def inject_current_year():
+    return {'current_year': datetime.now(timezone(timedelta(hours=9))).year}
 
 @app.after_request
 def security_headers(response):
@@ -645,16 +650,57 @@ def _parse_sb_params(params):
             if col:
                 direction = "DESC" if len(pieces) > 1 and pieces[1].lower() == "desc" else "ASC"
                 order_by = f"{col} {direction}"
-        elif _SAFE_IDENT.match(key) and val.startswith("eq."):
-            filters[key] = val[3:]
-        elif _SAFE_IDENT.match(key) and val == "is.null":
-            filters[key] = None
+        elif _SAFE_IDENT.match(key):
+            parsed = _parse_sb_filter(val)
+            if parsed is not _UNSUPPORTED_FILTER:
+                filters[key] = parsed
     return filters, order_by, select_fields
 
+_UNSUPPORTED_FILTER = object()
+
+def _sb_in_list(text):
+    """Values of a PostgREST in.(...) list; double quotes allow commas/parentheses."""
+    values, current, quoted = [], '', False
+    for ch in text:
+        if ch == '"':
+            quoted = not quoted
+        elif ch == ',' and not quoted:
+            values.append(current)
+            current = ''
+        else:
+            current += ch
+    values.append(current)
+    return values
+
+def _parse_sb_filter(val):
+    """Subset of PostgREST operators used by this app, for the SQLite fallback."""
+    if val == "is.null":
+        return None
+    for prefix, op in (("eq.", "="), ("gte.", ">="), ("lt.", "<"), ("ilike.", "LIKE")):
+        if val.startswith(prefix):
+            value = val[len(prefix):]
+            return value if op == "=" else (op, value.replace('*', '%') if op == "LIKE" else value)
+    for prefix, op in (("not.in.(", "NOT IN"), ("in.(", "IN")):
+        if val.startswith(prefix) and val.endswith(")"):
+            return (op, _sb_in_list(val[len(prefix):-1]))
+    return _UNSUPPORTED_FILTER
+
 def _sqlite_where(filters):
-    """WHERE clause for _parse_sb_params filters; None means IS NULL."""
-    clauses = [f"{k} IS NULL" if v is None else f"{k}=?" for k, v in filters.items()]
-    return " AND ".join(clauses), [v for v in filters.values() if v is not None]
+    """WHERE clause for _parse_sb_params filters (str = equals, None = IS NULL)."""
+    clauses, values = [], []
+    for k, v in filters.items():
+        if v is None:
+            clauses.append(f"{k} IS NULL")
+        elif isinstance(v, tuple) and v[0] in ("IN", "NOT IN"):
+            clauses.append(f"{k} {v[0]} ({','.join('?' * len(v[1]))})")
+            values.extend(v[1])
+        elif isinstance(v, tuple):
+            clauses.append(f"{k} {v[0]} ?")
+            values.append(v[1])
+        else:
+            clauses.append(f"{k}=?")
+            values.append(v)
+    return " AND ".join(clauses), values
 
 def _sb_headers(prefer=None):
     h = {
@@ -1728,6 +1774,37 @@ def logout():
 # 프로젝트 기반 포털
 # ════════════════════════════════════════════════════
 
+# Apps whose data arrives through /api/*. A stale "last received" here is the
+# signal that would have exposed the 2026-10-19 Mind Mate outage on day one.
+_INGEST_SOURCES = [
+    ("Wardy", "wardy_events", "received_at", "portal_wardy", False),
+    ("NeuroBreeze EEG", "neurobreeze_eeg", "received_at", "portal_neurobreeze", False),
+    ("NeuroBreeze 명상", "neurobreeze_meditation", "received_at", "portal_neurobreeze", False),
+    ("Mind Mate 설문", "mindmate_daily_survey", "updated_at", "portal_mindmate", True),
+    ("Mind Mate 음원", "mindmate_music_log", "updated_at", "portal_mindmate", True),
+]
+
+def _ingestion_status():
+    now = datetime.now(timezone.utc)
+    day = (now - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S")
+    week = (now - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%S")
+    result = []
+    for label, table, col, endpoint, admin_only in _INGEST_SOURCES:
+        if admin_only and not _is_admin():
+            continue
+        def rows(params):
+            return (sb("GET", table, params=params) if admin_only
+                    else _app_log_rows(table, params)) or []
+        latest = rows(f"?select={col}&order={col}.desc&limit=1")
+        last = max((wardy_analytics.parse_time(r.get(col)) for r in latest if r.get(col)), default=None)
+        result.append({
+            "label": label, "url": url_for(endpoint),
+            "fresh": wardy_analytics.freshness(last, now),
+            "day": len(rows(f"?select=id&{col}=gte.{_q(day)}")),
+            "week": len(rows(f"?select=id&{col}=gte.{_q(week)}")),
+        })
+    return result
+
 @app.route("/portal")
 @login_required
 def portal():
@@ -1798,8 +1875,7 @@ def portal():
     for table in ("wardy_events", "neurobreeze_eeg", "neurobreeze_meditation"):
         if not _is_admin():
             continue
-        rows = sb("GET", table, params="?select=project_id&limit=5000") or []
-        unassigned_app_records += sum(1 for row in rows if not row.get("project_id"))
+        unassigned_app_records += len(sb("GET", table, params="?select=id&project_id=is.null") or [])
 
     total_participants = sum(p.get("participant_count", 0) for p in projects)
     total_measurements = sum(p.get("measurement_count", 0) for p in projects)
@@ -1814,6 +1890,7 @@ def portal():
         recent_activity=recent_activity[:8],
         unassigned_app_records=unassigned_app_records,
         missing_measurements=missing_measurements[:5],
+        ingestion=_ingestion_status(),
         today=today)
 
 @app.route("/portal/projects/new", methods=["POST"])
@@ -3395,54 +3472,53 @@ def api_mindmate_followup():
 @app.route("/portal/wardy")
 @login_required
 def portal_wardy():
+    """Wardy research dashboard: gameplay KPIs, level outcomes, participants, diagnostics."""
     project_id = request.args.get("project_id", "").strip()
     user_name  = request.args.get("user_name", "").strip()
     state      = request.args.get("state", "").strip()
+    view = request.args.get("view", "play")
+    view = view if view in ("play", "diagnostics") else "play"
+    days = request.args.get("days", "30")
+    days = days if days in ("7", "30", "90", "all") else "30"
+    now = datetime.now(timezone.utc)
 
-    # Newest 3000 events (the page previously showed the oldest ones), then chronological.
-    params = "?select=*&order=received_at.desc"
-    if project_id: params += f"&project_id=eq.{_q(project_id)}"
-    if user_name:  params += f"&user_name=ilike.{_q(user_name)}%25"
-    if state:      params += f"&state=ilike.{_q(state)}"
-    params += "&limit=3000"
-    all_events = _app_log_rows("wardy_events", params=params) or []
-    all_events.sort(key=lambda e: (str(e.get("event_time") or e.get("received_at") or ""), e.get("seq") or 0))
-    total = len(all_events)
+    base = []
+    if project_id: base.append(f"project_id=eq.{_q(project_id)}")
+    if user_name:  base.append(f"user_name=ilike.{_q(user_name)}%25")
+    if days != "all":
+        since = (now - timedelta(days=int(days))).strftime("%Y-%m-%dT%H:%M:%S")
+        base.append(f"received_at=gte.{_q(since)}")
+    diag = ",".join(wardy_analytics.DIAGNOSTIC_STATES)
 
-    # 참여자별로 그룹핑 (가장 최근 이벤트 순 정렬)
-    from collections import OrderedDict
-    groups = OrderedDict()
-    for ev in all_events:
-        key = ev.get("user_name") or "Unknown"
-        if key not in groups:
-            groups[key] = []
-        groups[key].append(ev)
+    def fetch(select, extra):
+        query = "?" + "&".join([f"select={select}", "order=received_at.desc"] + base + extra)
+        return _app_log_rows("wardy_events", params=query) or []
 
-    grouped_users = []
-    for uname, evs in groups.items():
-        times = [e.get("event_time") or e.get("received_at") or "" for e in evs]
-        times = [t for t in times if t]
-        grouped_users.append({
-            "user_name": uname,
-            "events":    evs,
-            "count":     len(evs),
-            "first_time": min(times)[:16].replace("T"," ") if times else "",
-            "last_time":  max(times)[:16].replace("T"," ") if times else "",
-            "states":    sorted(set(e.get("state","") for e in evs if e.get("state"))),
-        })
-    # 최근 이벤트가 있는 참여자 먼저
-    grouped_users.sort(key=lambda g: g["last_time"], reverse=True)
-
-    distinct_states = sorted(set(e.get("state", "") for e in all_events if e.get("state")))
     projects = _accessible_projects(session["researcher"]) or []
+    common = dict(researcher=session["researcher"], projects=projects, project_id=project_id,
+                  user_name=user_name, state=state, view=view, days=days,
+                  state_tone=wardy_analytics.STATE_TONE, kst=wardy_analytics.KST)
 
-    return render_template("portal_wardy.html",
-        researcher=session["researcher"],
-        grouped_users=grouped_users, projects=projects,
-        project_id=project_id, user_name=user_name, state=state,
-        total=total,
-        distinct_states=distinct_states,
-        api_key="(서버 환경변수에서 별도 관리)")
+    diag_rows = fetch("id,user_name,state,game_level,data,received_at", [f"state=in.({diag})"])
+    if view == "diagnostics":
+        return render_template("portal_wardy.html", **common, diag_count=len(diag_rows),
+                               diagnostics=wardy_analytics.diagnostics(diag_rows),
+                               summary=None, groups=[], states=[])
+
+    state_filter = [f"state=eq.{_q(state)}"] if state else [f"state=not.in.({diag})"]
+    rows = fetch("id,user_name,state,game_level,seq,event_time,received_at,data", state_filter)
+    summary = wardy_analytics.summarize(rows, now=now, days=30 if days in ("all", "90") else int(days))
+
+    by_user = OrderedDict((p["user_name"], {"summary": p, "events": []}) for p in summary["participants"])
+    for ev in rows:
+        key = (ev.get("user_name") or "").strip() or "(이름 없음)"
+        if key in by_user:
+            by_user[key]["events"].append(ev)
+    for group in by_user.values():
+        group["events"].sort(key=lambda e: (str(e.get("event_time") or e.get("received_at") or ""), e.get("seq") or 0))
+    states = [s for s, _ in summary["state_counts"]]
+    return render_template("portal_wardy.html", **common, summary=summary, groups=list(by_user.values()),
+                           states=states, diag_count=len(diag_rows), diagnostics=[])
 
 @app.route("/portal/wardy/delete", methods=["POST"])
 @login_required

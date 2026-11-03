@@ -706,6 +706,37 @@ class SecurityTests(unittest.TestCase):
         self.assertNotIn('other-user', body)
         self.assertIn('relay-user', self.client.get('/portal/wardy/export').get_data(as_text=True))
 
+    def test_wardy_dashboard_separates_diagnostics_and_hides_stack_traces(self):
+        portal.sb('POST', 'wardy_events', data={'id': 'g1', 'project_id': 'own', 'user_name': 'own-user',
+                                                 'state': '게임 시작', 'game_level': 'Module1Level1'})
+        portal.sb('POST', 'wardy_events', data={'id': 'g2', 'project_id': 'own', 'user_name': 'own-user',
+                                                 'state': '게임 완료(성공)', 'game_level': 'Module1Level1'})
+        portal.sb('POST', 'wardy_events', data={'id': 'x1', 'project_id': 'own', 'user_name': 'own-user',
+                                                 'state': 'exception', 'game_level': 'STACK_TRACE_MARKER at Foo'})
+        play = self.client.get('/portal/wardy?days=all').get_data(as_text=True)
+        self.assertIn('모듈 1 · 레벨 1', play)
+        self.assertNotIn('STACK_TRACE_MARKER', play)
+        self.assertNotIn('other-user', play)
+        diag = self.client.get('/portal/wardy?view=diagnostics&days=all').get_data(as_text=True)
+        self.assertIn('STACK_TRACE_MARKER', diag)
+
+    def test_portal_home_shows_ingestion_status_without_public_footer(self):
+        body = self.client.get('/portal').get_data(as_text=True)
+        self.assertIn('데이터 수집 상태', body)
+        self.assertIn('is-portal', body)
+        self.assertNotIn('Mind Mate 설문', body)  # Mind Mate status is admin-only
+        self.sign_in('admin@example.test')
+        self.assertIn('Mind Mate 설문', self.client.get('/portal').get_data(as_text=True))
+
+    def test_sqlite_fallback_filter_operators(self):
+        for i, state in enumerate(['a', 'b', 'c(1)']):
+            portal.sb('POST', 'wardy_events', data={'id': f'f{i}', 'user_name': f'Name{i}', 'state': state,
+                                                     'received_at': f'2026-11-0{i + 1}T00:00:00'})
+        ids = lambda q: sorted(r['id'] for r in portal.sb('GET', 'wardy_events', params=q) if r['id'].startswith('f'))
+        self.assertEqual(ids('?state=in.(a,"c(1)")'), ['f0', 'f2'])
+        self.assertEqual(ids('?state=not.in.(a,"c(1)")&user_name=ilike.name%25'), ['f1'])
+        self.assertEqual(ids('?received_at=gte.2026-11-02T00:00:00'), ['f1', 'f2'])
+
     def test_per_app_key_accepted_only_for_its_endpoint(self):
         payload = {'state': 'open', 'user_name': 'synthetic'}
         with patch.dict(os.environ, {'WARDY_API_KEY': 'wardy-only-key-for-tests'}):
