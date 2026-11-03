@@ -65,10 +65,25 @@
         </div>
 
         <aside>
+          {% if ingestion %}
+          <section class="portal-section-card" aria-labelledby="ingest-title">
+            <header class="portal-section-header"><h2 class="portal-section-title" id="ingest-title">데이터 수집 상태</h2><span class="portal-section-link" style="color:var(--fg-4)">앱 → 서버 수신</span></header>
+            <ul class="ingest-list">
+              {% for src in ingestion %}
+              <li class="ingest-item tone-{{ src.fresh.tone }}">
+                <a class="ingest-name" href="{{ src.url }}"><span class="wd-dot" aria-hidden="true"></span>{{ src.label }}</a>
+                <span class="ingest-age" title="{{ src.fresh.at or '' }}">{{ src.fresh.text }}</span>
+                <span class="ingest-meta">최근 24시간 {{ src.day }}건 · 7일 {{ src.week }}건{% if src.fresh.tone == 'bad' %} · 7일 넘게 수신이 없습니다. 연구가 진행 중이라면 앱·릴레이를 확인하세요.{% elif src.fresh.tone == 'warn' %} · 2일 넘게 수신이 없습니다.{% endif %}</span>
+              </li>
+              {% endfor %}
+            </ul>
+          </section>
+          {% endif %}
+
           <section class="portal-section-card">
             <header class="portal-section-header"><h2 class="portal-section-title">데이터 점검</h2><a class="portal-section-link" href="{{ url_for('portal_all_participants') }}">참여자 보기 →</a></header>
             <div class="portal-health">
-              {% if unassigned_app_records %}<div class="portal-health-item"><div>⚠️</div><div><strong>프로젝트 미지정 앱 데이터 {{ unassigned_app_records }}건</strong><span>Wardy 또는 NeuroBreeze 화면에서 소속 프로젝트를 확인해 주세요.</span></div></div>{% endif %}
+              {% if unassigned_app_records %}<div class="portal-health-item"><div>ℹ️</div><div><strong>프로젝트에 연결되지 않은 앱 데이터 {{ unassigned_app_records }}건</strong><span>앱 릴레이가 프로젝트 정보를 보내지 않아 관리자 계정에서만 보입니다.</span></div></div>{% endif %}
               {% if missing_measurements %}<div class="portal-health-item"><div>◫</div><div><strong>측정 기록이 없는 프로젝트 {{ missing_measurements|length }}개</strong><span>{% for project in missing_measurements %}{{ project.name }}{% if not loop.last %}, {% endif %}{% endfor %}</span></div></div>{% endif %}
               {% if overdue_tasks %}<div class="portal-health-item"><div>⏱</div><div><strong>마감 지난 일정 {{ overdue_tasks|length }}건</strong><span>일정 화면에서 상태나 마감일을 정리해 주세요.</span></div></div>{% endif %}
               {% if not unassigned_app_records and not missing_measurements and not overdue_tasks %}<div class="portal-health-ok">✓ 현재 확인이 필요한 항목이 없습니다.</div>{% endif %}
