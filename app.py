@@ -3200,6 +3200,7 @@ def portal_change_password():
         flash('현재와 다른 새 비밀번호를 사용해주세요.', 'error')
         return redirect(url_for('portal_settings'))
     _set_account(email, new_pw)
+    audit("password_change", "accounts", email)
     sb('DELETE', 'portal_auth_sessions', params=f'?researcher_email=eq.{_q(email)}')
     session.clear()
     flash("비밀번호가 변경됐어요. 다시 로그인해주세요.")
@@ -3217,6 +3218,7 @@ def portal_add_account():
         return redirect(url_for('portal_settings'))
     if _account_exists(new_email): flash("이미 존재하는 계정이에요.", "error"); return redirect(url_for("portal_settings"))
     _set_account(new_email, new_pw)
+    audit("account_add", "accounts", new_email)
     flash(f"{new_email} 계정이 추가됐어요.")
     return redirect(url_for("portal_settings"))
 
