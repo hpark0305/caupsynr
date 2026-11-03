@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}2단계 인증 · 연구자 포털{% endblock %}
+{% block head %}
+<style>
+.settings-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px;max-width:560px;margin-bottom:20px;}
+.settings-card h3{font-family:var(--font-body);font-size:1rem;font-weight:700;margin-bottom:14px;}
+.tfa-key{font-family:var(--font-mono);font-size:1rem;letter-spacing:.08em;word-break:break-all;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px;margin:8px 0 14px;user-select:all;}
+.tfa-steps{margin:0 0 16px 18px;color:var(--fg-2);font-size:.88rem;line-height:1.7;}
+.tfa-note{font-size:.84rem;color:var(--fg-3);line-height:1.6;}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="lin-wrap">
+  {% include "_portal_sidebar.html" %}
+  <main class="lin-main">
+  <div class="container" style="padding-top:28px;padding-bottom:60px;">
+    <div class="portal-eyebrow">설정 · 보안</div>
+    <h1 style="font-size:1.9rem;margin:6px 0 18px;letter-spacing:-.03em;">2단계 인증</h1>
+
+
+    {% if must_enroll %}
+    <div class="settings-card" style="border-color:var(--tone-warn);">
+      <h3>2단계 인증 설정이 필요합니다</h3>
+      <p class="tfa-note">이 포털은 연구 참여자 정보를 다루므로 외부 접속 시 일회용 비밀번호(OTP)가 필수입니다. 설정을 마치면 포털을 이용할 수 있습니다.</p>
+    </div>
+    {% endif %}
+
+    <div class="settings-card">
+      <h3>현재 상태: {% if enabled %}<span class="wd-badge tone-good">사용 중</span>{% else %}<span class="wd-badge tone-warn">사용 안 함</span>{% endif %}</h3>
+      {% if secret %}
+        <ol class="tfa-steps">
+          <li>휴대폰 인증 앱(Google Authenticator, Microsoft Authenticator 등)에서 <strong>설정 키 입력</strong>을 고릅니다.</li>
+          <li>계정 이름에 <strong>{{ researcher }}</strong>, 키에 아래 값을 입력하고 <strong>시간 기준</strong>을 선택합니다.</li>
+          <li>앱에 표시된 6자리 숫자를 아래에 입력합니다.</li>
+        </ol>
+        <div class="tfa-key" aria-label="설정 키">{{ secret }}</div>
+        <p class="tfa-note">이 기기에 인증 앱이 있다면 <a href="{{ uri }}">여기를 눌러 바로 추가</a>할 수 있습니다. 설정 키는 다른 사람에게 보여주지 마세요.</p>
+        <form method="POST" action="{{ url_for('portal_2fa_confirm') }}" style="margin-top:14px;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="form-group"><label for="code">인증 코드</label>
+            <input id="code" name="code" inputmode="numeric" pattern="[0-9 ]{6,7}" maxlength="7" autocomplete="one-time-code" required></div>
+          <button class="btn btn-primary" style="width:100%;">확인하고 켜기</button>
+        </form>
+      {% elif enabled %}
+        <p class="tfa-note">로그인할 때마다 비밀번호와 함께 인증 앱의 6자리 코드를 입력합니다.</p>
+        {% if not required %}
+        <form method="POST" action="{{ url_for('portal_2fa_disable') }}" style="margin-top:16px;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="form-group"><label for="pw">현재 비밀번호</label><input id="pw" type="password" name="password" autocomplete="current-password" required></div>
+          <div class="form-group"><label for="code2">인증 코드</label><input id="code2" name="code" inputmode="numeric" maxlength="7" autocomplete="one-time-code" required></div>
+          <button class="btn btn-outline" style="width:100%;">2단계 인증 끄기</button>
+        </form>
+        {% endif %}
+        <form method="POST" action="{{ url_for('portal_2fa_start') }}" style="margin-top:12px;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-outline" style="width:100%;">새 기기로 다시 설정</button>
+        </form>
+      {% else %}
+        <p class="tfa-note">비밀번호가 유출되어도 휴대폰의 일회용 코드 없이는 로그인할 수 없게 합니다.</p>
+        <form method="POST" action="{{ url_for('portal_2fa_start') }}" style="margin-top:16px;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-primary" style="width:100%;">2단계 인증 설정 시작</button>
+        </form>
+      {% endif %}
+    </div>
+
+    {% if is_admin %}
+    <div class="settings-card">
+      <h3>다른 연구자의 2단계 인증 초기화</h3>
+      <p class="tfa-note">휴대폰을 잃어버린 연구자가 있을 때만 사용하세요. 초기화한 계정은 다음 로그인 때 다시 설정합니다.</p>
+      <form method="POST" action="{{ url_for('portal_2fa_reset') }}" style="margin-top:14px;" onsubmit="return confirm('이 계정의 2단계 인증을 초기화할까요?')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-group"><label for="reset-email">연구자 이메일</label><input id="reset-email" type="email" name="email" required></div>
+        <button class="btn btn-outline" style="width:100%;">초기화</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+  </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleNav(key){var btn=document.getElementById('nav-'+key),group=document.getElementById('sub-'+key);if(!btn||!group)return;var open=group.classList.contains('open');group.classList.toggle('open',!open);btn.classList.toggle('expanded',!open);}
+</script>
+{% endblock %}

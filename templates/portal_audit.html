@@ -68,13 +68,14 @@
       {% if logs %}
       <table class="data-table" id="audit-table">
         <thead><tr>
-          <th>일시</th><th>연구자</th><th>액션</th><th>대상 테이블</th><th>대상 ID</th><th>상세</th>
+          <th>일시</th><th>연구자</th><th>접속 IP</th><th>액션</th><th>대상 테이블</th><th>대상 ID</th><th>상세</th>
         </tr></thead>
         <tbody>
         {% for log in logs %}
-        <tr data-text="{{ log.action }} {{ log.researcher }} {{ log.detail or '' }}">
+        <tr data-text="{{ log.action }} {{ log.researcher }} {{ log.ip or '' }} {{ log.detail or '' }}">
           <td style="white-space:nowrap;color:var(--muted);">{{ (log.created_at or '')[:16].replace('T',' ') }}</td>
           <td style="font-size:.82rem;">{{ log.researcher or '—' }}</td>
+          <td style="font-family:monospace;font-size:.75rem;color:var(--muted);white-space:nowrap;" title="{{ log.user_agent or '' }}">{{ log.ip or '—' }}</td>
           <td>
             {% if 'delete' in (log.action or '') %}
             <span class="action-badge action-delete">{{ log.action }}</span>

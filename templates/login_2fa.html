@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}2단계 인증 · Trauma Stress Lab{% endblock %}
+
+{% block content %}
+<section style="min-height:calc(100vh - var(--nav-h));display:flex;align-items:center;background:var(--bg);">
+  <div class="container-sm" style="text-align:center;padding:60px 28px;">
+    <span class="label" style="display:block;margin-bottom:12px;">Two-step verification</span>
+    <h1 style="font-size:2rem;margin-bottom:8px;">인증 코드 입력</h1>
+    <p style="color:var(--muted);max-width:380px;margin:0 auto 32px;font-size:.95rem;">인증 앱(Google Authenticator, Microsoft Authenticator 등)에 표시된 6자리 숫자를 입력하세요.</p>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:32px;max-width:400px;margin:0 auto;text-align:left;">
+      {% if error %}
+      <div role="alert" style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.35);border-radius:10px;padding:12px 16px;margin-bottom:20px;color:var(--tone-bad);font-size:.88rem;font-weight:600;">{{ error }}</div>
+      {% endif %}
+      <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-group">
+          <label for="code">인증 코드</label>
+          <input id="code" name="code" type="text" inputmode="numeric" pattern="[0-9 ]{6,7}" maxlength="7" autocomplete="one-time-code" placeholder="123 456" required autofocus style="font-size:1.4rem;letter-spacing:.2em;text-align:center;">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;margin-top:4px;">확인</button>
+      </form>
+      <p style="text-align:center;margin-top:16px;font-size:.82rem;color:var(--muted);">휴대폰을 바꾸거나 잃어버렸다면 관리자에게 2단계 인증 초기화를 요청하세요.</p>
+    </div>
+  </div>
+</section>
+{% endblock %}

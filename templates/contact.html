@@ -94,6 +94,10 @@
             <label for="message">Message *</label>
             <textarea id="message" name="message" placeholder="Your message…" required></textarea>
           </div>
+          <div class="consent-box" lang="ko">
+            <p><strong>개인정보 수집·이용 안내</strong> 항목: 이름, 이메일, 제목, 문의 내용 · 목적: 문의 확인과 답변 · 보유: 답변 완료 후 1년 · 서버는 국외(미국·인도)에 있습니다. 동의를 거부할 수 있으며, 이 경우 이메일로 직접 문의해 주세요. <a href="{{ url_for('site_privacy') }}">개인정보처리방침</a></p>
+            <label class="consent-check"><input type="checkbox" name="privacy_consent" value="yes" required> 위 내용에 동의합니다 (필수) / I agree</label>
+          </div>
           <button type="submit" class="btn btn-primary" style="width:100%;">Send Message</button>
         </form>
         {% endif %}
