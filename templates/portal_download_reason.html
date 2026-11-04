@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}다운로드 사유 확인 · 연구자 포털{% endblock %}
+{% block head %}
+<style>
+.reason-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px;max-width:520px;margin:0 auto;}
+.reason-card h1{font-size:1.4rem;margin:6px 0 10px;letter-spacing:-.02em;}
+.reason-note{font-size:.86rem;color:var(--fg-3);line-height:1.65;margin-bottom:18px;}
+.reason-opts{display:grid;gap:8px;margin-bottom:14px;border:0;padding:0;}
+.reason-opts label{display:flex;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--border);border-radius:var(--r-sm);cursor:pointer;font-size:.9rem;}
+.reason-opts input{accent-color:var(--violet-fill);}
+.reason-err{color:var(--tone-bad);font-size:.85rem;margin-bottom:12px;}
+</style>
+{% endblock %}
+{% block content %}
+<main class="container" style="padding-top:48px;padding-bottom:72px;">
+  <div class="reason-card">
+    <div class="portal-eyebrow">개인정보 보호</div>
+    <h1>다운로드 사유를 선택해 주세요</h1>
+    <p class="reason-note">연구 참여자 정보가 담긴 파일입니다. 내려받는 사유는 계정·일시·접속 IP와 함께 접속기록에 남고, 관리자가 정기 점검 때 확인합니다.</p>
+    {% if error %}<p class="reason-err" role="alert">‘기타’를 고른 경우 사유를 직접 적어 주세요.</p>{% endif %}
+    <form method="GET" action="{{ action }}">
+      {% for k, v in params %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+      <fieldset class="reason-opts">
+        <legend style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);">다운로드 사유</legend>
+        {% for code, label in reasons.items() %}
+        <label><input type="radio" name="reason" value="{{ code }}" required {% if loop.first %}autofocus{% endif %}> {{ label }}</label>
+        {% endfor %}
+      </fieldset>
+      <div class="form-group"><label for="reason_note">상세 사유 (‘기타’는 필수, 200자 이내)</label>
+        <input id="reason_note" name="reason_note" maxlength="200" autocomplete="off"></div>
+      <button class="btn btn-primary" style="width:100%;">확인하고 내려받기</button>
+    </form>
+    <p style="text-align:center;margin-top:14px;"><a href="{{ back }}" style="font-size:.85rem;color:var(--fg-3);">돌아가기</a></p>
+  </div>
+</main>
+{% endblock %}

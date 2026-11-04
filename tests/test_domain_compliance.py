@@ -115,5 +115,69 @@ class DomainComplianceTests(unittest.TestCase):
             self.assertEqual(self.client.get('/', environ_base={'REMOTE_ADDR': '203.0.113.9'}).status_code, 200)
 
 
+    def test_options_and_unused_methods_are_refused(self):
+        for path in ('/', '/login', '/api/wardy/events'):
+            response = self.client.open(path, method='OPTIONS')
+            self.assertEqual(response.status_code, 405, path)
+            self.assertNotIn('OPTIONS', response.headers.get('Allow', ''))
+        self.assertEqual(self.client.open('/', method='TRACE').status_code, 405)
+
+    def test_participant_download_requires_a_reason(self):
+        downloads = lambda: [r for r in portal.sb('GET', 'audit_log', params='?action=eq.download')]
+        gate = self.client.get('/portal/wardy/export?project_id=own')
+        self.assertEqual(gate.status_code, 200)
+        self.assertIn('다운로드 사유', gate.get_data(as_text=True))
+        self.assertNotIn('attachment', gate.headers.get('Content-Disposition', ''))
+        self.assertIn('name="project_id" value="own"', gate.get_data(as_text=True))
+        self.assertEqual(downloads(), [])
+        # "기타" without a note is not a reason.
+        retry = self.client.get('/portal/wardy/export?project_id=own&reason=other&reason_note=+')
+        self.assertIn('직접 적어', retry.get_data(as_text=True))
+        self.assertEqual(downloads(), [])
+        ok = self.client.get('/portal/wardy/export?project_id=own&reason=report')
+        self.assertIn('attachment', ok.headers['Content-Disposition'])
+        detail = json.loads(downloads()[0]['detail'])
+        self.assertEqual(detail['reason'], 'IRB·연구 보고')
+        self.assertEqual(detail['project_id'], 'own')
+        self.client.get('/portal/wardy/export?project_id=own&reason=other&reason_note=%EA%B8%B0%EA%B4%80+%EC%A0%9C%EC%B6%9C')
+        self.assertIn('기타: 기관 제출', [json.loads(r['detail'])['reason'] for r in downloads()])
+        # The gate never opens data the account cannot reach.
+        self.assertEqual(self.client.get('/portal/projects/other/export').status_code, 403)
+
+    def test_access_log_summary_flags_review_items(self):
+        rows = [{'action': 'login_failure', 'target_id': 'x@example.test', 'ip': '203.0.113.5',
+                 'created_at': '2026-11-01T01:00:00+00:00'} for _ in range(6)]
+        rows += [
+            {'action': 'download', 'researcher': 'a@example.test', 'ip': '198.51.100.1',
+             'created_at': '2026-11-01T16:30:00+00:00', 'detail': '{"project_id": "p"}'},          # 01:30 KST, no reason
+            {'action': 'download', 'researcher': 'a@example.test', 'ip': '198.51.100.2',
+             'created_at': '2026-11-01T03:00:00+00:00', 'detail': '{"reason": "연구 분석"}'},       # 12:00 KST
+            {'action': 'view', 'researcher': 'b@example.test', 'ip': '198.51.100.3',
+             'created_at': '2026-11-01T05:00:00+00:00'},
+            {'action': 'account_add', 'researcher': 'admin@example.test', 'target_id': 'new@example.test',
+             'created_at': '2026-11-01T05:00:00+00:00'},
+        ]
+        s = portal.summarize_access_log(rows)
+        self.assertEqual(s['login_fail_accounts'], [('x@example.test', 6)])
+        self.assertEqual(s['login_fail_ips'], [('203.0.113.5', 6)])
+        self.assertEqual(s['downloads'], [('a@example.test', 2)])
+        self.assertEqual(len(s['downloads_without_reason']), 1)
+        self.assertEqual([r['created_at'] for r in s['off_hours']], ['2026-11-01T16:30:00+00:00'])
+        self.assertEqual([r['action'] for r in s['privilege_changes']], ['account_add'])
+        self.assertEqual(s['ips_per_account'][0], ('a@example.test', ['198.51.100.1', '198.51.100.2']))
+
+    def test_monthly_access_review_is_admin_only_and_recorded(self):
+        self.assertEqual(self.client.get('/portal/audit/review').status_code, 403)
+        self.sign_in('admin@example.test')
+        self.assertIn('점검하기', self.client.get('/portal/audit').get_data(as_text=True))
+        page = self.client.get('/portal/audit/review')
+        self.assertEqual(page.status_code, 200)
+        self.assertIn('점검 기록 없음', page.get_data(as_text=True))
+        self.assertEqual(self.post('/portal/audit/review', {'note': '이상 없음'}).status_code, 302)
+        row = portal.sb('GET', 'audit_log', params='?action=eq.access_log_review')[0]
+        self.assertEqual((row['researcher'], json.loads(row['detail'])['note']), ('admin@example.test', '이상 없음'))
+        self.assertNotIn('점검하기', self.client.get('/portal/audit').get_data(as_text=True))
+        self.assertIn('0일 전 점검', self.client.get('/portal/audit/review').get_data(as_text=True))
+
 if __name__ == '__main__':
     unittest.main()

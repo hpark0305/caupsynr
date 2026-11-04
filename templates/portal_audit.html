@@ -52,6 +52,12 @@
 
   <div class="container" style="padding-top:24px;padding-bottom:60px;">
 
+    {% if review_overdue %}
+    <div style="background:var(--surface);border:1px solid var(--tone-warn);border-radius:var(--radius-lg);padding:12px 16px;margin-bottom:14px;font-size:.86rem;">
+      접속기록 정기 점검이 {% if review_days is none %}아직 기록되지 않았습니다{% else %}{{ review_days }}일 전이 마지막입니다{% endif %}. 월 1회 이상 점검합니다.
+      <a href="{{ url_for('portal_audit_review') }}" style="font-weight:600;margin-left:6px;">점검하기 →</a>
+    </div>
+    {% endif %}
     <!-- 필터 -->
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center;">
       <input type="text" id="log-search" placeholder="연구자/액션/상세 검색…" oninput="filterLog()" style="padding:7px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:.83rem;width:220px;background:var(--surface);">

@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}접속기록 점검 · 연구자 포털{% endblock %}
+{% block head %}
+<style>
+.rv-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:22px 24px;margin-bottom:16px;}
+.rv-card h2{font-family:var(--font-body);font-size:1rem;font-weight:700;margin:0 0 10px;display:flex;gap:8px;align-items:center;}
+.rv-note{font-size:.85rem;color:var(--fg-3);line-height:1.6;}
+.rv-table{width:100%;border-collapse:collapse;font-size:.83rem;}
+.rv-table th{text-align:left;font-weight:600;color:var(--fg-3);font-size:.74rem;padding:6px 10px;border-bottom:1px solid var(--border);}
+.rv-table td{padding:7px 10px;border-top:1px solid var(--border-light);vertical-align:top;}
+.rv-mono{font-family:var(--font-mono);font-size:.76rem;}
+.rv-empty{font-size:.85rem;color:var(--fg-3);}
+.rv-scroll{overflow-x:auto;}
+</style>
+{% endblock %}
+{% macro count_badge(n) %}<span class="wd-badge {% if n %}tone-warn{% else %}tone-good{% endif %}">{{ n }}건</span>{% endmacro %}
+{% macro ts(v) %}{{ (v or '')[:16].replace('T',' ') }}{% endmacro %}
+{% block content %}
+<div class="lin-wrap">
+  {% include "_portal_sidebar.html" %}
+  <main class="lin-main">
+  <div class="container" style="padding-top:28px;padding-bottom:60px;">
+    <div class="portal-eyebrow">관리 · 개인정보 보호</div>
+    <h1 style="font-size:1.9rem;margin:6px 0 8px;letter-spacing:-.03em;">접속기록 점검</h1>
+    <p class="rv-note" style="margin-bottom:18px;">개인정보처리시스템 접속기록은 월 1회 이상 점검합니다. 점검 기간: <strong>{{ start.strftime('%Y-%m-%d %H:%M') }} ~ {{ end.strftime('%Y-%m-%d %H:%M') }}</strong> (한국시간), 기록 {{ summary.total }}건.</p>
+
+    <div class="rv-card" {% if overdue %}style="border-color:var(--tone-warn);"{% endif %}>
+      <h2>점검 상태
+        {% if days is none %}<span class="wd-badge tone-warn">점검 기록 없음</span>
+        {% elif overdue %}<span class="wd-badge tone-warn">{{ days }}일 지남 · 점검 필요</span>
+        {% else %}<span class="wd-badge tone-good">{{ days }}일 전 점검</span>{% endif %}</h2>
+      <p class="rv-note">아래 항목을 확인한 뒤 점검 완료를 기록하세요. 이상이 있으면 조치 내용을 메모에 적습니다. 점검 기록도 접속기록에 남습니다.</p>
+      <form method="POST" style="margin-top:12px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-group"><label for="note">점검 메모 (선택, 500자 이내)</label>
+          <input id="note" name="note" maxlength="500" placeholder="예: 이상 없음 / 야간 다운로드 1건 연구자 확인 완료" autocomplete="off"></div>
+        <button class="btn btn-primary">점검 완료 기록</button>
+      </form>
+    </div>
+
+    <div class="rv-card">
+      <h2>로그인 실패 5회 이상 {{ count_badge(summary.login_fail_accounts|length + summary.login_fail_ips|length) }}</h2>
+      {% if summary.login_fail_accounts or summary.login_fail_ips %}
+      <div class="rv-scroll"><table class="rv-table"><thead><tr><th>구분</th><th>대상</th><th>실패 횟수</th></tr></thead><tbody>
+        {% for k, n in summary.login_fail_accounts %}<tr><td>계정</td><td>{{ k }}</td><td>{{ n }}</td></tr>{% endfor %}
+        {% for k, n in summary.login_fail_ips %}<tr><td>접속 IP</td><td class="rv-mono">{{ k }}</td><td>{{ n }}</td></tr>{% endfor %}
+      </tbody></table></div>
+      {% else %}<p class="rv-empty">해당 없음</p>{% endif %}
+    </div>
+
+    <div class="rv-card">
+      <h2>사유 없는 다운로드 {{ count_badge(summary.downloads_without_reason|length) }}</h2>
+      <p class="rv-note">사유 확인 기능 도입 전 기록이거나 비정상 경로일 수 있습니다. 해당 연구자에게 사유를 확인해 메모에 남기세요.</p>
+      {% if summary.downloads_without_reason %}
+      <div class="rv-scroll"><table class="rv-table"><thead><tr><th>일시</th><th>연구자</th><th>대상</th><th>접속 IP</th></tr></thead><tbody>
+        {% for r in summary.downloads_without_reason[:50] %}<tr><td>{{ ts(r.created_at) }}</td><td>{{ r.researcher }}</td><td>{{ r.target_table or '' }} {{ r.target_id or '' }}</td><td class="rv-mono">{{ r.ip or '—' }}</td></tr>{% endfor %}
+      </tbody></table></div>
+      {% endif %}
+    </div>
+
+    <div class="rv-card">
+      <h2>업무시간 외(22시~7시) 조회·다운로드 {{ count_badge(summary.off_hours|length) }}</h2>
+      {% if summary.off_hours %}
+      <div class="rv-scroll"><table class="rv-table"><thead><tr><th>일시(UTC 기록)</th><th>연구자</th><th>행위</th><th>대상</th><th>접속 IP</th></tr></thead><tbody>
+        {% for r in summary.off_hours[:50] %}<tr><td>{{ ts(r.created_at) }}</td><td>{{ r.researcher }}</td><td>{{ r.action }}</td><td>{{ r.target_table or '' }}</td><td class="rv-mono">{{ r.ip or '—' }}</td></tr>{% endfor %}
+      </tbody></table></div>
+      {% else %}<p class="rv-empty">해당 없음</p>{% endif %}
+    </div>
+
+    <div class="rv-card">
+      <h2>연구자별 다운로드 건수</h2>
+      {% if summary.downloads %}
+      <table class="rv-table"><thead><tr><th>연구자</th><th>건수</th></tr></thead><tbody>
+        {% for who, n in summary.downloads %}<tr><td>{{ who }}</td><td>{{ n }}</td></tr>{% endfor %}
+      </tbody></table>
+      {% else %}<p class="rv-empty">기간 내 다운로드 없음</p>{% endif %}
+    </div>
+
+    <div class="rv-card">
+      <h2>권한·인증 변경 {{ count_badge(summary.privilege_changes|length) }}</h2>
+      {% if summary.privilege_changes %}
+      <div class="rv-scroll"><table class="rv-table"><thead><tr><th>일시</th><th>처리자</th><th>행위</th><th>대상</th></tr></thead><tbody>
+        {% for r in summary.privilege_changes[:50] %}<tr><td>{{ ts(r.created_at) }}</td><td>{{ r.researcher }}</td><td>{{ r.action }}</td><td>{{ r.target_id or '' }}</td></tr>{% endfor %}
+      </tbody></table></div>
+      {% else %}<p class="rv-empty">해당 없음</p>{% endif %}
+    </div>
+
+    <div class="rv-card">
+      <h2>연구자별 접속 IP</h2>
+      <p class="rv-note">평소와 다른 IP가 섞여 있으면 본인 접속인지 확인하세요.</p>
+      {% if summary.ips_per_account %}
+      <div class="rv-scroll"><table class="rv-table"><thead><tr><th>연구자</th><th>IP 수</th><th>IP</th></tr></thead><tbody>
+        {% for who, ips in summary.ips_per_account %}<tr><td>{{ who }}</td><td>{{ ips|length }}</td><td class="rv-mono">{{ ips[:8]|join(', ') }}{% if ips|length > 8 %} 외 {{ ips|length - 8 }}개{% endif %}</td></tr>{% endfor %}
+      </tbody></table></div>
+      {% else %}<p class="rv-empty">기록 없음</p>{% endif %}
+    </div>
+
+    <div class="rv-card">
+      <h2>점검 이력</h2>
+      {% if history %}
+      <div class="rv-scroll"><table class="rv-table"><thead><tr><th>점검 일시</th><th>점검자</th><th>대상 기록</th><th>확인 필요</th><th>메모</th></tr></thead><tbody>
+        {% for h in history %}<tr><td>{{ ts(h.created_at) }}</td><td>{{ h.researcher }}</td><td>{{ h.parsed.entries if h.parsed.entries is defined else '' }}</td><td>{{ h.parsed.flagged if h.parsed.flagged is defined else '' }}</td><td>{{ h.parsed.note or '' }}</td></tr>{% endfor %}
+      </tbody></table></div>
+      {% else %}<p class="rv-empty">아직 점검 기록이 없습니다.</p>{% endif %}
+    </div>
+  </div>
+  </main>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function toggleNav(key){const btn=document.getElementById('nav-'+key),group=document.getElementById('sub-'+key);if(!btn||!group)return;const open=group.classList.contains('open');group.classList.toggle('open',!open);btn.classList.toggle('expanded',!open);}
+</script>
+{% endblock %}

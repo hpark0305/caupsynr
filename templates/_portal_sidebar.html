@@ -36,6 +36,7 @@
         <a href="{{ url_for('portal_settings') }}" class="lin-nav-sub {% if request.endpoint=='portal_settings' %}active{% endif %}">설정</a>
         <a href="{{ url_for('portal_2fa') }}" class="lin-nav-sub {% if request.endpoint=='portal_2fa' %}active{% endif %}">🔐 2단계 인증</a>
         <a href="{{ url_for('portal_audit') }}" class="lin-nav-sub {% if request.endpoint=='portal_audit' %}active{% endif %}">🗒 감사 로그</a>
+        <a href="{{ url_for('portal_audit_review') }}" class="lin-nav-sub {% if request.endpoint=='portal_audit_review' %}active{% endif %}">🔎 접속기록 점검</a>
         <a href="{{ url_for('portal_merge') }}" class="lin-nav-sub {% if request.endpoint=='portal_merge' %}active{% endif %}">프로젝트 병합</a>
         <a href="{{ url_for('api_docs') }}" class="lin-nav-sub {% if request.endpoint=='api_docs' %}active{% endif %}">📖 API 문서</a>
       </div>
