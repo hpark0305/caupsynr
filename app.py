@@ -8,7 +8,23 @@ import requests
 # database (Mumbai) are ~250 ms apart; a fresh TLS handshake per request made
 # the portal home exceed gunicorn's 30 s worker timeout (2026-11-04 outage).
 _requests = requests.Session()
-_requests.mount("https://", requests.adapters.HTTPAdapter(pool_connections=4, pool_maxsize=8))
+_requests.mount("https://", requests.adapters.HTTPAdapter(pool_connections=4, pool_maxsize=12))
+
+# Independent Supabase reads are issued concurrently: at ~0.5 s per round trip,
+# the ~25 sequential reads behind the portal home took ~17 s after login
+# (measured 2026-11-04 12:44 UTC). Only call _db_parallel from the request
+# thread, never from inside a job, so the pool cannot deadlock on itself.
+from concurrent.futures import ThreadPoolExecutor
+_DB_POOL = ThreadPoolExecutor(max_workers=12, thread_name_prefix="db")
+
+def _db_parallel(jobs):
+    """Run {key: (fn, *args)} concurrently and return {key: result}.
+
+    Jobs must not touch the Flask request context (session, request, g);
+    resolve those in the request thread and pass plain values in.
+    """
+    futures = {key: _DB_POOL.submit(fn, *args) for key, (fn, *args) in jobs.items()}
+    return {key: future.result() for key, future in futures.items()}
 from urllib.parse import quote, parse_qsl
 from werkzeug.exceptions import HTTPException
 from zipfile import BadZipFile
@@ -1028,8 +1044,14 @@ def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         email = session.get('researcher')
-        stored = _get_account(email) if email else None
-        if not stored or not hmac.compare_digest(session.get('auth_stamp', ''), _auth_stamp(stored)) or not _valid_login_session():
+        sid = session.get('auth_session_id')
+        # Account and session-row lookups are independent: fetch both at once.
+        found = _db_parallel({
+            'account': (_get_account, email),
+            'session': (_fetch_login_session, sid, email),
+        }) if email and sid else {'account': None, 'session': []}
+        stored = found['account']
+        if not stored or not hmac.compare_digest(session.get('auth_stamp', ''), _auth_stamp(stored)) or not _valid_login_session(found['session']):
             session.clear()
             if request.is_json:
                 return jsonify(ok=False, error='Login required'), 401
@@ -1058,12 +1080,17 @@ def _start_login_session(email, password_hash):
     session.permanent = True
     session.update(researcher=email, auth_stamp=_auth_stamp(password_hash), auth_session_id=sid)
 
-def _valid_login_session():
+def _fetch_login_session(sid, email):
+    """Session row for (sid, email); safe to run outside the request context."""
+    return sb('GET', 'portal_auth_sessions', params=f"?id=eq.{_q(sid)}&researcher_email=eq.{_q(email)}")
+
+def _valid_login_session(rows=None):
     sid = session.get('auth_session_id')
     if not sid:
         return False
     query = f"?id=eq.{_q(sid)}&researcher_email=eq.{_q(session['researcher'])}"
-    rows = sb('GET', 'portal_auth_sessions', params=query)
+    if rows is None:
+        rows = _fetch_login_session(sid, session['researcher'])
     if not rows:
         return False
     now = int(time.time())
@@ -1964,11 +1991,13 @@ def login():
     if request.method == "POST":
         email    = request.form.get("email","").strip()
         password = request.form.get("password","").strip()
-        stored = _get_account(email)
+        # One round trip for both the password hash and the 2FA flag.
+        account = (sb("GET", "accounts", params=f"?email=eq.{_q(email)}&select=password,totp_secret") or [{}])[0] if email else {}
+        stored = account.get("password")
         # Hash even for unknown emails so response time does not reveal which accounts exist.
         valid = check_password_hash(stored or _DUMMY_PASSWORD_HASH, password)
         if stored and valid:
-            if _get_totp(email).get("totp_secret"):
+            if account.get("totp_secret"):
                 session.clear()
                 session["pending_2fa"] = {"email": email, "exp": int(time.time()) + 300}
                 return redirect(url_for("login_2fa"))
@@ -2027,67 +2056,103 @@ _INGEST_SOURCES = [
     ("Mind Mate 음원", "mindmate_music_log", "updated_at", "portal_mindmate", True),
 ]
 
-def _ingestion_status():
-    now = datetime.now(timezone.utc)
+# The ingestion panel is the same for everyone with the same scope and only
+# needs minute-level freshness, so it is cached briefly per scope.
+_INGEST_TTL = 60
+_ingest_cache = {}
+
+def _ingestion_jobs(scopes, admin, now):
+    """Jobs for the data-collection panel, keyed (source_index, kind, scope_index)."""
     day = (now - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S")
     week = (now - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%S")
-    result = []
-    for label, table, col, endpoint, admin_only in _INGEST_SOURCES:
-        if admin_only and not _is_admin():
+    jobs = {}
+    for i, (_, table, col, _, admin_only) in enumerate(_INGEST_SOURCES):
+        if admin_only and not admin:
             continue
-        def count(params):
-            return _sb_count_where(table, params) if admin_only else _app_log_count(table, params)
-        query = f"?select={col}&order={col}.desc&limit=1"
-        latest = (sb("GET", table, params=query) if admin_only else _app_log_rows(table, query)) or []
+        table_scopes = [""] if admin_only else scopes
+        for s, scope in enumerate(table_scopes):
+            tail = f"&{scope}" if scope else ""
+            jobs[(i, "latest", s)] = (sb, "GET", table, None, f"?select={col}&order={col}.desc&limit=1{tail}")
+            jobs[(i, "day", s)] = (_sb_count_where, table, f"?{col}=gte.{_q(day)}{tail}")
+            jobs[(i, "week", s)] = (_sb_count_where, table, f"?{col}=gte.{_q(week)}{tail}")
+    return jobs
+
+def _ingestion_from_results(results, admin, now):
+    status = []
+    for i, (label, _, col, endpoint, admin_only) in enumerate(_INGEST_SOURCES):
+        if admin_only and not admin:
+            continue
+        mine = {k: v for k, v in results.items() if k[0] == i}
+        latest = [r for (_, kind, _), rows in mine.items() if kind == "latest" for r in (rows or [])]
         last = max((wardy_analytics.parse_time(r.get(col)) for r in latest if r.get(col)), default=None)
-        result.append({
+        status.append({
             "label": label, "url": url_for(endpoint),
             "fresh": wardy_analytics.freshness(last, now),
-            "day": count(f"?{col}=gte.{_q(day)}"),
-            "week": count(f"?{col}=gte.{_q(week)}"),
+            "day": sum(v for (_, kind, _), v in mine.items() if kind == "day"),
+            "week": sum(v for (_, kind, _), v in mine.items() if kind == "week"),
         })
-    return result
+    return status
+
+def _ingestion_status():
+    """Data-collection panel for the current researcher (cached for _INGEST_TTL s)."""
+    admin = _is_admin()
+    scopes = _app_scopes(session["researcher"], admin)
+    now = datetime.now(timezone.utc)
+    key = (admin, tuple(scopes))
+    hit = _ingest_cache.get(key)
+    if hit and time.monotonic() - hit[0] < _INGEST_TTL:
+        return hit[1]
+    status = _ingestion_from_results(_db_parallel(_ingestion_jobs(scopes, admin, now)), admin, now)
+    _ingest_cache[key] = (time.monotonic(), status)
+    return status
+
+def _app_scopes(email, admin):
+    """PostgREST filters for the app rows this researcher may see.
+
+    Ids come from _accessible_projects (ownership/collaboration lookups), so no
+    per-project re-authorisation round trip is needed. Admins also see rows
+    the app relays sent without a project.
+    """
+    scopes = [f"project_id=eq.{_q(p['id'])}" for p in _accessible_projects(email) if p.get("id")]
+    if admin:
+        scopes.append("project_id=is.null")
+    return scopes
 
 @app.route("/portal")
 @login_required
 def portal():
     email = session["researcher"]
+    admin = _is_admin()
+    now = datetime.now(timezone.utc)
     # 내 프로젝트와 초대받은 프로젝트를 한 화면에서 관리한다.
-    projects = sb("GET", "projects", params=f"?researcher_email=eq.{_q(email)}&order=created_at.desc") or []
+    first = _db_parallel({
+        "own": (sb, "GET", "projects", None, f"?researcher_email=eq.{_q(email)}&order=created_at.desc"),
+        "collab": (sb, "GET", "project_collaborators", None, f"?researcher_email=eq.{_q(email)}&select=project_id"),
+    })
+    projects = [p for p in (first["own"] or []) if isinstance(p, dict)]
     project_ids = {p.get("id") for p in projects if p.get("id")}
-    collab_rows = sb("GET", "project_collaborators",
-                    params=f"?researcher_email=eq.{_q(email)}&select=project_id") or []
-    for collab in collab_rows:
+    extra_ids = []
+    for collab in first["collab"] or []:
         pid = collab.get("project_id")
-        if pid and pid not in project_ids:
-            rows = sb("GET", "projects", params=f"?id=eq.{_q(pid)}") or []
-            if rows:
-                projects.append(rows[0])
-                project_ids.add(pid)
+        if pid and pid not in project_ids and pid not in extra_ids:
+            extra_ids.append(pid)
+    extra = _db_parallel({pid: (sb, "GET", "projects", None, f"?id=eq.{_q(pid)}") for pid in extra_ids})
+    for pid in extra_ids:
+        if extra[pid]:
+            projects.append(extra[pid][0])
+            project_ids.add(pid)
+    # Same list _accessible_projects would load; seed its per-request memo.
+    g.setdefault('_accessible_projects', {})[email] = [{"id": p.get("id"), "name": p.get("name")} for p in projects]
+    scopes = [f"project_id=eq.{_q(pid)}" for pid in project_ids] + (["project_id=is.null"] if admin else [])
 
-    project_map = {p.get("id"): p.get("name") or "이름 없는 프로젝트" for p in projects}
-    overdue_tasks, open_tasks, recent_tasks = [], [], []
-    today = datetime.now(timezone.utc).replace(tzinfo=None).strftime("%Y-%m-%d")
-    missing_measurements = []
-    for p in (projects if isinstance(projects,list) else []):
-        pid = p.get("id","")
-        p["participant_count"] = _sb_count_where("project_participants", f"?project_id=eq.{_q(pid)}")
-        p["measurement_count"] = _sb_count_where("measurements", f"?project_id=eq.{_q(pid)}")
-        if p["participant_count"] and not p["measurement_count"]:
-            missing_measurements.append(p)
-        tasks = sb("GET", "tasks", params=f"?project_id=eq.{_q(pid)}&order=due_date.asc") or []
-        for task in tasks:
-            task["project_name"] = p.get("name") or "프로젝트"
-            if task.get("status") != "done":
-                open_tasks.append(task)
-                if task.get("due_date") and task["due_date"] < today:
-                    overdue_tasks.append(task)
-                recent_tasks.append(task)
-
-    recent_tasks.sort(key=lambda task: task.get("due_date") or "9999-12-31")
+    jobs = {}
+    for p in projects:
+        pid = p.get("id", "")
+        jobs[("participants", pid)] = (_sb_count_where, "project_participants", f"?project_id=eq.{_q(pid)}")
+        jobs[("measurements", pid)] = (_sb_count_where, "measurements", f"?project_id=eq.{_q(pid)}")
+        jobs[("tasks", pid)] = (sb, "GET", "tasks", None, f"?project_id=eq.{_q(pid)}&order=due_date.asc")
 
     # 원본 참여자 이름은 홈에 노출하지 않고, 활동 종류와 수신 시각만 보여준다.
-    recent_activity = []
     activity_sources = [
         ("wardy_events", "🎮 Wardy", "received_at", True),
         ("neurobreeze_eeg", "🧠 NeuroBreeze EEG", "received_at", True),
@@ -2096,14 +2161,58 @@ def portal():
         ("mindmate_music_log", "💬 Mind Mate 음원", "updated_at", False),
         ("mindmate_daily_survey", "💬 Mind Mate 설문", "updated_at", False),
     ]
-    for table, label, time_col, has_project in activity_sources:
-        if not has_project and not _is_admin():
+    for t, (table, _, time_col, has_project) in enumerate(activity_sources):
+        if not has_project and not admin:
             continue
         select = f"project_id,{time_col}" if has_project else time_col
-        query = f"?select={_q(select)}&order={_q(time_col)}.desc&limit=6"
-        rows = (_app_log_rows(table, query, sort_key=time_col, reverse=True)[:6]
-                if has_project else sb('GET', table, params=query))
-        for row in rows:
+        base = f"?select={_q(select)}&order={_q(time_col)}.desc&limit=6"
+        for s, scope in enumerate(scopes if has_project else [""]):
+            jobs[("activity", t, s)] = (sb, "GET", table, None, base + (f"&{scope}" if scope else ""))
+
+    # 앱 로그 중 프로젝트가 비어 있는 행은 연구자가 먼저 분류해야 하는 데이터다.
+    if admin:
+        for table in ("wardy_events", "neurobreeze_eeg", "neurobreeze_meditation"):
+            jobs[("unassigned", table)] = (_sb_count_where, table, "?project_id=is.null")
+
+    ingest_key = (admin, tuple(scopes))
+    hit = _ingest_cache.get(ingest_key)
+    ingestion = hit[1] if hit and time.monotonic() - hit[0] < _INGEST_TTL else None
+    if ingestion is None:
+        for k, job in _ingestion_jobs(scopes, admin, now).items():
+            jobs[("ingest",) + k] = job
+
+    results = _db_parallel(jobs)
+
+    if ingestion is None:
+        ingestion = _ingestion_from_results(
+            {k[1:]: v for k, v in results.items() if k[0] == "ingest"}, admin, now)
+        _ingest_cache[ingest_key] = (time.monotonic(), ingestion)
+
+    project_map = {p.get("id"): p.get("name") or "이름 없는 프로젝트" for p in projects}
+    overdue_tasks, open_tasks, recent_tasks = [], [], []
+    today = now.replace(tzinfo=None).strftime("%Y-%m-%d")
+    missing_measurements = []
+    for p in projects:
+        pid = p.get("id", "")
+        p["participant_count"] = results[("participants", pid)]
+        p["measurement_count"] = results[("measurements", pid)]
+        if p["participant_count"] and not p["measurement_count"]:
+            missing_measurements.append(p)
+        for task in results[("tasks", pid)] or []:
+            task["project_name"] = p.get("name") or "프로젝트"
+            if task.get("status") != "done":
+                open_tasks.append(task)
+                if task.get("due_date") and task["due_date"] < today:
+                    overdue_tasks.append(task)
+                recent_tasks.append(task)
+    recent_tasks.sort(key=lambda task: task.get("due_date") or "9999-12-31")
+
+    recent_activity = []
+    for t, (table, label, time_col, has_project) in enumerate(activity_sources):
+        rows = [r for (kind, tt, _), v in ((k, v) for k, v in results.items() if k[0] == "activity")
+                if tt == t for r in (v or [])]
+        rows.sort(key=lambda r: str(r.get(time_col) or ""), reverse=True)
+        for row in rows[:6]:
             recent_activity.append({
                 "label": label,
                 "at": row.get(time_col) or "",
@@ -2111,18 +2220,12 @@ def portal():
             })
     recent_activity.sort(key=lambda item: item["at"], reverse=True)
 
-    # 앱 로그 중 프로젝트가 비어 있는 행은 연구자가 먼저 분류해야 하는 데이터다.
-    unassigned_app_records = 0
-    for table in ("wardy_events", "neurobreeze_eeg", "neurobreeze_meditation"):
-        if not _is_admin():
-            continue
-        unassigned_app_records += _sb_count_where(table, "?project_id=is.null")
-
+    unassigned_app_records = sum(v for k, v in results.items() if k[0] == "unassigned")
     total_participants = sum(p.get("participant_count", 0) for p in projects)
     total_measurements = sum(p.get("measurement_count", 0) for p in projects)
     return render_template("portal.html",
         researcher=email,
-        projects=projects if isinstance(projects,list) else [],
+        projects=projects,
         total_participants=total_participants,
         total_measurements=total_measurements,
         open_tasks=open_tasks,
@@ -2131,7 +2234,7 @@ def portal():
         recent_activity=recent_activity[:8],
         unassigned_app_records=unassigned_app_records,
         missing_measurements=missing_measurements[:5],
-        ingestion=_ingestion_status(),
+        ingestion=ingestion,
         today=today)
 
 @app.route("/portal/projects/new", methods=["POST"])

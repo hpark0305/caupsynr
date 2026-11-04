@@ -14,3 +14,7 @@ forwarded_allow_ips = "*"  # Render's proxy is the only route to the app; client
 # Safety margin for slow database round trips (default 30 s killed the worker
 # mid-request on 2026-11-04). Pages should stay far below this.
 timeout = 60
+
+# Default access log plus the response time in ms (%(M)s), so slow pages show
+# up in Render's logs without guessing from timestamps.
+access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(M)sms'
