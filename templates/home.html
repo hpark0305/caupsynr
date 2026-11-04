@@ -56,7 +56,7 @@
 <!-- ── ABOUT ── -->
 <section style="background: var(--surface);">
   <div class="container">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center;">
+    <div class="about-split">
       <div>
         <span class="label" style="display:block;margin-bottom:14px;">About the Lab</span>
         <h2 class="tt-split" style="margin-bottom:20px;">Research at the intersection of trauma and digital health</h2>
@@ -64,8 +64,8 @@
         <p style="color:var(--muted);margin-bottom:28px;">We bridge the gap between academic research and practical tools — developing mobile apps and simulation programs that help healthcare workers and survivors recover from traumatic stress.</p>
         <a href="{{ url_for('team') }}" class="btn btn-outline">Meet the Team</a>
       </div>
-      <div style="background:var(--bg);border-radius:var(--radius-lg);padding:32px;">
-        <h4 style="margin-bottom:20px;font-family:'Plus Jakarta Sans',sans-serif;font-size:.85rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Research Focus Areas</h4>
+      <div class="about-focus">
+        <h4 class="about-focus-title">Research Focus Areas</h4>
         {% for r in research_topics %}
         <div style="display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--border-light);{% if loop.last %}border:none{% endif %}">
           <div style="width:8px;height:8px;background:var(--accent);border-radius:50%;flex-shrink:0;"></div>
