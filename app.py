@@ -180,7 +180,8 @@ def log_personal_data_access(response):
         audit(action, request.endpoint, target, detail=json.dumps(args, ensure_ascii=False) if args else None)
     return response
 
-# 개인정보 다운로드 사유 확인 (안전성 확보조치 기준 제8조: 다운로드 사유 확인).
+# 개인정보 다운로드 사유 확인. 안전성 확보조치 기준 제8조②은 다운로드 상황의
+# 확인·점검 방법을 내부 관리계획으로 정하게 하며, 이 연구실 계획은 사유 기록을 택했다.
 # Participant-data downloads must state a reason before the file is produced;
 # the reason is stored with the download's access-log entry.
 DOWNLOAD_REASONS = {'analysis': '연구 분석', 'report': 'IRB·연구 보고', 'backup': '데이터 보관·백업', 'other': '기타'}
@@ -4645,7 +4646,9 @@ def portal_audit():
                            page=page, total_pages=total_pages, total=total,
                            review_days=review_days, review_overdue=review_overdue)
 
-# ── 접속기록 정기 점검 (안전성 확보조치 기준 제8조: 월 1회 이상 점검) ──
+# ── 접속기록 정기 점검 ──
+# 제8조②: 점검 주기·방법·사후조치는 내부 관리계획으로 정한다(2025.10.31. 개정 전에는
+# 월 1회 이상). 이 연구실 내부 관리계획은 월 1회(31일)로 정한다.
 _REVIEW_INTERVAL_DAYS = 31
 _PRIVILEGE_ACTIONS = {'account_add', 'password_change', 'collaborator_add', 'collaborator_remove',
                       '2fa_enabled', '2fa_disabled', '2fa_reset_by_admin'}

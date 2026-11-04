@@ -54,7 +54,7 @@
 
     {% if review_overdue %}
     <div style="background:var(--surface);border:1px solid var(--tone-warn);border-radius:var(--radius-lg);padding:12px 16px;margin-bottom:14px;font-size:.86rem;">
-      접속기록 정기 점검이 {% if review_days is none %}아직 기록되지 않았습니다{% else %}{{ review_days }}일 전이 마지막입니다{% endif %}. 월 1회 이상 점검합니다.
+      접속기록 정기 점검이 {% if review_days is none %}아직 기록되지 않았습니다{% else %}{{ review_days }}일 전이 마지막입니다{% endif %}. 내부 관리계획상 점검 주기는 월 1회입니다.
       <a href="{{ url_for('portal_audit_review') }}" style="font-weight:600;margin-left:6px;">점검하기 →</a>
     </div>
     {% endif %}

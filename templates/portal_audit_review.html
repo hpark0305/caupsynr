@@ -22,7 +22,7 @@
   <div class="container" style="padding-top:28px;padding-bottom:60px;">
     <div class="portal-eyebrow">관리 · 개인정보 보호</div>
     <h1 style="font-size:1.9rem;margin:6px 0 8px;letter-spacing:-.03em;">접속기록 점검</h1>
-    <p class="rv-note" style="margin-bottom:18px;">개인정보처리시스템 접속기록은 월 1회 이상 점검합니다. 점검 기간: <strong>{{ start.strftime('%Y-%m-%d %H:%M') }} ~ {{ end.strftime('%Y-%m-%d %H:%M') }}</strong> (한국시간), 기록 {{ summary.total }}건.</p>
+    <p class="rv-note" style="margin-bottom:18px;">연구실 개인정보 내부 관리계획에 따라 접속기록과 개인정보 다운로드 상황을 월 1회 점검합니다. 점검 기간: <strong>{{ start.strftime('%Y-%m-%d %H:%M') }} ~ {{ end.strftime('%Y-%m-%d %H:%M') }}</strong> (한국시간), 기록 {{ summary.total }}건.</p>
 
     <div class="rv-card" {% if overdue %}style="border-color:var(--tone-warn);"{% endif %}>
       <h2>점검 상태
