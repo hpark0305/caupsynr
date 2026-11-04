@@ -16,6 +16,7 @@ ul { list-style: none; }
   --violet:       #7c6fe0;
   --violet-soft:  #9a8ff0;
   --violet-deep:  #5b4dc8;
+  --violet-fill:  #6354d6;  /* violet that keeps white text at AA (5.5:1); #7c6fe0 was 4.0:1 */
   --cyan:         #4fc3f7;
   --cyan-soft:    #7ed5fa;
   --cyan-deep:    #2aa3d8;
@@ -271,7 +272,7 @@ body {
   gap: 8px;
   padding: 11px 16px;
   border-radius: var(--r-md);
-  background: var(--violet);
+  background: var(--violet-fill);
   color: #fff;
   font-size: .86rem;
   font-weight: 700;
@@ -645,12 +646,12 @@ body::before {
 .btn:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
 
 .btn-primary {
-  background: var(--violet);
+  background: var(--violet-fill);
   color: #fff;
   box-shadow: var(--glow-violet);
 }
 .btn-primary:hover {
-  background: var(--violet-soft);
+  background: var(--violet-deep);
   box-shadow: 0 12px 30px rgba(124,111,224,0.42);
   transform: translateY(-1px);
 }
@@ -1075,7 +1076,7 @@ span.ri-card-icon {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: var(--violet);
+  background: var(--violet-fill);
   color: #fff;
   font-size: .82rem;
   font-weight: 500;
@@ -1925,7 +1926,7 @@ span.ri-card-icon {
 }
 /* Breadcrumb tabs + content tabs — branded active state */
 .portal-wrap .pnav-btn.active { color: var(--violet-soft); border-bottom-color: var(--violet); }
-.portal-wrap .tab-btn.active { background: var(--violet); border-bottom-color: var(--violet); color: #fff; }
+.portal-wrap .tab-btn.active { background: var(--violet-fill); border-bottom-color: var(--violet); color: #fff; }
 /* Stat tiles — editorial display font + subtle depth */
 .portal-wrap .stat-num { font-family: var(--font-display); letter-spacing: -.03em; }
 .portal-wrap .stat-card { box-shadow: var(--shadow-sm); }
@@ -2135,7 +2136,7 @@ body.cursor-down .cursor-ring { width: 26px; height: 26px; margin: -13px 0 0 -13
   position: fixed; top: 0; left: 0; z-index: 9999; pointer-events: none;
   width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  background: var(--violet); color: #fff;
+  background: var(--violet-fill); color: #fff;
   font-family: var(--font-display); font-size: .6rem; font-weight: 700;
   letter-spacing: .08em; text-transform: uppercase;
   opacity: 0; scale: .3; transition: opacity .2s var(--ease-out), scale .2s var(--ease-out);
@@ -2292,7 +2293,7 @@ body.is-portal .site-footer { display: none; }
 .wd-seg { display: inline-flex; padding: 3px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--bg); }
 .wd-seg-item input { position: absolute; opacity: 0; pointer-events: none; }
 .wd-seg-item span { display: block; padding: 6px 12px; border-radius: var(--r-pill); color: var(--fg-3); font-size: .78rem; font-weight: 650; cursor: pointer; }
-.wd-seg-item input:checked + span { background: var(--violet); color: #fff; }
+.wd-seg-item input:checked + span { background: var(--violet-fill); color: #fff; }
 .wd-seg-item input:focus-visible + span { outline: 2px solid var(--violet); outline-offset: 2px; }
 .wd-field { display: flex; flex-direction: column; gap: 4px; font-size: .74rem; font-weight: 650; color: var(--fg-3); }
 .wd-field select, .wd-field input { min-width: 150px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--r-sm);
@@ -2417,7 +2418,7 @@ body.is-portal .site-footer { display: none; }
 .apd-feat p { margin: 0; color: var(--fg-3); font-size: .9rem; line-height: 1.7; word-break: keep-all; }
 .apd-steps { list-style: none; margin: 0 auto; padding: 0; max-width: 980px; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; counter-reset: none; }
 .apd-steps li { display: flex; flex-direction: column; gap: 12px; padding: 20px 18px; border-radius: var(--r-lg); border: 1px solid var(--border); background: var(--surface); color: var(--fg-2); font-size: .9rem; line-height: 1.6; word-break: keep-all; }
-.apd-step-num { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; background: var(--violet); color: #fff; font-weight: 800; font-size: .85rem; }
+.apd-step-num { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; background: var(--violet-fill); color: #fff; font-weight: 800; font-size: .85rem; }
 .apd-two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
 .apd-panel { padding: 28px; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--bg); }
 .apd-panel h3 { margin: 0 0 12px; font-size: 1.15rem; font-weight: 750; color: var(--fg-1); font-family: var(--font-kr); }
@@ -2425,3 +2426,76 @@ body.is-portal .site-footer { display: none; }
 .apd-panel li + li { margin-top: 6px; }
 @media (max-width: 960px) { .apd-feat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .apd-intro { grid-template-columns: 1fr; gap: 28px; } }
 @media (max-width: 560px) { .apd-feat-grid { grid-template-columns: 1fr; } }
+
+/* ═══════════════════════════════════════════════════════════════════
+   2026-11-04 readability + layout pass (from an automated WCAG AA
+   contrast / overflow sweep of every page, both themes, 1440 & 390 px)
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Small secondary text: dark --fg-4 (40% white) was ~3.9:1, light #86868b ~3.6:1. */
+:root { --fg-4: rgba(255,255,255,0.56); }
+[data-theme="light"] { --fg-4: #707075; }
+
+/* Light theme: pastel brand colours used as TEXT on white were 1.6–2.9:1. */
+[data-theme="light"] .label { color: var(--violet-deep); }
+[data-theme="light"] em, [data-theme="light"] i { color: var(--violet-deep); }
+[data-theme="light"] :not(pre) > code { color: #17648c; }
+[data-theme="light"] .pub-doi { color: #17648c; }
+[data-theme="light"] .nav-cta,
+[data-theme="light"] .nav-cta:hover { color: var(--violet-deep) !important; border-color: rgba(91,77,200,.45) !important; }
+[data-theme="light"] .btn-outline { color: var(--violet-deep); border-color: var(--violet-deep); }
+.site-header .logo small, .site-header small { color: var(--fg-3); }
+/* Labels that sit on photos / gradient cards keep their own white tones. */
+[data-theme="light"] .showcase-overlay .label { color: rgba(255,255,255,0.86); }
+[data-theme="light"] .ri-grid .ri-card:not(.ri-card-new) .ri-card-body .label { color: rgba(255,255,255,0.86); }
+[data-theme="light"] .event-hero .label { color: rgba(255,255,255,0.72) !important; }
+[data-theme="light"] .research-card-overlay .label,
+[data-theme="light"] .gallery-hero .label { color: var(--cyan-soft); }
+
+/* Portal sidebar logout is a <button>: browser default grey fill made its
+   text ~1.2:1 in dark theme. Render it like the other nav items. */
+.lin-wrap button.lin-nav-item {
+  background: transparent; border: 1px solid var(--border); font: inherit;
+  color: var(--fg-3); width: auto; text-align: left;
+}
+.lin-wrap button.lin-nav-item:hover { background: var(--accent-light); color: var(--fg-1); }
+
+/* Home "About the Lab": fixed two columns overflowed phones by 25 px. */
+.about-split { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
+.about-focus { background: var(--bg); border-radius: var(--radius-lg); padding: 32px; }
+.about-focus-title { margin-bottom: 20px; font-size: .78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--fg-3); }
+
+@media (max-width: 760px) {
+  .about-split { grid-template-columns: 1fr; gap: 36px; }
+  .about-focus { padding: 22px; }
+  /* Inline two-column form grids (portal dialogs, app forms) stack on phones. */
+  [style*="grid-template-columns:1fr 1fr"] { grid-template-columns: 1fr !important; }
+  [style*="grid-template-columns:repeat(3,1fr)"] { grid-template-columns: 1fr 1fr !important; }
+  [style*="grid-template-columns:repeat(6,1fr)"] { grid-template-columns: repeat(3,1fr) !important; }
+}
+
+/* Home stats on phones: 40 px padding + wrapped labels made each tile ~230 px tall. */
+@media (max-width: 640px) {
+  .stat-item { padding: 22px 10px; }
+  .stat-item:nth-child(-n+2) { border-bottom: 1px solid var(--border); }
+  .stat-lbl { letter-spacing: .08em; font-size: .68rem; }
+}
+
+/* Light theme: brand violet as text/link colour (#7c6fe0) was 3.7–4.0:1.
+   A slightly deeper violet keeps the hue and reaches AA on white and #f5f5f7. */
+[data-theme="light"] { --violet: #6354d6; --accent: #6354d6; }
+[data-theme="light"] .portal-mobile-nav a { color: var(--fg-2); }
+[data-theme="light"] .portal-mobile-nav a.active { color: var(--violet-deep); }
+/* The apps stat band is always dark: use fixed light text, not theme tokens. */
+.apps-stat-lbl { color: rgba(255,255,255,0.68); }
+[data-theme="light"] { --violet-soft: #6354d6; }
+
+/* Light theme: cyan (#4fc3f7) as text on white was 1.6–2.0:1. */
+[data-theme="light"] .contact-item dt,
+[data-theme="light"] .contact-item a,
+[data-theme="light"] .wave-row.highlight .wave-name,
+[data-theme="light"] .freq-result,
+[data-theme="light"] .apd-label-text,
+[data-theme="light"] .privacy-content a,
+[data-theme="light"] .portal-section-link:hover { color: #17648c; }
+[data-theme="light"] .btn-outline:hover { color: var(--violet-deep); border-color: var(--violet-deep); }
