@@ -1,5 +1,6 @@
 """Offline security regression tests: synthetic accounts/data, no production env."""
 import io
+import threading
 import json
 import os
 import re
@@ -97,8 +98,11 @@ class SecurityTests(unittest.TestCase):
         store.list.side_effect = lambda prefix: [{'id': key, 'name': key[len(prefix)+1:]} for key in objects if key.startswith(prefix + '/')]
         store.delete.side_effect = lambda key: objects.pop(key, None)
         local_sb = portal.sb
+        # The portal issues independent reads concurrently (_db_parallel); the
+        # module-level flag swap below is not thread-safe, so serialise it.
+        swap = threading.RLock()
         def db(*args, **kwargs):
-            with patch.object(portal, '_USE_SUPABASE', False):
+            with swap, patch.object(portal, '_USE_SUPABASE', False):
                 return local_sb(*args, **kwargs)
         with patch.object(portal, '_USE_SUPABASE', True), patch.object(portal, '_file_store', return_value=store), patch.object(portal, 'sb', side_effect=db):
             yield store, objects
@@ -1041,3 +1045,54 @@ class PortalHomeQueryBudgetTests(unittest.TestCase):
         bulk = [c for c in calls if c[0] == 'wardy_events' and c[2] != 'count=exact' and not small(c[1])]
         self.assertEqual(bulk, [], bulk[:3])
         self.assertLessEqual(len(calls), 40, len(calls))
+
+
+class PortalHomeLatencyTests(unittest.TestCase):
+    """2026-11-04 12:44 UTC: after the count fix, login -> portal home still took ~17 s
+    because ~25 independent Supabase reads (~0.5 s each, Ohio -> Mumbai) ran one by one.
+    """
+
+    def test_independent_reads_run_concurrently_and_panel_is_cached(self):
+        pw_hash = portal.generate_password_hash('A-long-test-password!')
+        now = int(portal.time.time())
+        calls, delay = [], 0.2
+
+        def fake_get(url, headers=None, timeout=None):
+            portal.time.sleep(delay)
+            table = url.split('/rest/v1/', 1)[1].split('?', 1)[0]
+            calls.append(table)
+            resp = MagicMock(status_code=200, headers={})
+            resp.raise_for_status.return_value = None
+            if (headers or {}).get('Prefer') == 'count=exact':
+                resp.headers = {'Content-Range': '*/3'}
+                resp.json.return_value = []
+            elif table == 'accounts':
+                resp.json.return_value = [{'password': pw_hash}]
+            elif table == 'portal_auth_sessions':
+                resp.json.return_value = [{'created_at': now, 'last_seen': now}]
+            else:
+                resp.json.return_value = []
+            return resp
+
+        client = portal.app.test_client()
+        portal._ingest_cache.clear()
+        with patch.object(portal, '_USE_SUPABASE', True), \
+             patch.object(portal, 'ADMIN_EMAILS', {'admin@example.test'}), \
+             patch.object(portal._requests, 'get', side_effect=fake_get):
+            with client.session_transaction() as sess:
+                sess['researcher'] = 'admin@example.test'
+                sess['auth_stamp'] = portal._auth_stamp(pw_hash)
+                sess['auth_session_id'] = 'sid'
+            started = portal.time.monotonic()
+            first = client.get('/portal')
+            elapsed = portal.time.monotonic() - started
+            first_calls = len(calls)
+            calls.clear()
+            second = client.get('/portal')
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        sequential = first_calls * delay
+        # Concurrency must cut wall time well below the one-by-one cost.
+        self.assertLess(elapsed, sequential / 3, (elapsed, first_calls))
+        # The data-collection panel is cached, so a reload issues fewer reads.
+        self.assertLess(len(calls), first_calls - 10, (len(calls), first_calls))
