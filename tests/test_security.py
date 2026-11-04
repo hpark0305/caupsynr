@@ -985,3 +985,59 @@ class AppPagesTests(unittest.TestCase):
         self.assertNotIn('Mental Health Apps', home)
         self.assertIn('Apps Developed', home)
         self.assertNotIn('Mental-Health Apps Released', home)
+
+
+class PortalHomeQueryBudgetTests(unittest.TestCase):
+    """2026-11-04: the portal home exceeded gunicorn's 30 s timeout in production.
+
+    Simulates Supabase with 6,261 unassigned Wardy rows and asserts the admin
+    home page counts rows server-side instead of paging every row over HTTP.
+    """
+
+    def test_admin_home_uses_counts_not_row_downloads(self):
+        from urllib.parse import parse_qs, urlsplit
+        pw_hash = portal.generate_password_hash('A-long-test-password!')
+        calls = []
+        now = int(portal.time.time())
+
+        def fake_get(url, headers=None, timeout=None):
+            parts = urlsplit(url)
+            table = parts.path.rsplit('/', 1)[1]
+            q = parse_qs(parts.query)
+            calls.append((table, parts.query, (headers or {}).get('Prefer')))
+            resp = MagicMock(status_code=200, headers={})
+            resp.raise_for_status.return_value = None
+            if (headers or {}).get('Prefer') == 'count=exact':
+                resp.headers = {'Content-Range': '0-0/6261' if table == 'wardy_events' else '*/0'}
+                resp.json.return_value = []
+            elif table == 'accounts':
+                resp.json.return_value = [{'password': pw_hash}]
+            elif table == 'portal_auth_sessions':
+                resp.json.return_value = [{'created_at': now, 'last_seen': now}]
+            elif table == 'wardy_events' and q.get('project_id') == ['is.null']:
+                limit = int(q['limit'][0])
+                resp.json.return_value = [{'id': str(i), 'received_at': '2026-11-03T07:09:33'} for i in range(min(limit, 1000))]
+            else:
+                resp.json.return_value = []
+            return resp
+
+        client = portal.app.test_client()
+        with patch.object(portal, '_USE_SUPABASE', True), \
+             patch.object(portal, 'ADMIN_EMAILS', {'admin@example.test'}), \
+             patch.object(portal._requests, 'get', side_effect=fake_get), \
+             patch.object(portal._requests, 'patch', return_value=MagicMock(status_code=204)), \
+             patch.object(portal._requests, 'post', return_value=MagicMock(status_code=201, json=MagicMock(return_value=[{}]))):
+            with client.session_transaction() as sess:
+                sess['researcher'] = 'admin@example.test'
+                sess['auth_stamp'] = portal._auth_stamp(pw_hash)
+                sess['auth_session_id'] = 'sid'
+            response = client.get('/portal')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('6261', response.get_data(as_text=True))
+        # No paged download of the unassigned table: every wardy_events GET is a count or asks for <= 10 rows.
+        def small(query):
+            limit = parse_qs(query).get('limit', ['1000'])[0]
+            return int(limit) <= 10
+        bulk = [c for c in calls if c[0] == 'wardy_events' and c[2] != 'count=exact' and not small(c[1])]
+        self.assertEqual(bulk, [], bulk[:3])
+        self.assertLessEqual(len(calls), 40, len(calls))

@@ -1,9 +1,14 @@
-from flask import Flask, has_request_context, render_template, request, redirect, url_for, session, flash, jsonify, Response, abort
+from flask import Flask, g, has_request_context, render_template, request, redirect, url_for, session, flash, jsonify, Response, abort
 from collections import OrderedDict
 from functools import wraps
 from dotenv import load_dotenv
 import os, sqlite3, uuid as _uuid, json, csv, io, re, hashlib, hmac, time, unicodedata
-import requests as _requests
+import requests
+# One pooled HTTPS session for every Supabase REST call. The server (Ohio) and
+# database (Mumbai) are ~250 ms apart; a fresh TLS handshake per request made
+# the portal home exceed gunicorn's 30 s worker timeout (2026-11-04 outage).
+_requests = requests.Session()
+_requests.mount("https://", requests.adapters.HTTPAdapter(pool_connections=4, pool_maxsize=8))
 from urllib.parse import quote, parse_qsl
 from werkzeug.exceptions import HTTPException
 from zipfile import BadZipFile
@@ -958,6 +963,38 @@ def _sb_count(table, params=""):
         except Exception:
             return 0
 
+def _sb_count_where(table, params=""):
+    """Count rows matching PostgREST-style filters without downloading them.
+
+    Supabase: one request with Prefer count=exact, reading Content-Range.
+    SQLite fallback: COUNT(*) with the same filters. Raises nothing; 0 on error.
+    """
+    if table not in _ALLOWED_TABLES:
+        raise ValueError('Invalid database table')
+    parts = [p for p in params.lstrip('?').split('&')
+             if p and not p.startswith(('select=', 'order=', 'limit=', 'offset='))]
+    if _USE_SUPABASE:
+        query = '?' + '&'.join(parts + ['select=id', 'limit=1'])
+        try:
+            r = _requests.get(f"{SUPABASE_URL}/rest/v1/{table}{query}",
+                              headers={**_sb_headers(), "Prefer": "count=exact"}, timeout=10)
+            r.raise_for_status()
+            total = r.headers.get("Content-Range", "").rpartition("/")[2]
+            return int(total) if total.isdigit() else 0
+        except Exception as e:
+            app.logger.error("Database count failed: %s (%s)", table, type(e).__name__)
+            return 0
+    filters, _, _ = _parse_sb_params('?' + '&'.join(parts))
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            sql, vals = f"SELECT COUNT(*) FROM {table}", []
+            if filters:
+                where, vals = _sqlite_where(filters)
+                sql += " WHERE " + where
+            return conn.execute(sql, vals).fetchone()[0]
+    except Exception:
+        return 0
+
 def _get_account(email):
     rows = sb("GET", "accounts", params=f"?email=eq.{_q(email)}&select=password")
     return rows[0]["password"] if rows else None
@@ -1149,6 +1186,19 @@ def _app_log_rows(table, params='', sort_key=None, reverse=False):
         rows.sort(key=lambda r: str(r.get(sort_key) or ''), reverse=reverse)
     return rows
 
+def _app_log_count(table, params=''):
+    """Count of app rows this researcher may see (same rule as _app_log_rows)."""
+    parts = [p for p in params.lstrip('?').split('&') if p and not p.startswith('project_id=')]
+    selected = request.args.get('project_id')
+    projects = [{'id': selected}] if selected else _accessible_projects(session['researcher'])
+    total = 0
+    for project in projects:
+        _authorize_project(project['id'])
+        total += _sb_count_where(table, '?' + '&'.join(parts + [f"project_id=eq.{_q(project['id'])}"]))
+    if _is_admin() and not selected:
+        total += _sb_count_where(table, '?' + '&'.join(parts + ['project_id=is.null']))
+    return total
+
 def _require_project_owner(project_id):
     """Returns (project_dict, None) if OK, (None, redirect_response) if unauthorized."""
     proj = sb("GET","projects",params=f"?id=eq.{_q(project_id)}")
@@ -1178,7 +1228,16 @@ def _project_access_ok(project_id, email):
     return bool(row)
 
 def _accessible_projects(email):
-    """Projects `email` owns or collaborates on, deduped, as [{'id':..,'name':..}, ...]."""
+    """Projects `email` owns or collaborates on, deduped, as [{'id':..,'name':..}, ...].
+
+    Memoised per request: dashboards call this many times for the same user.
+    """
+    cache = g.setdefault('_accessible_projects', {}) if has_request_context() else {}
+    if email not in cache:
+        cache[email] = _load_accessible_projects(email)
+    return [dict(p) for p in cache[email]]
+
+def _load_accessible_projects(email):
     projects = sb("GET", "projects", params=f"?researcher_email=eq.{_q(email)}&select=id,name") or []
     have = {p["id"] for p in projects}
     collab_rows = sb("GET", "project_collaborators", params=f"?researcher_email=eq.{_q(email)}&select=project_id") or []
@@ -1976,16 +2035,16 @@ def _ingestion_status():
     for label, table, col, endpoint, admin_only in _INGEST_SOURCES:
         if admin_only and not _is_admin():
             continue
-        def rows(params):
-            return (sb("GET", table, params=params) if admin_only
-                    else _app_log_rows(table, params)) or []
-        latest = rows(f"?select={col}&order={col}.desc&limit=1")
+        def count(params):
+            return _sb_count_where(table, params) if admin_only else _app_log_count(table, params)
+        query = f"?select={col}&order={col}.desc&limit=1"
+        latest = (sb("GET", table, params=query) if admin_only else _app_log_rows(table, query)) or []
         last = max((wardy_analytics.parse_time(r.get(col)) for r in latest if r.get(col)), default=None)
         result.append({
             "label": label, "url": url_for(endpoint),
             "fresh": wardy_analytics.freshness(last, now),
-            "day": len(rows(f"?select=id&{col}=gte.{_q(day)}")),
-            "week": len(rows(f"?select=id&{col}=gte.{_q(week)}")),
+            "day": count(f"?{col}=gte.{_q(day)}"),
+            "week": count(f"?{col}=gte.{_q(week)}"),
         })
     return result
 
@@ -2012,10 +2071,8 @@ def portal():
     missing_measurements = []
     for p in (projects if isinstance(projects,list) else []):
         pid = p.get("id","")
-        pcs = sb("GET","project_participants",params=f"?project_id=eq.{_q(pid)}&select=id") or []
-        mcs = sb("GET","measurements",params=f"?project_id=eq.{_q(pid)}&select=id") or []
-        p["participant_count"] = len(pcs) if isinstance(pcs,list) else 0
-        p["measurement_count"] = len(mcs) if isinstance(mcs,list) else 0
+        p["participant_count"] = _sb_count_where("project_participants", f"?project_id=eq.{_q(pid)}")
+        p["measurement_count"] = _sb_count_where("measurements", f"?project_id=eq.{_q(pid)}")
         if p["participant_count"] and not p["measurement_count"]:
             missing_measurements.append(p)
         tasks = sb("GET", "tasks", params=f"?project_id=eq.{_q(pid)}&order=due_date.asc") or []
@@ -2059,7 +2116,7 @@ def portal():
     for table in ("wardy_events", "neurobreeze_eeg", "neurobreeze_meditation"):
         if not _is_admin():
             continue
-        unassigned_app_records += len(sb("GET", table, params="?select=id&project_id=is.null") or [])
+        unassigned_app_records += _sb_count_where(table, "?project_id=is.null")
 
     total_participants = sum(p.get("participant_count", 0) for p in projects)
     total_measurements = sum(p.get("measurement_count", 0) for p in projects)
