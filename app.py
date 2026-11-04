@@ -170,12 +170,48 @@ _ACCESS_LOGGED = {
 @app.after_request
 def log_personal_data_access(response):
     action = _ACCESS_LOGGED.get(request.endpoint or '')
-    if action and request.method == 'GET' and response.status_code == 200 and session.get('researcher'):
-        args = {k: v for k, v in request.args.items() if v}
+    if action and request.method == 'GET' and response.status_code == 200 and session.get('researcher') \
+            and not g.get('download_gate'):
+        args = {k: v for k, v in request.args.items() if v and k not in ('reason', 'reason_note')}
+        if action == 'download':
+            args['reason'] = download_reason()
         target = (request.view_args or {}).get('participant_id') or (request.view_args or {}).get('project_id') \
             or (request.view_args or {}).get('file_id') or args.get('project_id')
         audit(action, request.endpoint, target, detail=json.dumps(args, ensure_ascii=False) if args else None)
     return response
+
+# 개인정보 다운로드 사유 확인 (안전성 확보조치 기준 제8조: 다운로드 사유 확인).
+# Participant-data downloads must state a reason before the file is produced;
+# the reason is stored with the download's access-log entry.
+DOWNLOAD_REASONS = {'analysis': '연구 분석', 'report': 'IRB·연구 보고', 'backup': '데이터 보관·백업', 'other': '기타'}
+_DOWNLOAD_REASON_ENDPOINTS = {e for e, a in _ACCESS_LOGGED.items() if a == 'download'} | {'portal_mindmate_export'}
+
+def download_reason():
+    """Return the stated reason as display text, or None when missing/invalid."""
+    code = request.args.get('reason', '')
+    if code not in DOWNLOAD_REASONS:
+        return None
+    if code == 'other':
+        note = ' '.join((request.args.get('reason_note') or '').split())[:200]
+        return f"기타: {note}" if note else None
+    return DOWNLOAD_REASONS[code]
+
+def _download_reason_gate():
+    """Show the reason form instead of the file when no valid reason was given."""
+    if request.endpoint not in _DOWNLOAD_REASON_ENDPOINTS or request.method != 'GET' or download_reason():
+        return None
+    g.download_gate = True  # not a download: keep it out of the access log
+    params = [(k, v) for k, v in request.args.items(multi=True) if k not in ('reason', 'reason_note')]
+    return render_template('portal_download_reason.html', action=request.path, params=params,
+                           reasons=DOWNLOAD_REASONS, error=bool(request.args.get('reason')),
+                           back=request.referrer if (request.referrer or '').startswith(request.host_url) else url_for('portal'))
+
+# OPTIONS is answered automatically by Flask; no client here needs CORS
+# preflight, and inspection checklists flag it as an unnecessary method.
+@app.before_request
+def block_options_method():
+    if request.method == 'OPTIONS':
+        abort(405)
 
 @app.context_processor
 def inject_current_year():
@@ -188,6 +224,8 @@ def security_headers(response):
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
     response.headers['Content-Security-Policy'] = CONTENT_SECURITY_POLICY
     response.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()'
+    if 'Allow' in response.headers:
+        response.headers['Allow'] = ', '.join(m for m in response.headers['Allow'].split(', ') if m != 'OPTIONS')
     if app.config['SESSION_COOKIE_SECURE']:
         response.headers['Strict-Transport-Security'] = 'max-age=31536000'
     if request.path.startswith(('/portal', '/api', '/login', '/reset-password')) or session.get('researcher'):
@@ -1059,6 +1097,9 @@ def login_required(f):
         if session.get('must_enroll') and request.endpoint not in _ENROLL_ENDPOINTS:
             return redirect(url_for('portal_2fa'))
         _authorize_portal_request()
+        gate = _download_reason_gate()
+        if gate is not None:
+            return gate
         return f(*args, **kwargs)
     return decorated
 
@@ -1125,7 +1166,7 @@ def _authorize_portal_request():
     endpoint = request.endpoint or ''
     write = request.method not in ('GET', 'HEAD', 'OPTIONS')
     admin_routes = {'portal_add_account', 'portal_db_backup', 'portal_2fa_reset', 'portal_db_restore',
-                    'portal_contacts', 'portal_audit', 'portal_drive', 'portal_drive_file',
+                    'portal_contacts', 'portal_audit', 'portal_audit_review', 'portal_drive', 'portal_drive_file',
                     'pubs_new', 'publications_new', 'apps_new', 'portal_research_edit'}
     if (endpoint in admin_routes or endpoint.startswith(('gallery_', 'portal_news', 'portal_mindmate'))) and not _is_admin():
         abort(403)
@@ -4181,7 +4222,7 @@ def portal_mindmate_export():
         table, cols, fname = "mindmate_daily_survey", _MM_SURVEY_COLS, "mindmate_daily_survey.csv"
     rows = sb("GET", table, params="?select=*&order=date.desc") or []
 
-    if not audit('export_mindmate', table, detail=json.dumps({'rows': len(rows)})):
+    if not audit('export_mindmate', table, detail=json.dumps({'rows': len(rows), 'reason': download_reason()}, ensure_ascii=False)):
         abort(503)
     # The original payload is not an export field: older raw values may contain identifiers.
     cols = [col for col in cols if col != 'raw']
@@ -4599,8 +4640,105 @@ def portal_audit():
     logs = sb("GET", "audit_log",
               params=f"?order=created_at.desc&limit={_q(PAGE_SIZE)}&offset={_q(offset)}") or []
     total_pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
+    _, review_days, review_overdue = access_review_status()
     return render_template("portal_audit.html", logs=logs, researcher=session["researcher"],
-                           page=page, total_pages=total_pages, total=total)
+                           page=page, total_pages=total_pages, total=total,
+                           review_days=review_days, review_overdue=review_overdue)
+
+# ── 접속기록 정기 점검 (안전성 확보조치 기준 제8조: 월 1회 이상 점검) ──
+_REVIEW_INTERVAL_DAYS = 31
+_PRIVILEGE_ACTIONS = {'account_add', 'password_change', 'collaborator_add', 'collaborator_remove',
+                      '2fa_enabled', '2fa_disabled', '2fa_reset_by_admin'}
+_KST = timezone(timedelta(hours=9))
+
+def _parse_ts(value):
+    try:
+        ts = datetime.fromisoformat(str(value).replace('Z', '+00:00'))
+        return ts if ts.tzinfo else ts.replace(tzinfo=timezone.utc)
+    except (TypeError, ValueError):
+        return None
+
+def _last_access_review():
+    rows = sb("GET", "audit_log", params="?action=eq.access_log_review&order=created_at.desc&limit=1") or []
+    return rows[0] if rows else None
+
+def access_review_status():
+    """(last review row or None, days since it or None, overdue flag) for banners."""
+    last = _last_access_review()
+    when = _parse_ts(last.get('created_at')) if last else None
+    days = (datetime.now(timezone.utc) - when).days if when else None
+    return last, days, days is None or days > _REVIEW_INTERVAL_DAYS
+
+def summarize_access_log(rows):
+    """Flag patterns an access-log review should look at. Pure function, tested directly."""
+    fail_by_account, fail_by_ip, downloads, ips = {}, {}, {}, {}
+    off_hours, privilege, no_reason = [], [], []
+    for r in rows:
+        action, who = r.get('action') or '', r.get('researcher') or '—'
+        if action == 'login_failure':
+            key = r.get('target_id') or '—'
+            fail_by_account[key] = fail_by_account.get(key, 0) + 1
+            fail_by_ip[r.get('ip') or '—'] = fail_by_ip.get(r.get('ip') or '—', 0) + 1
+            continue
+        if r.get('ip') and who != 'system':
+            ips.setdefault(who, set()).add(r['ip'])
+        is_download = action in ('download', 'export_mindmate')
+        if is_download:
+            downloads[who] = downloads.get(who, 0) + 1
+            try:
+                detail = json.loads(r.get('detail') or '{}')
+            except ValueError:
+                detail = {}
+            if not (isinstance(detail, dict) and detail.get('reason')):
+                no_reason.append(r)
+        if action in _PRIVILEGE_ACTIONS:
+            privilege.append(r)
+        ts = _parse_ts(r.get('created_at'))
+        if ts and (is_download or action == 'view') and not 7 <= ts.astimezone(_KST).hour < 22:
+            off_hours.append(r)
+    top = lambda d: sorted(d.items(), key=lambda kv: (-kv[1], kv[0]))
+    return {
+        'login_fail_accounts': [kv for kv in top(fail_by_account) if kv[1] >= 5],
+        'login_fail_ips': [kv for kv in top(fail_by_ip) if kv[1] >= 5],
+        'downloads': top(downloads),
+        'downloads_without_reason': no_reason,
+        'off_hours': off_hours,
+        'privilege_changes': privilege,
+        'ips_per_account': sorted(((k, sorted(v)) for k, v in ips.items()), key=lambda kv: (-len(kv[1]), kv[0])),
+        'total': len(rows),
+    }
+
+@app.route("/portal/audit/review", methods=["GET", "POST"])
+@login_required
+def portal_audit_review():
+    last, days, overdue = access_review_status()
+    end = datetime.now(timezone.utc)
+    start = _parse_ts(last.get('created_at')) if last else None
+    if not start or (end - start).days > 92:
+        start = end - timedelta(days=_REVIEW_INTERVAL_DAYS)
+    rows = sb("GET", "audit_log",
+              params=f"?created_at=gte.{_q(start.isoformat())}&action=not.in.(access_log_review)"
+                     f"&select=created_at,researcher,action,target_table,target_id,detail,ip&order=created_at.desc") or []
+    summary = summarize_access_log(rows)
+    if request.method == "POST":
+        note = ' '.join((request.form.get('note') or '').split())[:500]
+        findings = len(summary['login_fail_accounts']) + len(summary['login_fail_ips']) \
+            + len(summary['downloads_without_reason']) + len(summary['off_hours'])
+        stored = audit('access_log_review', 'audit_log', detail=json.dumps({
+            'period_start': start.isoformat(), 'period_end': end.isoformat(), 'entries': summary['total'],
+            'flagged': findings, 'note': note}, ensure_ascii=False))
+        flash("접속기록 점검 결과를 기록했습니다." if stored else "점검 기록 저장에 실패했습니다. 다시 시도해 주세요.",
+              None if stored else "error")
+        return redirect(url_for("portal_audit_review"))
+    history = sb("GET", "audit_log", params="?action=eq.access_log_review&order=created_at.desc&limit=12") or []
+    for h in history:
+        try:
+            h['parsed'] = json.loads(h.get('detail') or '{}')
+        except ValueError:
+            h['parsed'] = {}
+    return render_template("portal_audit_review.html", researcher=session["researcher"], summary=summary,
+                           start=start.astimezone(_KST), end=end.astimezone(_KST), last=last, days=days,
+                           overdue=overdue, history=history, interval=_REVIEW_INTERVAL_DAYS)
 
 # ── Collaboration ──────────────────────────────────────
 @app.route("/portal/projects/<project_id>/collaborators/add", methods=["POST"])

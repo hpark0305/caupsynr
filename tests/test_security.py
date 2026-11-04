@@ -114,12 +114,12 @@ class SecurityTests(unittest.TestCase):
             row = portal.sb('GET', 'portal_files')[0]
             self.assertTrue(row['filename'].startswith('storage/'))
             self.assertEqual(list(Path(portal.DATA_DIR).rglob('*')), [])
-            response = self.client.get('/portal/files/' + row['id'] + '/download')
+            response = self.client.get('/portal/files/' + row['id'] + '/download?reason=analysis')
             self.assertEqual(response.data, b'code,score\na,1')
             self.assertEqual(response.headers['Cache-Control'], 'no-store')
         self.sign_in('other@example.test')
         with self.remote_files() as (store, objects):
-            self.assertEqual(self.client.get('/portal/files/' + row['id'] + '/download').status_code, 302)
+            self.assertEqual(self.client.get('/portal/files/' + row['id'] + '/download?reason=analysis').status_code, 302)
             store.get.assert_not_called()
 
     def test_remote_failure_leaves_no_database_metadata_or_import(self):
@@ -137,13 +137,14 @@ class SecurityTests(unittest.TestCase):
             response = self.post('/portal/projects/own/upload', {'file': (io.BytesIO(b'code,score\na,1'), 'data.csv')})
             self.assertEqual(response.status_code, 302)
             row = portal.sb('GET', 'portal_files')[0]
-            self.assertEqual(self.client.get('/portal/files/' + row['id'] + '/download').data, b'code,score\na,1')
+            self.assertEqual(self.client.get('/portal/files/' + row['id'] + '/download?reason=analysis').data, b'code,score\na,1')
 
     def test_metadata_failure_keeps_remote_original_without_false_success(self):
         local_sb = portal.sb
+        swap = threading.RLock()  # same reason as remote_files(): _db_parallel runs reads in threads
         def fail_metadata(method, table, **kwargs):
             if method == 'POST' and table == 'portal_files': return []
-            with patch.object(portal, '_USE_SUPABASE', False):
+            with swap, patch.object(portal, '_USE_SUPABASE', False):
                 return local_sb(method, table, **kwargs)
         with self.remote_files() as (store, objects), patch.object(portal, 'sb', side_effect=fail_metadata):
             response = self.post('/portal/files/upload', {'file': (io.BytesIO(b'code,score'), 'data.csv')})
@@ -202,7 +203,7 @@ class SecurityTests(unittest.TestCase):
         portal.sb('POST', 'portal_files', data={'id': 'legacy', 'project_id': 'own', 'filename': 'legacy.csv',
                   'original_name': 'legacy.csv', 'researcher_email': 'owner@example.test'})
         with self.remote_files() as (store, objects):
-            response = self.client.get('/portal/files/legacy/download')
+            response = self.client.get('/portal/files/legacy/download?reason=analysis')
             self.assertEqual(response.data, b'original data')
             response.close()
             store.get.assert_not_called()
@@ -459,13 +460,13 @@ class SecurityTests(unittest.TestCase):
 
     def test_mindmate_export_is_audited_and_excludes_legacy_raw(self):
         self.seed_private_response()
-        response = self.client.get('/portal/mindmate/export')
+        response = self.client.get('/portal/mindmate/export?reason=analysis')
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'PRIVATE_RESPONSE_MARKER', response.data)
         self.assertNotIn(b'LEGACY_IDENTITY_MARKER', response.data)
         self.assertEqual(len(portal.sb('GET', 'audit_log', params='?action=eq.export_mindmate')), 1)
         with patch.object(portal, 'audit', return_value=False):
-            self.assertEqual(self.client.get('/portal/mindmate/export').status_code, 503)
+            self.assertEqual(self.client.get('/portal/mindmate/export?reason=analysis').status_code, 503)
 
     def test_mindmate_live_music_hides_details_until_audited_read(self):
         self.mindmate_send({'PhoneNumber': '01000000000', 'Date': '2026-10-19', 'StartTime': '09:00',
@@ -710,7 +711,7 @@ class SecurityTests(unittest.TestCase):
         body = self.client.get('/portal/wardy').get_data(as_text=True)
         self.assertIn('relay-user', body)
         self.assertNotIn('other-user', body)
-        self.assertIn('relay-user', self.client.get('/portal/wardy/export').get_data(as_text=True))
+        self.assertIn('relay-user', self.client.get('/portal/wardy/export?reason=analysis').get_data(as_text=True))
 
     def test_wardy_dashboard_separates_diagnostics_and_hides_stack_traces(self):
         portal.sb('POST', 'wardy_events', data={'id': 'g1', 'project_id': 'own', 'user_name': 'own-user',
