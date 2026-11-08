@@ -12,4 +12,4 @@ flask-mail>=0.9
 requests>=2.31
 google-api-python-client>=2.100
 google-auth>=2.23
-Pillow>=12.3.0
+Pillow>=13.0.0
