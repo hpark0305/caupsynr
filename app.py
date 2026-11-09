@@ -158,7 +158,7 @@ CONTENT_SECURITY_POLICY = '; '.join([
 # (who, when, from where, which data, what action). Endpoints that already
 # write their own audit entry (Mind Mate detail/export) are not repeated here.
 _ACCESS_LOGGED = {
-    'portal_wardy': 'view', 'portal_wardy_export': 'download',
+    'portal_wardy': 'view', 'portal_wardy_events': 'view', 'portal_wardy_export': 'download',
     'portal_neurobreeze': 'view', 'portal_neurobreeze_export': 'download',
     'portal_mindmate': 'view', 'portal_mindmate_live_data': 'view',
     'portal_project': 'view', 'portal_participant_detail': 'view', 'portal_all_participants': 'view',
@@ -843,12 +843,29 @@ SB_PAGE = 1000
 SB_MAX_ROWS = 200_000  # safety stop for a runaway loop, far above current table sizes
 _SB_ORDER_KEY = {'accounts': 'email', 'research_topics_extra': 'key', 'reset_tokens': 'token'}
 
+# Pages after the first are fetched concurrently on their own pool. It is
+# separate from _DB_POOL because _sb_get_paged itself runs inside _DB_POOL jobs;
+# page jobs never submit further work, so this pool cannot deadlock.
+_PAGE_POOL = ThreadPoolExecutor(max_workers=8, thread_name_prefix="db-page")
+
+def _sb_fetch_page(table, keep, want, offset):
+    query = '?' + '&'.join(keep + [f'limit={want}', f'offset={offset}'])
+    r = _requests.get(f"{SUPABASE_URL}/rest/v1/{table}{query}", headers=_sb_headers(), timeout=10)
+    r.raise_for_status()
+    return r.json() or []
+
 def _sb_get_paged(table, params):
     """GET all rows matching `params`, honouring any explicit limit/offset.
 
     Query fragments are edited as raw strings so their existing percent
     encoding is untouched. A stable order is required for offset paging, so
     the table's key is used when the caller gave none.
+
+    When the first page comes back full, the matching row count is read once
+    and the remaining pages are requested in parallel. With the server and
+    database ~0.5 s apart per round trip, 6,000 Wardy rows used to take seven
+    sequential trips (~3.5 s); now it is three. Reads of <= 1,000 rows are
+    unchanged (one trip).
     """
     keep, limit, start = [], None, 0
     for part in (p for p in params.lstrip('?').split('&') if p):
@@ -861,18 +878,29 @@ def _sb_get_paged(table, params):
             keep.append(part)
     if not any(p.startswith('order=') for p in keep):
         keep.append('order=' + _SB_ORDER_KEY.get(table, 'id') + '.asc')
-    rows = []
-    while len(rows) < SB_MAX_ROWS:
-        want = SB_PAGE if limit is None else min(SB_PAGE, limit - len(rows))
-        if want <= 0:
-            break
-        query = '?' + '&'.join(keep + [f'limit={want}', f'offset={start}'])
-        r = _requests.get(f"{SUPABASE_URL}/rest/v1/{table}{query}", headers=_sb_headers(), timeout=10)
-        r.raise_for_status()
-        page = r.json() or []
+    cap = SB_MAX_ROWS if limit is None else min(limit, SB_MAX_ROWS)
+    want = min(SB_PAGE, cap)
+    if want <= 0:
+        return []
+    rows = _sb_fetch_page(table, keep, want, start)
+    if len(rows) < want or len(rows) >= cap:
+        return rows
+    filters = '&'.join(p for p in keep if not p.startswith(('select=', 'order=')))
+    total = _sb_count_where(table, '?' + filters)
+    end = start + cap if not total else min(start + cap, total)
+    offsets = list(range(start + len(rows), end, SB_PAGE))
+    futures = [_PAGE_POOL.submit(_sb_fetch_page, table, keep, min(SB_PAGE, end - off), off) for off in offsets]
+    for future in futures:
+        rows.extend(future.result())
+    if total:
+        return rows
+    # The count failed: read the rest sequentially as before.
+    offset = start + len(rows)
+    while len(rows) < cap:
+        page = _sb_fetch_page(table, keep, min(SB_PAGE, cap - len(rows)), offset)
         rows.extend(page)
-        start += len(page)
-        if len(page) < want:
+        offset += len(page)
+        if len(page) < SB_PAGE:
             break
     return rows
 
@@ -1224,20 +1252,46 @@ def _authorize_portal_request():
                 except (ValueError, OSError, BadZipFile):
                     abort(400)
 
-def _project_rows(table, params=''):
-    """Query only accessible projects; unassigned rows are never implicitly public."""
+def _project_queries(params=''):
+    """PostgREST params for each accessible project (authorised in the request thread)."""
+    from urllib.parse import urlencode
     selected = request.args.get('project_id')
     projects = [{'id': selected}] if selected else _accessible_projects(session['researcher'])
-    rows = []
+    queries = []
     for project in projects:
         pid = project['id']
         _authorize_project(pid)
         # The caller's selected project filter is redundant, not a second filter.
         pairs = [(k, v) for k, v in parse_qsl(params.lstrip('?')) if k != 'project_id']
-        from urllib.parse import urlencode
-        query = '?' + urlencode(pairs + [('project_id', 'eq.' + pid)])
-        rows.extend(sb('GET', table, params=query) or [])
-    return rows
+        queries.append('?' + urlencode(pairs + [('project_id', 'eq.' + pid)]))
+    return queries
+
+def _project_rows(table, params=''):
+    """Query only accessible projects; unassigned rows are never implicitly public."""
+    queries = _project_queries(params)
+    results = _db_parallel({i: (sb, 'GET', table, None, q) for i, q in enumerate(queries)})
+    return [row for i in range(len(queries)) for row in (results[i] or [])]
+
+def _app_log_queries(params=''):
+    """All PostgREST params whose rows together make up _app_log_rows."""
+    queries = _project_queries(params)
+    if _is_admin() and not request.args.get('project_id'):
+        parts = [p for p in params.lstrip('?').split('&') if p and not p.startswith('project_id=')]
+        queries.append('?' + '&'.join(parts + ['project_id=is.null']))
+    return queries
+
+def _app_log_rows_many(table, param_sets, sort_key=None, reverse=False):
+    """Like _app_log_rows for several param strings, all fetched concurrently."""
+    plans = {name: _app_log_queries(params) for name, params in param_sets.items()}
+    jobs = {(name, i): (sb, 'GET', table, None, q) for name, qs in plans.items() for i, q in enumerate(qs)}
+    results = _db_parallel(jobs)
+    out = {}
+    for name, qs in plans.items():
+        rows = [row for i in range(len(qs)) for row in (results[(name, i)] or [])]
+        if sort_key:
+            rows.sort(key=lambda r: str(r.get(sort_key) or ''), reverse=reverse)
+        out[name] = rows
+    return out
 
 def _app_log_rows(table, params='', sort_key=None, reverse=False):
     """App-ingested rows (Wardy, NeuroBreeze) visible to this researcher.
@@ -1247,13 +1301,7 @@ def _app_log_rows(table, params='', sort_key=None, reverse=False):
     admins (PORTAL_ADMIN_EMAILS) additionally see unassigned rows, as they
     already do for Mind Mate. Without this, every Wardy row was invisible.
     """
-    rows = _project_rows(table, params)
-    if _is_admin() and not request.args.get('project_id'):
-        parts = [p for p in params.lstrip('?').split('&') if p and not p.startswith('project_id=')]
-        rows.extend(sb('GET', table, params='?' + '&'.join(parts + ['project_id=is.null'])) or [])
-    if sort_key:
-        rows.sort(key=lambda r: str(r.get(sort_key) or ''), reverse=reverse)
-    return rows
+    return _app_log_rows_many(table, {'rows': params}, sort_key, reverse)['rows']
 
 def _app_log_count(table, params=''):
     """Count of app rows this researcher may see (same rule as _app_log_rows)."""
@@ -3925,56 +3973,91 @@ def api_mindmate_followup():
         return jsonify({"error": f"unknown order: {order}"}), 400
 
 # ── Wardy 이벤트 뷰어 ─────────────────────────────────
-@app.route("/portal/wardy")
-@login_required
-def portal_wardy():
-    """Wardy research dashboard: gameplay KPIs, level outcomes, participants, diagnostics."""
+_WARDY_NO_NAME = "(이름 없음)"
+
+def _wardy_filters(now):
+    """Shared Wardy list filters from the query string: (args, base PostgREST params)."""
     project_id = request.args.get("project_id", "").strip()
     user_name  = request.args.get("user_name", "").strip()
     state      = request.args.get("state", "").strip()
-    view = request.args.get("view", "play")
-    view = view if view in ("play", "diagnostics") else "play"
     days = request.args.get("days", "30")
     days = days if days in ("7", "30", "90", "all") else "30"
-    now = datetime.now(timezone.utc)
-
     base = []
     if project_id: base.append(f"project_id=eq.{_q(project_id)}")
     if user_name:  base.append(f"user_name=ilike.{_q(user_name)}%25")
     if days != "all":
         since = (now - timedelta(days=int(days))).strftime("%Y-%m-%dT%H:%M:%S")
         base.append(f"received_at=gte.{_q(since)}")
+    return dict(project_id=project_id, user_name=user_name, state=state, days=days), base
+
+def _wardy_state_filter(state):
+    diag = ",".join(wardy_analytics.DIAGNOSTIC_STATES)
+    return [f"state=eq.{_q(state)}"] if state else [f"state=not.in.({diag})"]
+
+def _wardy_event_order(ev):
+    return (str(ev.get("event_time") or ev.get("received_at") or ""), ev.get("seq") or 0)
+
+@app.route("/portal/wardy")
+@login_required
+def portal_wardy():
+    """Wardy research dashboard: gameplay KPIs, level outcomes, participants, diagnostics."""
+    view = request.args.get("view", "play")
+    view = view if view in ("play", "diagnostics") else "play"
+    now = datetime.now(timezone.utc)
+    args, base = _wardy_filters(now)
+    project_id, user_name, state, days = args["project_id"], args["user_name"], args["state"], args["days"]
     diag = ",".join(wardy_analytics.DIAGNOSTIC_STATES)
 
-    def fetch(select, extra):
-        query = "?" + "&".join([f"select={select}", "order=received_at.desc"] + base + extra)
-        return _app_log_rows("wardy_events", params=query) or []
+    def query(select, extra):
+        return "?" + "&".join([f"select={select}", "order=received_at.desc"] + base + extra)
 
     projects = _accessible_projects(session["researcher"]) or []
     common = dict(researcher=session["researcher"], projects=projects, project_id=project_id,
                   user_name=user_name, state=state, view=view, days=days,
                   state_tone=wardy_analytics.STATE_TONE, kst=wardy_analytics.KST)
 
-    diag_rows = fetch("id,user_name,state,game_level,data,received_at", [f"state=in.({diag})"])
+    # Diagnostics and gameplay rows are independent reads: fetch them together.
+    state_filter = _wardy_state_filter(state)
+    wanted = {"diag": query("id,user_name,state,game_level,data,received_at", [f"state=in.({diag})"])}
+    if view != "diagnostics":
+        wanted["play"] = query("id,user_name,state,game_level,seq,event_time,received_at,data", state_filter)
+    fetched = _app_log_rows_many("wardy_events", wanted)
+    diag_rows = fetched["diag"]
     if view == "diagnostics":
         return render_template("portal_wardy.html", **common, diag_count=len(diag_rows),
                                diagnostics=wardy_analytics.diagnostics(diag_rows),
                                summary=None, groups=[], states=[])
 
-    state_filter = [f"state=eq.{_q(state)}"] if state else [f"state=not.in.({diag})"]
-    rows = fetch("id,user_name,state,game_level,seq,event_time,received_at,data", state_filter)
+    rows = fetched["play"]
     summary = wardy_analytics.summarize(rows, now=now, days=30 if days in ("all", "90") else int(days))
 
-    by_user = OrderedDict((p["user_name"], {"summary": p, "events": []}) for p in summary["participants"])
-    for ev in rows:
-        key = (ev.get("user_name") or "").strip() or "(이름 없음)"
-        if key in by_user:
-            by_user[key]["events"].append(ev)
-    for group in by_user.values():
-        group["events"].sort(key=lambda e: (str(e.get("event_time") or e.get("received_at") or ""), e.get("seq") or 0))
+    # Event rows are not embedded: each participant's rows load on demand from
+    # portal_wardy_events, which kept this page from growing to several MB.
+    groups = [{"summary": p} for p in summary["participants"]]
     states = [s for s, _ in summary["state_counts"]]
-    return render_template("portal_wardy.html", **common, summary=summary, groups=list(by_user.values()),
+    return render_template("portal_wardy.html", **common, summary=summary, groups=groups,
                            states=states, diag_count=len(diag_rows), diagnostics=[])
+
+@app.route("/portal/wardy/events")
+@login_required
+def portal_wardy_events():
+    """One participant's gameplay rows (HTML table rows) for the Wardy dashboard."""
+    who = request.args.get("user", "").strip()
+    group = request.args.get("group", "")
+    if not who or not re.fullmatch(r"u\d{1,6}", group):
+        abort(400)
+    args, base = _wardy_filters(datetime.now(timezone.utc))
+    if who == _WARDY_NO_NAME:
+        base.append("or=(user_name.is.null,user_name.eq.)")
+    else:
+        base.append(f"user_name=eq.{_q(who)}")
+    params = "?" + "&".join(["select=id,user_name,state,game_level,seq,event_time,received_at,data",
+                             "order=received_at.desc"] + base + _wardy_state_filter(args["state"]))
+    events = [ev for ev in _app_log_rows("wardy_events", params)
+              if ((ev.get("user_name") or "").strip() or _WARDY_NO_NAME) == who]
+    events.sort(key=_wardy_event_order)
+    return render_template("_wardy_event_rows.html", g={"events": events}, group=group,
+                           state_tone=wardy_analytics.STATE_TONE)
 
 @app.route("/portal/wardy/delete", methods=["POST"])
 @login_required

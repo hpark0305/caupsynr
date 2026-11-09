@@ -683,12 +683,15 @@ class SecurityTests(unittest.TestCase):
         rows = [{'id': f'{i:05d}'} for i in range(2345)]
         calls = []
 
-        def fake_get(url, **kwargs):
+        def fake_get(url, headers=None, **kwargs):
             q = parse_qs(urlsplit(url).query)
+            response = MagicMock()
+            if (headers or {}).get('Prefer') == 'count=exact':  # row count, not a page read
+                response.headers = {'Content-Range': f'0-0/{len(rows)}'}
+                return response
             calls.append(q)
             limit = min(int(q['limit'][0]), 1000)  # server-side Max rows
             offset = int(q['offset'][0])
-            response = MagicMock()
             response.json.return_value = rows[offset:offset + limit]
             return response
         with patch.object(portal, '_USE_SUPABASE', True), patch.object(portal._requests, 'get', side_effect=fake_get):
@@ -700,6 +703,26 @@ class SecurityTests(unittest.TestCase):
             calls.clear()
             self.assertEqual(len(portal.sb('GET', 'wardy_events', params='?select=*&id=eq.00007')), 2345)
             self.assertEqual(calls[0]['order'], ['id.asc'])
+            # Pages after the first are planned from the row count, so no row is read twice or skipped.
+            calls.clear()
+            got = portal.sb('GET', 'mindmate_music_log', params='?select=*&order=date.desc')
+            self.assertEqual([r['id'] for r in got], [r['id'] for r in rows])
+            self.assertEqual(sorted(int(c['offset'][0]) for c in calls), [0, 1000, 2000])
+
+    def test_paged_read_survives_a_failed_count(self):
+        rows = [{'id': f'{i:05d}'} for i in range(2345)]
+
+        def fake_get(url, headers=None, **kwargs):
+            q = parse_qs(urlsplit(url).query)
+            response = MagicMock()
+            if (headers or {}).get('Prefer') == 'count=exact':
+                response.raise_for_status.side_effect = RuntimeError('count failed')
+                return response
+            limit, offset = min(int(q['limit'][0]), 1000), int(q['offset'][0])
+            response.json.return_value = rows[offset:offset + limit]
+            return response
+        with patch.object(portal, '_USE_SUPABASE', True), patch.object(portal._requests, 'get', side_effect=fake_get):
+            self.assertEqual(len(portal.sb('GET', 'mindmate_music_log', params='?select=*')), 2345)
 
     def test_unassigned_app_rows_visible_and_deletable_only_by_admin(self):
         portal.sb('POST', 'wardy_events', data={'id': 'relay-w', 'project_id': None,
@@ -726,6 +749,22 @@ class SecurityTests(unittest.TestCase):
         self.assertNotIn('other-user', play)
         diag = self.client.get('/portal/wardy?view=diagnostics&days=all').get_data(as_text=True)
         self.assertIn('STACK_TRACE_MARKER', diag)
+
+    def test_wardy_event_rows_load_per_participant(self):
+        for i in range(3):
+            portal.sb('POST', 'wardy_events', data={'id': f'lz{i}', 'project_id': 'own', 'user_name': 'own-user',
+                                                     'state': '게임 시작', 'game_level': 'Module1Level1',
+                                                     'seq': i, 'data': {'marker': f'ROW_MARKER_{i}'}})
+        page = self.client.get('/portal/wardy?days=all').get_data(as_text=True)
+        self.assertIn('own-user', page)
+        self.assertNotIn('ROW_MARKER_0', page)  # rows are no longer embedded in the page
+        rows = self.client.get('/portal/wardy/events?days=all&user=own-user&group=u1').get_data(as_text=True)
+        self.assertEqual([rows.index(f'ROW_MARKER_{i}') < rows.index(f'ROW_MARKER_{i + 1}') for i in range(2)], [True, True])
+        self.assertIn('group-u1', rows)
+        self.assertNotIn('other-user', self.client.get('/portal/wardy/events?days=all&user=other-user&group=u1')
+                         .get_data(as_text=True))
+        self.assertEqual(self.client.get('/portal/wardy/events?user=own-user&group=u1"><x').status_code, 400)
+        self.assertEqual(self.client.get('/portal/wardy/events?user=own-user&group=u1&project_id=other').status_code, 403)
 
     def test_portal_home_shows_ingestion_status_without_public_footer(self):
         body = self.client.get('/portal').get_data(as_text=True)
