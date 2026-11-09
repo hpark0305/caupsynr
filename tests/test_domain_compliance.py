@@ -179,5 +179,30 @@ class DomainComplianceTests(unittest.TestCase):
         self.assertNotIn('점검하기', self.client.get('/portal/audit').get_data(as_text=True))
         self.assertIn('0일 전 점검', self.client.get('/portal/audit/review').get_data(as_text=True))
 
+    def test_admin_removes_departed_researcher_and_keeps_a_record(self):
+        # Non-admins cannot remove accounts.
+        self.sign_in('owner@example.test')
+        self.assertEqual(self.post('/portal/settings/remove-account',
+                                   {'email': 'editor@example.test', 'confirm': 'editor@example.test'}).status_code, 403)
+        self.sign_in('admin@example.test')
+        page = self.client.get('/portal/settings').get_data(as_text=True)
+        self.assertIn('owner@example.test', page)
+        self.assertNotIn('<option value="admin@example.test">', page)
+        # A mismatched confirmation changes nothing; removing yourself is refused.
+        self.post('/portal/settings/remove-account', {'email': 'owner@example.test', 'confirm': 'other@example.test'})
+        self.assertTrue(portal._account_exists('owner@example.test'))
+        self.assertEqual(self.post('/portal/settings/remove-account',
+                                   {'email': 'admin@example.test', 'confirm': 'admin@example.test'}).status_code, 400)
+        # The owner's session is live until removal.
+        self.post('/portal/settings/remove-account', {'email': 'owner@example.test', 'confirm': 'owner@example.test'})
+        self.assertFalse(portal._account_exists('owner@example.test'))
+        self.assertEqual(portal.sb('GET', 'portal_auth_sessions', params='?researcher_email=eq.owner@example.test'), [])
+        self.assertEqual(portal.sb('GET', 'projects', params='?id=eq.own')[0]['researcher_email'], 'admin@example.test')
+        self.post('/portal/settings/remove-account', {'email': 'editor@example.test', 'confirm': 'editor@example.test'})
+        self.assertEqual(portal.sb('GET', 'project_collaborators', params='?researcher_email=eq.editor@example.test'), [])
+        rows = portal.sb('GET', 'audit_log', params='?action=eq.account_remove')
+        self.assertEqual(sorted(r['target_id'] for r in rows), ['editor@example.test', 'owner@example.test'])
+        self.assertIn('account_remove', portal._PRIVILEGE_ACTIONS)
+
 if __name__ == '__main__':
     unittest.main()
