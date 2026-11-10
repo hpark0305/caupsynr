@@ -469,6 +469,34 @@ def init_db():
                 summary TEXT,
                 detail TEXT
             );
+            CREATE TABLE IF NOT EXISTS site_studies (
+                id TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                summary TEXT,
+                eligibility TEXT,
+                duration TEXT,
+                compensation TEXT,
+                irb_no TEXT NOT NULL,
+                contact TEXT NOT NULL,
+                link TEXT,
+                status TEXT DEFAULT 'recruiting',
+                published INTEGER DEFAULT 1,
+                researcher_email TEXT,
+                created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now','localtime'))
+            );
+            CREATE TABLE IF NOT EXISTS site_projects (
+                id TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                summary TEXT,
+                theme TEXT,
+                period TEXT,
+                funder TEXT,
+                role TEXT,
+                status TEXT DEFAULT 'ongoing',
+                published INTEGER DEFAULT 1,
+                researcher_email TEXT,
+                created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now','localtime'))
+            );
             CREATE TABLE IF NOT EXISTS contact_messages (
                 id TEXT PRIMARY KEY,
                 name TEXT,
@@ -770,6 +798,7 @@ _ALLOWED_TABLES = {
     'portal_auth_sessions',
     'projects','project_participants','measurements','project_variables',
     'portal_files','accounts','news','research_topics_extra','contact_messages',
+    'site_studies','site_projects',
     'sessions','audit_log','project_collaborators','reset_tokens','project_protocols',
     'wardy_events','tasks',
     'neurobreeze_eeg','neurobreeze_meditation',
@@ -1191,7 +1220,7 @@ def _authorize_portal_request():
     admin_routes = {'portal_add_account', 'portal_db_backup', 'portal_2fa_reset', 'portal_db_restore',
                     'portal_contacts', 'portal_audit', 'portal_audit_review', 'portal_drive', 'portal_drive_file',
                     'pubs_new', 'publications_new', 'apps_new', 'portal_research_edit'}
-    if (endpoint in admin_routes or endpoint.startswith(('gallery_', 'portal_news', 'portal_mindmate'))) and not _is_admin():
+    if (endpoint in admin_routes or endpoint.startswith(('gallery_', 'portal_news', 'portal_site', 'portal_mindmate'))) and not _is_admin():
         abort(403)
     # Restoring an arbitrary database replaces credentials and all project ACLs.
     if endpoint == 'portal_db_restore':
@@ -1729,9 +1758,9 @@ TESTIMONIALS = [
      "role": "Community Mental Health Case Manager", "context": "Continuing-education program"},
 ]
 
-# Partner & publishing venues — text wordmarks (no logo assets required).
+# Journals the lab has published in (each appears in ARTICLES) — text wordmarks.
 PARTNERS = [
-    "Chung-Ang University", "Red Cross College of Nursing", "Digital Health",
+    "Digital Health",
     "Scientific Reports", "BMC Nursing", "Disaster Medicine & Public Health Preparedness",
     "Applied Psychophysiology and Biofeedback", "Simulation in Healthcare",
     "Journal of Nursing Management", "International Nursing Review",
@@ -1742,6 +1771,113 @@ KEYWORDS = [
     "Disaster Trauma", "Neurofeedback", "Psychological First Aid", "Simulation Education",
     "Binaural Beats", "Digital Mental Health", "PTSD Recovery", "Community Mental Health",
 ]
+
+
+# Problem-centred research themes. Descriptions summarise what the lab's own
+# publication list (ARTICLES) covers; publications are attached by matching
+# title keywords, so a paper may appear under more than one theme.
+RESEARCH_THEMES = [
+    {"key": "disaster", "title": "Disaster Trauma & Community Recovery",
+     "summary": "How people and communities respond to and recover from disasters, from the 2022 Itaewon crowd crush and fire disasters to the COVID-19 pandemic, and how disaster mental-health support can be organised.",
+     "keywords": ["disaster", "crowd crush", "itaewon", "covid", "pandemic", "fire", "flood", "trauma recovery"],
+     "apps": ["tls"], "methods": ["Cross-sectional surveys", "Qualitative analysis", "Text mining"]},
+    {"key": "pfa", "title": "Psychological First Aid & Simulation Education",
+     "summary": "Training nurses, nursing students, and disaster relief workers to deliver psychological first aid and mental-health care through standardised-patient simulations, serious games, and debriefing models.",
+     "keywords": ["psychological first aid", "pfa", "simulation", "simulated", "standardized patient", "debriefing"],
+     "apps": ["pls", "wardy"], "methods": ["Randomised controlled trials", "Simulation design", "Serious games"]},
+    {"key": "responders", "title": "Mental Health of Nurses & Responders",
+     "summary": "Stress, trauma, and resilience among newly graduated, intensive-care, and frontline nurses, firefighters, and disaster relief workers.",
+     "keywords": ["new nurse", "newly graduated", "frontline", "firefighter", "relief worker", "healthcare workers", "intensive care unit nurses"],
+     "apps": ["mindmate", "pls"], "methods": ["Mobile interventions", "Mixed methods"]},
+    {"key": "digital", "title": "Digital & Neurofeedback Interventions",
+     "summary": "Mobile and neurofeedback-based interventions, including binaural beat music and meditation, tested in pilot studies and randomised controlled trials.",
+     "keywords": ["mobile app", "mobile-based", "neurofeedback", "binaural", "meditation", "web-based"],
+     "apps": ["mind_therapy", "neurobreeze", "mindmate"], "methods": ["EEG / neurofeedback", "Pilot RCTs", "Meta-analysis"]},
+    {"key": "community", "title": "Community Mental Health Across the Lifespan",
+     "summary": "Mental health of immigrant women, adolescents, older adults, family caregivers, and people living with severe mental illness or addiction in Korean communities.",
+     "keywords": ["immigrant", "adolescent", "older", "elderly", "dementia", "suicid", "schizophrenia", "alcohol", "addiction", "community mental health"],
+     "apps": [], "methods": ["Secondary data analysis", "Qualitative analysis", "Community programmes"]},
+]
+
+
+def _themes_with_pubs(limit=4):
+    """Attach recent matching publications and app cards to each theme."""
+    pubs = sorted(ARTICLES + load_extra_pubs(), key=lambda x: -x["year"])
+    apps_by_key = {a["key"]: a for a in APPS}
+    themes = []
+    for theme in RESEARCH_THEMES:
+        t = dict(theme)
+        matched = [p for p in pubs if any(k in (p.get("title") or "").lower() for k in theme["keywords"])]
+        t["pub_count"] = len(matched)
+        t["pubs"] = matched[:limit]
+        t["app_cards"] = [apps_by_key[k] for k in theme["apps"] if k in apps_by_key]
+        themes.append(t)
+    return themes
+
+
+# ─── Public site content managed from the portal (studies, projects) ─────
+STUDY_STATUSES = {"recruiting": "모집 중", "closed": "모집 마감"}
+PROJECT_STATUSES = {"ongoing": "진행 중", "completed": "완료"}
+_STUDY_FIELDS = {"title": 200, "summary": 2000, "eligibility": 2000, "duration": 300,
+                 "compensation": 300, "irb_no": 100, "contact": 200, "link": 500}
+_PROJECT_FIELDS = {"title": 300, "summary": 2000, "period": 100, "funder": 300, "role": 200}
+
+
+def _clean_link(value):
+    """Allow only absolute https links so a stored URL can never run script."""
+    value = (value or "").strip()
+    return value if re.fullmatch(r"https://[^\s<>\"']{1,490}", value) else ""
+
+
+def _study_form():
+    data = {k: (request.form.get(k) or "").strip()[:n] for k, n in _STUDY_FIELDS.items()}
+    data["link"] = _clean_link(data["link"])
+    status = request.form.get("status", "recruiting")
+    data["status"] = status if status in STUDY_STATUSES else "recruiting"
+    data["published"] = 1 if request.form.get("published") else 0
+    missing = [label for key, label in (("title", "연구 제목"), ("irb_no", "IRB 승인번호"), ("contact", "문의처"))
+               if not data[key]]
+    return data, missing
+
+
+def _project_form():
+    data = {k: (request.form.get(k) or "").strip()[:n] for k, n in _PROJECT_FIELDS.items()}
+    theme = request.form.get("theme", "")
+    data["theme"] = theme if theme in {t["key"] for t in RESEARCH_THEMES} else ""
+    status = request.form.get("status", "ongoing")
+    data["status"] = status if status in PROJECT_STATUSES else "ongoing"
+    data["published"] = 1 if request.form.get("published") else 0
+    return data, ([] if data["title"] else ["과제명"])
+
+
+def _rows(value):
+    return value if isinstance(value, list) else []
+
+
+def _open_studies():
+    return _rows(sb("GET", "site_studies", params="?published=eq.1&status=eq.recruiting&order=created_at.desc"))
+
+
+def _news_feed(limit=None):
+    """Published notices and gallery events, newest first, as one list."""
+    items = []
+    for n in _rows(sb("GET", "news", params="?published=eq.1&order=created_at.desc")):
+        stamp = str(n.get("created_at") or "")[:10]
+        items.append({"kind": "notice", "title": n.get("title"), "content": n.get("content") or "",
+                      "date": stamp, "sort": stamp, "url": None, "image": None})
+    try:
+        for ev in load_events():
+            photos = event_photos(ev["key"])
+            cover = ev.get("cover") or (photos[0] if photos else None)
+            items.append({"kind": "activity", "title": ev.get("title") or ev["key"],
+                          "content": ev.get("venue") or "", "date": str(ev.get("date") or ""),
+                          "sort": str(ev.get("created_at") or ev.get("date") or "")[:10],
+                          "url": url_for("gallery_event", key=ev["key"]),
+                          "image": url_for("static", filename=f"images/gallery/{ev['key']}/{cover}") if cover else None})
+    except Exception:
+        pass
+    items.sort(key=lambda i: i["sort"], reverse=True)
+    return items[:limit] if limit else items
 
 
 def _articles_by_year():
@@ -1765,24 +1901,11 @@ def healthz():
 
 @app.route("/")
 def home():
-    recent = sorted(ARTICLES, key=lambda x: -x["year"])[:5]
-    news_list = sb("GET","news",params="?published=eq.1&order=created_at.desc") or []
-    # Recent gallery events (with a cover photo) power the blog-style cards.
-    lab_events = []
-    try:
-        for ev in load_events():
-            photos = event_photos(ev['key'])
-            ev['cover_photo'] = ev.get('cover') or (photos[0] if photos else None)
-            if ev['cover_photo']:
-                lab_events.append(ev)
-            if len(lab_events) >= 3:
-                break
-    except Exception:
-        lab_events = []
-    return render_template("home.html", research_topics=RESEARCH_TOPICS, recent_pubs=recent, news=news_list[:5],
-                           professor=PROFESSOR, team=TEAM, apps=APPS,
-                           recognition=RECOGNITION, testimonials=TESTIMONIALS,
-                           partners=PARTNERS, keywords=KEYWORDS, lab_events=lab_events)
+    recent = sorted(ARTICLES, key=lambda x: -x["year"])
+    return render_template("home.html", research_topics=RESEARCH_TOPICS, recent_pubs=recent[:3],
+                           themes=RESEARCH_THEMES, professor=PROFESSOR, team=TEAM, apps=APPS,
+                           partners=PARTNERS, keywords=KEYWORDS, feed=_news_feed(limit=3),
+                           open_studies=_open_studies())
 
 @app.route("/research")
 def research():
@@ -1800,7 +1923,14 @@ def research():
             if ex.get('summary'): t['summary'] = ex['summary']
             if ex.get('detail'):  t['detail']  = ex['detail']
         merged.append(t)
-    return render_template("research.html", research_topics=merged, is_researcher='researcher' in session)
+    projects = _rows(sb("GET", "site_projects", params="?published=eq.1&order=created_at.desc"))
+    theme_titles = {t["key"]: t["title"] for t in RESEARCH_THEMES}
+    for p in projects:
+        p["theme_title"] = theme_titles.get(p.get("theme") or "", "")
+    return render_template("research.html", research_topics=merged, themes=_themes_with_pubs(),
+                           projects_ongoing=[p for p in projects if p.get("status") != "completed"],
+                           projects_done=[p for p in projects if p.get("status") == "completed"],
+                           is_researcher='researcher' in session)
 
 @app.route("/team")
 def team():
@@ -1916,6 +2046,19 @@ def contact():
         else:
             flash("메시지를 입력해주세요.", "error")
     return render_template("contact.html", success=success)
+
+@app.route("/news")
+def news():
+    return render_template("news.html", feed=_news_feed())
+
+@app.route("/participate")
+def participate():
+    closed = _rows(sb("GET", "site_studies", params="?published=eq.1&status=eq.closed&order=created_at.desc"))
+    return render_template("participate.html", studies=_open_studies(), closed=closed[:6])
+
+@app.route("/join")
+def join():
+    return render_template("join.html", themes=RESEARCH_THEMES, professor=PROFESSOR)
 
 @app.route("/gallery")
 def gallery():
@@ -4572,6 +4715,79 @@ def portal_news_delete(news_id):
     sb("DELETE","news",params=f"?id=eq.{_q(news_id)}")
     flash("공지가 삭제됐어요.")
     return redirect(url_for("portal_news"))
+
+# ── Public site content (recruitment notices, projects) ─────────
+@app.route("/portal/site")
+@login_required
+def portal_site():
+    studies = _rows(sb("GET", "site_studies", params="?order=created_at.desc"))
+    projects = _rows(sb("GET", "site_projects", params="?order=created_at.desc"))
+    return render_template("portal_site.html", studies=studies, projects=projects, themes=RESEARCH_THEMES,
+                           study_statuses=STUDY_STATUSES, project_statuses=PROJECT_STATUSES,
+                           researcher=session["researcher"])
+
+def _site_redirect(tab):
+    return redirect(url_for("portal_site", _anchor=tab))
+
+@app.route("/portal/site/studies/new", methods=["POST"])
+@login_required
+def portal_site_study_new():
+    data, missing = _study_form()
+    if missing:
+        flash("필수 항목을 입력해 주세요: " + ", ".join(missing))
+        return _site_redirect("studies")
+    data["researcher_email"] = session["researcher"]
+    sb("POST", "site_studies", data=data)
+    flash("모집 공고가 등록됐어요.")
+    return _site_redirect("studies")
+
+@app.route("/portal/site/studies/<item_id>/edit", methods=["POST"])
+@login_required
+def portal_site_study_edit(item_id):
+    data, missing = _study_form()
+    if missing:
+        flash("필수 항목을 입력해 주세요: " + ", ".join(missing))
+        return _site_redirect("studies")
+    sb("PATCH", "site_studies", data=data, params=f"?id=eq.{_q(item_id)}")
+    flash("모집 공고가 수정됐어요.")
+    return _site_redirect("studies")
+
+@app.route("/portal/site/studies/<item_id>/delete", methods=["POST"])
+@login_required
+def portal_site_study_delete(item_id):
+    sb("DELETE", "site_studies", params=f"?id=eq.{_q(item_id)}")
+    flash("모집 공고가 삭제됐어요.")
+    return _site_redirect("studies")
+
+@app.route("/portal/site/projects/new", methods=["POST"])
+@login_required
+def portal_site_project_new():
+    data, missing = _project_form()
+    if missing:
+        flash("필수 항목을 입력해 주세요: " + ", ".join(missing))
+        return _site_redirect("projects")
+    data["researcher_email"] = session["researcher"]
+    sb("POST", "site_projects", data=data)
+    flash("연구 과제가 등록됐어요.")
+    return _site_redirect("projects")
+
+@app.route("/portal/site/projects/<item_id>/edit", methods=["POST"])
+@login_required
+def portal_site_project_edit(item_id):
+    data, missing = _project_form()
+    if missing:
+        flash("필수 항목을 입력해 주세요: " + ", ".join(missing))
+        return _site_redirect("projects")
+    sb("PATCH", "site_projects", data=data, params=f"?id=eq.{_q(item_id)}")
+    flash("연구 과제가 수정됐어요.")
+    return _site_redirect("projects")
+
+@app.route("/portal/site/projects/<item_id>/delete", methods=["POST"])
+@login_required
+def portal_site_project_delete(item_id):
+    sb("DELETE", "site_projects", params=f"?id=eq.{_q(item_id)}")
+    flash("연구 과제가 삭제됐어요.")
+    return _site_redirect("projects")
 
 # ── Analytics Dashboard ───────────────────────────────
 @app.route("/portal/analytics")

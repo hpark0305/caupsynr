@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Join the Lab · Trauma Stress Lab{% endblock %}
+{% block description %}How to join the Trauma Stress Lab at Chung-Ang University Red Cross College of Nursing as a graduate student, research intern, or collaborator.{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+  <div class="container">
+    <span class="label">Join us</span>
+    <h1>Join the Lab</h1>
+    <p>We welcome students and researchers interested in trauma, psychiatric mental health nursing, and digital health interventions.</p>
+  </div>
+</div>
+
+<section>
+  <div class="container">
+    <div class="join-grid">
+      <article class="join-card">
+        <span class="label">Graduate students</span>
+        <h2>Master's &amp; doctoral study</h2>
+        <p>Graduate study is through the Chung-Ang University Red Cross College of Nursing. Students design and run their own studies within the lab's research themes, alongside team projects.</p>
+      </article>
+      <article class="join-card">
+        <span class="label">Undergraduate interns</span>
+        <h2>Research internships</h2>
+        <p>Nursing undergraduates can join as research interns and take part in literature reviews, data management, and the development of the lab's apps and simulations.</p>
+      </article>
+      <article class="join-card">
+        <span class="label">Collaborators</span>
+        <h2>Researchers &amp; partners</h2>
+        <p>We work with clinicians, disaster mental-health practitioners, and researchers in other fields. Get in touch if your work connects with one of our themes.</p>
+      </article>
+    </div>
+    <p class="join-note">Openings depend on the lab's current projects and funding, so please contact us before you apply.</p>
+  </div>
+</section>
+
+<section style="background:var(--surface);">
+  <div class="container">
+    <div class="section-header" style="text-align:left;margin-left:0;">
+      <span class="label">What you could work on</span>
+      <h2>Research themes</h2>
+    </div>
+    <div class="join-themes">
+      {% for t in themes %}
+      <a href="{{ url_for('research') }}#theme-{{ t.key }}" class="join-theme">
+        <span class="theme-num">{{ '%02d' % loop.index }}</span>
+        <span>{{ t.title }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container join-apply">
+    <div>
+      <span class="label">How to get in touch</span>
+      <h2>Send us a short email</h2>
+      <ol>
+        <li>Your CV</li>
+        <li>A few sentences on your research interests and which theme fits them</li>
+        <li>The programme or role you have in mind, and when you would like to start</li>
+      </ol>
+      <a class="btn btn-primary" href="mailto:{{ professor.email }}?subject=%5BTSL%20Join%5D%20">Email Prof. {{ professor.name }}</a>
+      <a class="btn btn-outline" href="{{ url_for('contact') }}" style="margin-left:8px;">Contact form</a>
+    </div>
+    <div class="join-ko" lang="ko">
+      <h3>한국어 안내</h3>
+      <p>석사·박사 과정, 학부 연구 인턴, 공동연구자를 기다립니다. 모집 여부는 연구실의 진행 과제와 연구비에 따라 달라지므로, 지원 전에 이메일로 먼저 연락해 주세요.</p>
+      <p>이메일에는 이력서, 관심 연구 주제(위 주제 중 어디에 가까운지), 희망 과정과 시작 시기를 적어 주시면 됩니다.</p>
+    </div>
+  </div>
+</section>
+{% endblock %}
