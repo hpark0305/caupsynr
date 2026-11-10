@@ -51,6 +51,18 @@ CREATE TABLE IF NOT EXISTS neurobreeze_meditation (
     alpha_power_increase     REAL,
     alpha_indicator_increase REAL,
     alpha_progress_rate      REAL,
+    -- 세션 기록 v2 (supabase_migration_neurobreeze_v2.sql)
+    mode                     TEXT,
+    program                  TEXT,
+    planned_sec              INTEGER,
+    duration_sec             INTEGER,
+    completed                BOOLEAN,
+    end_reason               TEXT,
+    device_lost_mid_session  BOOLEAN,
+    eeg_sample_count         INTEGER,
+    stability_score          INTEGER,
+    app_version              TEXT,
+    platform                 TEXT,
     received_at              TIMESTAMPTZ DEFAULT now()
 );
 
