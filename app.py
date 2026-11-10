@@ -2,7 +2,7 @@ from flask import Flask, g, has_request_context, render_template, request, redir
 from collections import OrderedDict
 from functools import wraps
 from dotenv import load_dotenv
-import os, sqlite3, uuid as _uuid, json, csv, io, re, hashlib, hmac, time, unicodedata
+import os, sqlite3, uuid as _uuid, json, csv, io, re, hashlib, hmac, time, unicodedata, math
 import requests
 # One pooled HTTPS session for every Supabase REST call. The server (Ohio) and
 # database (Mumbai) are ~250 ms apart; a fresh TLS handshake per request made
@@ -578,6 +578,17 @@ def init_db():
                 alpha_power_increase REAL,
                 alpha_indicator_increase REAL,
                 alpha_progress_rate REAL,
+                mode TEXT,
+                program TEXT,
+                planned_sec INTEGER,
+                duration_sec INTEGER,
+                completed INTEGER,
+                end_reason TEXT,
+                device_lost_mid_session INTEGER,
+                eeg_sample_count INTEGER,
+                stability_score INTEGER,
+                app_version TEXT,
+                platform TEXT,
                 received_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now','localtime'))
             );
             CREATE TABLE IF NOT EXISTS mindmate_followup (
@@ -687,6 +698,17 @@ def init_db():
         ("accounts",        "ALTER TABLE accounts ADD COLUMN totp_last INTEGER"),
         ("audit_log",       "ALTER TABLE audit_log ADD COLUMN ip TEXT"),
         ("audit_log",       "ALTER TABLE audit_log ADD COLUMN user_agent TEXT"),
+        ("neurobreeze_meditation", "ALTER TABLE neurobreeze_meditation ADD COLUMN mode TEXT"),
+        ("neurobreeze_meditation", "ALTER TABLE neurobreeze_meditation ADD COLUMN program TEXT"),
+        ("neurobreeze_meditation", "ALTER TABLE neurobreeze_meditation ADD COLUMN planned_sec INTEGER"),
+        ("neurobreeze_meditation", "ALTER TABLE neurobreeze_meditation ADD COLUMN duration_sec INTEGER"),
+        ("neurobreeze_meditation", "ALTER TABLE neurobreeze_meditation ADD COLUMN completed INTEGER"),
+        ("neurobreeze_meditation", "ALTER TABLE neurobreeze_meditation ADD COLUMN end_reason TEXT"),
+        ("neurobreeze_meditation", "ALTER TABLE neurobreeze_meditation ADD COLUMN device_lost_mid_session INTEGER"),
+        ("neurobreeze_meditation", "ALTER TABLE neurobreeze_meditation ADD COLUMN eeg_sample_count INTEGER"),
+        ("neurobreeze_meditation", "ALTER TABLE neurobreeze_meditation ADD COLUMN stability_score INTEGER"),
+        ("neurobreeze_meditation", "ALTER TABLE neurobreeze_meditation ADD COLUMN app_version TEXT"),
+        ("neurobreeze_meditation", "ALTER TABLE neurobreeze_meditation ADD COLUMN platform TEXT"),
     ]
     with sqlite3.connect(DB_PATH) as conn:
         for _, stmt in _migrations:
@@ -3674,6 +3696,49 @@ def api_neurobreeze_eeg():
         failed += 0 if result else 1
     return _batch_response(len(records), saved, invalid, failed)
 
+# 세션 기록(2026-11-10): 앱이 만든 session_uuid를 id로 써서 재전송해도 1건만 남는다(upsert).
+# 기기 없이 진행한 세션(mode=no_device, eeg_sample_count=0)은 뇌파 열을 비워 둔다.
+_NB_MODES = {"eeg", "no_device"}
+_NB_PROGRAMS = {"breathing", "bodyscan", "eeg_check", "meditation"}
+_NB_END_REASONS = {"completed", "user_quit", "left_page", "measure_failed", "device_lost", "app_background"}
+_NB_EEG_COLUMNS = ("left_alpha_power", "right_alpha_power", "alpha_power",
+                   "left_alpha_indicator", "right_alpha_indicator", "alpha_indicator",
+                   "start_alpha_power_avg", "end_alpha_power_avg",
+                   "start_alpha_indicator_avg", "end_alpha_indicator_avg",
+                   "alpha_power_increase", "alpha_indicator_increase", "alpha_progress_rate",
+                   "stability_score")
+
+def _nb_choice(value, allowed):
+    value = str(value).strip().lower() if isinstance(value, str) else None
+    return value if value in allowed else None
+
+def _nb_int(value, lo, hi):
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    value = int(value)
+    return value if lo <= value <= hi else None
+
+def _nb_num(value):
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    value = float(value)
+    return value if math.isfinite(value) else None
+
+def _nb_bool(value):
+    return value if isinstance(value, bool) else None
+
+def _nb_session_id(value):
+    try:
+        return str(_uuid.UUID(str(value)))
+    except (ValueError, TypeError, AttributeError):
+        return None
+
+def _nb_first(r, *keys):
+    for k in keys:
+        if r.get(k) is not None:
+            return r.get(k)
+    return None
+
 @app.route("/api/neurobreeze/meditation", methods=["POST"])
 @csrf.exempt
 @limiter.limit(API_RATE_LIMIT)
@@ -3684,35 +3749,62 @@ def api_neurobreeze_meditation():
     if not body:
         return jsonify({"error":"No JSON body"}), 400
     records = body if isinstance(body, list) else [body]
+    if len(records) > 500 or not all(isinstance(r, dict) for r in records):
+        return jsonify({"error":"Invalid payload"}), 400
     saved = invalid = failed = 0
     for r in records:
         if not r.get("user_name"):
             invalid += 1
             continue
-        sid = str(_uuid.uuid4())
-        result = sb("POST", "neurobreeze_meditation", data={
-            "id":                        sid,
+        session_id = _nb_session_id(r.get("session_uuid"))
+        breath_sec = _nb_int(r.get("breath_sec"), 1, 60)
+        row = {
+            "id":                        session_id or str(_uuid.uuid4()),
             "project_id":                r.get("project_id") or None,
-            "user_name":                 str(r.get("user_name","")).strip(),
+            "user_name":                 str(r.get("user_name","")).strip()[:100],
             "session_num":               r.get("session_num") or r.get("회차"),
             "start_time":                r.get("start_time") or r.get("시작시간"),
             "end_time":                  r.get("end_time") or r.get("종료시간"),
             "feedback_count":            r.get("feedback_count") or r.get("피드백"),
-            "breath_mode":               r.get("breath_mode") or r.get("호흡모드"),
+            "breath_mode":               r.get("breath_mode") or r.get("호흡모드") or (f"{breath_sec}초" if breath_sec else None),
             "left_alpha_power":          r.get("leftAlphaPowerSpectrum"),
             "right_alpha_power":         r.get("rightAlphaPowerSpectrum"),
             "alpha_power":               r.get("AlphaPowerSpectrum"),
-            "left_alpha_indicator":      r.get("leftAlphaIndicatorValue"),
-            "right_alpha_indicator":     r.get("rightAlphaIndicatorValue"),
-            "alpha_indicator":           r.get("AlphaIndicatorValue"),
+            "left_alpha_indicator":      _nb_first(r, "left_alpha_indicator", "leftAlphaIndicatorValue"),
+            "right_alpha_indicator":     _nb_first(r, "right_alpha_indicator", "rightAlphaIndicatorValue"),
+            "alpha_indicator":           _nb_first(r, "alpha_indicator", "AlphaIndicatorValue"),
             "start_alpha_power_avg":     r.get("Start_Alpha_Spectrum_Avg"),
             "end_alpha_power_avg":       r.get("End_Alpha_Spectrum_Avg"),
-            "start_alpha_indicator_avg": r.get("Start_Alpha_Indicator_Avg"),
-            "end_alpha_indicator_avg":   r.get("End_Alpha_Indicator_Avg"),
+            "start_alpha_indicator_avg": _nb_first(r, "start_alpha_indicator_avg", "Start_Alpha_Indicator_Avg"),
+            "end_alpha_indicator_avg":   _nb_first(r, "end_alpha_indicator_avg", "End_Alpha_Indicator_Avg"),
             "alpha_power_increase":      r.get("Alpha_Spec_Increase"),
             "alpha_indicator_increase":  r.get("Alpha_indi_Increase"),
             "alpha_progress_rate":       r.get("Alpha_Progress_Rate"),
-        })
+        }
+        # New session-log fields are only written when the app sends them, so the
+        # legacy payload (and the columns before the v2 migration) keep working.
+        if session_id:
+            sample_count = _nb_int(r.get("eeg_sample_count"), 0, 1_000_000)
+            row.update({
+                "mode":                    _nb_choice(r.get("mode"), _NB_MODES),
+                "program":                 _nb_choice(r.get("program"), _NB_PROGRAMS),
+                "planned_sec":             _nb_int(r.get("planned_sec"), 0, 14400),
+                "duration_sec":            _nb_int(r.get("duration_sec"), 0, 14400),
+                "completed":               _nb_bool(r.get("completed")),
+                "end_reason":              _nb_choice(r.get("end_reason"), _NB_END_REASONS),
+                "device_lost_mid_session": _nb_bool(r.get("device_lost_mid_session")),
+                "eeg_sample_count":        sample_count,
+                "stability_score":         _nb_int(r.get("stability_score"), 1, 3),
+                "app_version":             str(r.get("app_version") or "")[:40] or None,
+                "platform":                str(r.get("platform") or "")[:40] or None,
+            })
+            for col in _NB_EEG_COLUMNS:
+                if col != "stability_score" and col in row:
+                    row[col] = _nb_num(row[col])
+            if not sample_count:
+                for col in _NB_EEG_COLUMNS:
+                    row[col] = None
+        result = sb("POST", "neurobreeze_meditation", data=row, upsert=bool(session_id))
         saved += 1 if result else 0
         failed += 0 if result else 1
     return _batch_response(len(records), saved, invalid, failed)
@@ -4105,17 +4197,23 @@ def portal_neurobreeze_export():
         fname = "neurobreeze_eeg.csv"
     else:
         w.writerow(["id","project_id","user_name","session_num","start_time","end_time",
+                    "program","mode","planned_sec","duration_sec","completed","end_reason",
+                    "device_lost_mid_session","eeg_sample_count","stability_score",
                     "feedback_count","breath_mode","alpha_power","alpha_indicator",
                     "start_alpha_power_avg","end_alpha_power_avg",
                     "start_alpha_indicator_avg","end_alpha_indicator_avg",
-                    "alpha_power_increase","alpha_indicator_increase","alpha_progress_rate","received_at"])
+                    "alpha_power_increase","alpha_indicator_increase","alpha_progress_rate",
+                    "app_version","platform","received_at"])
         for r in rows:
             w.writerow([r.get(c,"") for c in [
                 "id","project_id","user_name","session_num","start_time","end_time",
+                "program","mode","planned_sec","duration_sec","completed","end_reason",
+                "device_lost_mid_session","eeg_sample_count","stability_score",
                 "feedback_count","breath_mode","alpha_power","alpha_indicator",
                 "start_alpha_power_avg","end_alpha_power_avg",
                 "start_alpha_indicator_avg","end_alpha_indicator_avg",
-                "alpha_power_increase","alpha_indicator_increase","alpha_progress_rate","received_at"]])
+                "alpha_power_increase","alpha_indicator_increase","alpha_progress_rate",
+                "app_version","platform","received_at"]])
         fname = "neurobreeze_meditation.csv"
 
     buf.seek(0)

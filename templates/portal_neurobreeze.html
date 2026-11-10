@@ -208,6 +208,10 @@ input[type=checkbox]{cursor:pointer;width:15px;height:15px;}
                       <th>회차</th>
                       <th>시작</th>
                       <th>종료</th>
+                      <th>프로그램</th>
+                      <th>기기</th>
+                      <th>수행(분)</th>
+                      <th>완료</th>
                       <th>호흡모드</th>
                       <th>피드백</th>
                       <th>α 파워 (합)</th>
@@ -227,6 +231,11 @@ input[type=checkbox]{cursor:pointer;width:15px;height:15px;}
                       <td style="color:var(--muted);">{{ r.get('session_num','') }}</td>
                       <td style="font-size:.76rem;color:var(--muted);">{{ (r.get('start_time','') or '')[:16].replace('T',' ') }}</td>
                       <td style="font-size:.76rem;color:var(--muted);">{{ (r.get('end_time','') or '')[:16].replace('T',' ') }}</td>
+                      {% set prog_name = {'breathing':'호흡명상','bodyscan':'바디스캔','eeg_check':'뇌파측정','meditation':'명상'} %}
+                      <td style="font-size:.8rem;">{{ prog_name.get(r.get('program'), r.get('program')) or '—' }}</td>
+                      <td style="font-size:.8rem;">{% if r.get('mode') == 'no_device' %}없음{% if r.get('device_lost_mid_session') %} (중간 끊김){% endif %}{% elif r.get('mode') == 'eeg' %}뇌파{% else %}—{% endif %}</td>
+                      <td style="text-align:center;">{{ '%.1f'|format((r.get('duration_sec') or 0) / 60) if r.get('duration_sec') is not none else '—' }}</td>
+                      <td style="font-size:.8rem;">{% if r.get('completed') is none %}—{% elif r.get('completed') %}완료{% else %}{{ {'user_quit':'중지','left_page':'이탈','device_lost':'기기끊김','app_background':'앱전환'}.get(r.get('end_reason'), '미완료') }}{% endif %}</td>
                       <td style="font-size:.8rem;">{{ r.get('breath_mode','') or '—' }}</td>
                       <td style="text-align:center;">{{ r.get('feedback_count','') if r.get('feedback_count') is not none else '—' }}</td>
                       <td><strong>{{ '%.4f'|format(r.get('alpha_power') or 0) if r.get('alpha_power') is not none else '—' }}</strong></td>
