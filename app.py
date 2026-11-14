@@ -1188,7 +1188,7 @@ def _authorize_portal_request():
     """Check URL and hidden-field IDs before any authenticated handler runs."""
     endpoint = request.endpoint or ''
     write = request.method not in ('GET', 'HEAD', 'OPTIONS')
-    admin_routes = {'portal_add_account', 'portal_db_backup', 'portal_2fa_reset', 'portal_db_restore',
+    admin_routes = {'portal_add_account', 'portal_remove_account', 'portal_db_backup', 'portal_2fa_reset', 'portal_db_restore',
                     'portal_contacts', 'portal_audit', 'portal_audit_review', 'portal_drive', 'portal_drive_file',
                     'pubs_new', 'publications_new', 'apps_new', 'portal_research_edit'}
     if (endpoint in admin_routes or endpoint.startswith(('gallery_', 'portal_news', 'portal_mindmate'))) and not _is_admin():
@@ -3398,8 +3398,14 @@ def portal_drive_file(file_id):
 @app.route("/portal/settings")
 @login_required
 def portal_settings():
+    admin = _is_admin()
+    others = []
+    if admin:
+        me = session["researcher"].lower()
+        others = sorted(r["email"] for r in (sb("GET", "accounts", params="?select=email") or [])
+                        if r.get("email", "").lower() != me)
     return render_template("portal_settings.html", researcher=session["researcher"],
-                           is_admin=_is_admin(), use_supabase=_USE_SUPABASE)
+                           is_admin=admin, use_supabase=_USE_SUPABASE, other_accounts=others)
 
 @app.route("/portal/settings/2fa")
 @login_required
@@ -3505,6 +3511,36 @@ def portal_add_account():
     _set_account(new_email, new_pw)
     audit("account_add", "accounts", new_email)
     flash(f"{new_email} 계정이 추가됐어요.")
+    return redirect(url_for("portal_settings"))
+
+@app.route("/portal/settings/remove-account", methods=["POST"])
+@login_required
+def portal_remove_account():
+    """Admin-only: revoke a researcher who left (안전성 확보조치 기준 제5조②, 지체 없이 말소).
+
+    The account, its collaborator grants, sign-in sessions and reset tokens go away;
+    projects it owned move to the removing admin so no data is orphaned. The audit
+    row is the 말소 record kept with the other privilege changes.
+    """
+    target = request.form.get("email", "").strip()
+    if not target or target.lower() == session["researcher"].lower() or not _account_exists(target):
+        abort(400)
+    if request.form.get("confirm", "").strip().lower() != target.lower():
+        flash("삭제할 계정의 이메일을 확인란에 똑같이 입력해주세요.", "error")
+        return redirect(url_for("portal_settings"))
+    admin = session["researcher"]
+    owned = [r["id"] for r in (sb("GET", "projects", params=f"?researcher_email=eq.{_q(target)}&select=id") or [])]
+    if owned:
+        sb("PATCH", "projects", data={"researcher_email": admin}, params=f"?researcher_email=eq.{_q(target)}")
+    sb("DELETE", "project_collaborators", params=f"?researcher_email=eq.{_q(target)}")
+    sb("DELETE", "portal_auth_sessions", params=f"?researcher_email=eq.{_q(target)}")
+    sb("DELETE", "reset_tokens", params=f"?email=eq.{_q(target)}")
+    sb("DELETE", "accounts", params=f"?email=eq.{_q(target)}")
+    if _account_exists(target):
+        abort(503)
+    audit("account_remove", "accounts", target,
+          detail=json.dumps({"projects_moved_to": admin if owned else None, "projects": owned}, ensure_ascii=False))
+    flash(f"{target} 계정을 삭제했습니다." + (f" 소유 프로젝트 {len(owned)}개는 내 계정으로 옮겼습니다." if owned else ""))
     return redirect(url_for("portal_settings"))
 
 @app.route("/portal/settings/backup")
@@ -4748,7 +4784,7 @@ def portal_audit():
 # 제8조②: 점검 주기·방법·사후조치는 내부 관리계획으로 정한다(2025.10.31. 개정 전에는
 # 월 1회 이상). 이 연구실 내부 관리계획은 월 1회(31일)로 정한다.
 _REVIEW_INTERVAL_DAYS = 31
-_PRIVILEGE_ACTIONS = {'account_add', 'password_change', 'collaborator_add', 'collaborator_remove',
+_PRIVILEGE_ACTIONS = {'account_add', 'account_remove', 'password_change', 'collaborator_add', 'collaborator_remove',
                       '2fa_enabled', '2fa_disabled', '2fa_reset_by_admin'}
 _KST = timezone(timedelta(hours=9))
 
