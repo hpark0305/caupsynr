@@ -122,5 +122,65 @@ class NeuroBreezeSessionTests(unittest.TestCase):
         self.assertEqual(res.get_json()['invalid'], 1)
 
 
+USAGE_URL = '/api/neurobreeze/usage'
+
+
+def usage_payload(**overrides):
+    body = {
+        'session_id': str(uuid.uuid4()),
+        'user_name': '홍길동',
+        'install_id': uuid.uuid4().hex,
+        'started_at': '2026-11-14T11:30:05+09:00',
+        'ended_at': '2026-11-14T11:42:17+09:00',
+        'foreground_sec': 732,
+        'event_name': 'session_end',
+        'app_version': '1.0.2',
+        'platform': 'IPhonePlayer',
+    }
+    body.update(overrides)
+    return body
+
+
+class NeuroBreezeUsageTests(NeuroBreezeSessionTests.__bases__[0]):
+    setUp = NeuroBreezeSessionTests.setUp
+
+    def rows(self):
+        with sqlite3.connect(portal.DB_PATH) as conn:
+            conn.row_factory = sqlite3.Row
+            return [dict(r) for r in conn.execute('SELECT * FROM neurobreeze_app_usage')]
+
+    def test_usage_saved_and_resend_keeps_one_row(self):
+        body = usage_payload()
+        for _ in range(2):
+            res = self.client.post(USAGE_URL, json=[body], headers=self.headers)
+            self.assertEqual(res.status_code, 201, res.get_data(as_text=True))
+        [row] = self.rows()
+        self.assertEqual(row['id'], body['session_id'])
+        self.assertEqual((row['user_name'], row['foreground_sec'], row['event_name'], row['platform']),
+                         ('홍길동', 732, 'session_end', 'IPhonePlayer'))
+        self.assertEqual(row['started_at'], '2026-11-14T11:30:05+09:00')
+
+    def test_usage_accepts_app_guid_and_utc_times(self):
+        res = self.client.post(USAGE_URL, json=usage_payload(
+            session_id=uuid.uuid4().hex, started_at='2026-11-14T02:30:05.1234567Z', ended_at=None,
+            install_id='bad id!', event_name='other', foreground_sec=-5), headers=self.headers)
+        self.assertEqual(res.status_code, 201, res.get_data(as_text=True))
+        [row] = self.rows()
+        self.assertEqual(len(row['id']), 36)
+        self.assertTrue(row['started_at'].startswith('2026-11-14T02:30:05'))
+        for col in ('ended_at', 'install_id', 'event_name', 'foreground_sec'):
+            self.assertIsNone(row[col], col)
+
+    def test_usage_auth_and_invalid_payloads(self):
+        self.assertEqual(self.client.post(USAGE_URL, json=usage_payload()).status_code, 401)
+        for bad in ([1], [usage_payload()] * 501):
+            self.assertEqual(self.client.post(USAGE_URL, json=bad, headers=self.headers).status_code, 400)
+        for missing in ({'user_name': ''}, {'session_id': 'nope'}, {'started_at': 'yesterday'},
+                        {'started_at': '2026-11-14T11:30:05'}):
+            res = self.client.post(USAGE_URL, json=usage_payload(**missing), headers=self.headers)
+            self.assertEqual(res.get_json()['invalid'], 1, missing)
+        self.assertEqual(self.rows(), [])
+
+
 if __name__ == '__main__':
     unittest.main()

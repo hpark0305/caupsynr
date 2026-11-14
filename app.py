@@ -259,6 +259,7 @@ _APP_KEY_ENV = {
     'api_wardy_events': 'WARDY_API_KEY',
     'api_neurobreeze_eeg': 'NEUROBREEZE_API_KEY',
     'api_neurobreeze_meditation': 'NEUROBREEZE_API_KEY',
+    'api_neurobreeze_usage': 'NEUROBREEZE_API_KEY',
     'api_mindmate_followup': 'MINDMATE_API_KEY',
     'api_receive_session': 'SESSIONS_API_KEY',
 }
@@ -632,6 +633,19 @@ def init_db():
                 created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now','localtime')),
                 updated_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now','localtime'))
             );
+            CREATE TABLE IF NOT EXISTS neurobreeze_app_usage (
+                id TEXT PRIMARY KEY,
+                project_id TEXT,
+                user_name TEXT NOT NULL,
+                install_id TEXT,
+                started_at TEXT,
+                ended_at TEXT,
+                foreground_sec INTEGER,
+                event_name TEXT,
+                app_version TEXT,
+                platform TEXT,
+                received_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now','localtime'))
+            );
             CREATE TABLE IF NOT EXISTS mindmate_app_open (
                 id TEXT PRIMARY KEY,
                 participant_key TEXT NOT NULL,
@@ -772,7 +786,7 @@ _ALLOWED_TABLES = {
     'portal_files','accounts','news','research_topics_extra','contact_messages',
     'sessions','audit_log','project_collaborators','reset_tokens','project_protocols',
     'wardy_events','tasks',
-    'neurobreeze_eeg','neurobreeze_meditation',
+    'neurobreeze_eeg','neurobreeze_meditation','neurobreeze_app_usage',
     'mindmate_followup', 'mindmate_music_log', 'mindmate_daily_survey', 'mindmate_app_open',
 }
 
@@ -2116,6 +2130,7 @@ _INGEST_SOURCES = [
     ("Wardy", "wardy_events", "received_at", "portal_wardy", False),
     ("NeuroBreeze EEG", "neurobreeze_eeg", "received_at", "portal_neurobreeze", False),
     ("NeuroBreeze 명상", "neurobreeze_meditation", "received_at", "portal_neurobreeze", False),
+    ("NeuroBreeze 접속", "neurobreeze_app_usage", "received_at", "portal_neurobreeze", False),
     ("Mind Mate 설문", "mindmate_daily_survey", "updated_at", "portal_mindmate", True),
     ("Mind Mate 음원", "mindmate_music_log", "updated_at", "portal_mindmate", True),
 ]
@@ -2221,6 +2236,7 @@ def portal():
         ("wardy_events", "🎮 Wardy", "received_at", True),
         ("neurobreeze_eeg", "🧠 NeuroBreeze EEG", "received_at", True),
         ("neurobreeze_meditation", "🧠 NeuroBreeze 명상", "received_at", True),
+        ("neurobreeze_app_usage", "🧠 NeuroBreeze 접속", "received_at", True),
         ("mindmate_app_open", "💬 Mind Mate 접속", "received_at", False),
         ("mindmate_music_log", "💬 Mind Mate 음원", "updated_at", False),
         ("mindmate_daily_survey", "💬 Mind Mate 설문", "updated_at", False),
@@ -2235,7 +2251,7 @@ def portal():
 
     # 앱 로그 중 프로젝트가 비어 있는 행은 연구자가 먼저 분류해야 하는 데이터다.
     if admin:
-        for table in ("wardy_events", "neurobreeze_eeg", "neurobreeze_meditation"):
+        for table in ("wardy_events", "neurobreeze_eeg", "neurobreeze_meditation", "neurobreeze_app_usage"):
             jobs[("unassigned", table)] = (_sb_count_where, table, "?project_id=is.null")
 
     ingest_key = (admin, tuple(scopes))
@@ -3845,6 +3861,56 @@ def api_neurobreeze_meditation():
         failed += 0 if result else 1
     return _batch_response(len(records), saved, invalid, failed)
 
+# 접속 기록(2026-11-14): 앱을 열어 쓰다가 닫거나 백그라운드로 보낼 때 1건.
+# 앱이 만든 session_id를 id로 써서 재전송해도 1건만 남는다(upsert).
+# 동의한 사용자만 보낸다(앱에서 확인). 이름·설치별 임의 ID·시각·사용 시간·버전만 받는다.
+_NB_USAGE_EVENTS = {"session_end", "app_quit"}
+
+def _nb_time(value):
+    if not isinstance(value, str) or not value.strip() or len(value) > 40:
+        return None
+    try:
+        t = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return t.isoformat() if t.tzinfo else None
+
+@app.route("/api/neurobreeze/usage", methods=["POST"])
+@csrf.exempt
+@limiter.limit(API_RATE_LIMIT)
+def api_neurobreeze_usage():
+    if not _api_key_ok():
+        return jsonify({"error":"Unauthorized"}), 401
+    body = request.get_json(silent=True)
+    if not body:
+        return jsonify({"error":"No JSON body"}), 400
+    records = body if isinstance(body, list) else [body]
+    if len(records) > 500 or not all(isinstance(r, dict) for r in records):
+        return jsonify({"error":"Invalid payload"}), 400
+    saved = invalid = failed = 0
+    for r in records:
+        user_name = str(r.get("user_name") or "").strip()[:100]
+        session_id = _nb_session_id(r.get("session_id"))
+        started_at, ended_at = _nb_time(r.get("started_at")), _nb_time(r.get("ended_at"))
+        if not user_name or not session_id or not started_at:
+            invalid += 1
+            continue
+        install_id = str(r.get("install_id") or "").strip()
+        result = sb("POST", "neurobreeze_app_usage", data={
+            "id":             session_id,
+            "user_name":      user_name,
+            "install_id":     install_id[:64] if re.fullmatch(r"[0-9A-Za-z-]{8,64}", install_id) else None,
+            "started_at":     started_at,
+            "ended_at":       ended_at,
+            "foreground_sec": _nb_int(r.get("foreground_sec"), 0, 7 * 86400),
+            "event_name":     _nb_choice(r.get("event_name"), _NB_USAGE_EVENTS),
+            "app_version":    str(r.get("app_version") or "")[:40] or None,
+            "platform":       str(r.get("platform") or "")[:40] or None,
+        }, upsert=True)
+        saved += 1 if result else 0
+        failed += 0 if result else 1
+    return _batch_response(len(records), saved, invalid, failed)
+
 # ── Mind Mate 수신 API ────────────────────────────────
 # Unity 앱이 Google Apps Script 웹앱을 거쳐 이 엔드포인트로 릴레이한다.
 # 공통 필드(UserName/Department/PhoneNumber)는 개인정보라 그대로 저장하지
@@ -4168,13 +4234,15 @@ def _nb_group_by_user(rows):
 def portal_neurobreeze():
     project_id = request.args.get("project_id","").strip()
     user_name  = request.args.get("user_name","").strip()
-    tab        = request.args.get("tab","eeg")  # eeg | meditation
+    tab        = request.args.get("tab","eeg")  # eeg | meditation | usage
+    tab        = tab if tab in ("eeg", "meditation", "usage") else "eeg"
 
     base_params = "?select=*&order=received_at.desc&limit=3000"  # newest 3000, shown oldest-first
     if project_id: base_params += f"&project_id=eq.{_q(project_id)}"
     if user_name:  base_params += f"&user_name=ilike.{_q(user_name)}%25"
     eeg_rows        = _app_log_rows("neurobreeze_eeg", params=base_params, sort_key="received_at") or []
     meditation_rows = _app_log_rows("neurobreeze_meditation", params=base_params, sort_key="received_at") or []
+    usage_rows      = _app_log_rows("neurobreeze_app_usage", params=base_params, sort_key="received_at") or []
 
     projects = _accessible_projects(session["researcher"]) or []
 
@@ -4182,7 +4250,8 @@ def portal_neurobreeze():
         researcher=session["researcher"],
         eeg_groups=_nb_group_by_user(eeg_rows),
         med_groups=_nb_group_by_user(meditation_rows),
-        eeg_total=len(eeg_rows), med_total=len(meditation_rows),
+        usage_groups=_nb_group_by_user(usage_rows),
+        eeg_total=len(eeg_rows), med_total=len(meditation_rows), usage_total=len(usage_rows),
         projects=projects,
         project_id=project_id, user_name=user_name, tab=tab,
         api_key="(서버 환경변수에서 별도 관리)")
@@ -4205,6 +4274,15 @@ def portal_neurobreeze_meditation_delete():
         return redirect(url_for("portal_neurobreeze", tab="meditation"))
     return _delete_owned_rows("neurobreeze_meditation", ids, "portal_neurobreeze", tab="meditation")
 
+@app.route("/portal/neurobreeze/usage/delete", methods=["POST"])
+@login_required
+def portal_neurobreeze_usage_delete():
+    ids = request.form.getlist("ids")
+    if not ids:
+        flash("삭제할 항목을 선택해주세요.", "error")
+        return redirect(url_for("portal_neurobreeze", tab="usage"))
+    return _delete_owned_rows("neurobreeze_app_usage", ids, "portal_neurobreeze", tab="usage")
+
 @app.route("/portal/neurobreeze/export")
 @login_required
 def portal_neurobreeze_export():
@@ -4212,7 +4290,7 @@ def portal_neurobreeze_export():
     user_name  = request.args.get("user_name","").strip()
     tab        = request.args.get("tab","eeg")
 
-    table = "neurobreeze_eeg" if tab == "eeg" else "neurobreeze_meditation"
+    table = {"eeg": "neurobreeze_eeg", "usage": "neurobreeze_app_usage"}.get(tab, "neurobreeze_meditation")
     params = "?select=*&order=received_at.asc"
     if project_id: params += f"&project_id=eq.{_q(project_id)}"
     if user_name:  params += f"&user_name=ilike.{_q(user_name)}%25"
@@ -4231,6 +4309,13 @@ def portal_neurobreeze_export():
                 "left_alpha_power","right_alpha_power","alpha_power",
                 "left_alpha_indicator","right_alpha_indicator","alpha_indicator","received_at"]])
         fname = "neurobreeze_eeg.csv"
+    elif tab == "usage":
+        cols = ["id","project_id","user_name","install_id","started_at","ended_at",
+                "foreground_sec","event_name","app_version","platform","received_at"]
+        w.writerow(cols)
+        for r in rows:
+            w.writerow([r.get(c,"") for c in cols])
+        fname = "neurobreeze_app_usage.csv"
     else:
         w.writerow(["id","project_id","user_name","session_num","start_time","end_time",
                     "program","mode","planned_sec","duration_sec","completed","end_reason",
