@@ -713,6 +713,24 @@ class SecurityTests(unittest.TestCase):
         self.assertNotIn('other-user', body)
         self.assertIn('relay-user', self.client.get('/portal/wardy/export?reason=analysis').get_data(as_text=True))
 
+    def test_neurobreeze_usage_tab_scoped_and_exported(self):
+        portal.sb('POST', 'neurobreeze_app_usage', data={'id': 'u-own', 'project_id': 'own', 'user_name': 'own-user',
+                                                        'started_at': '2026-11-14T11:30:05+09:00', 'foreground_sec': 600})
+        portal.sb('POST', 'neurobreeze_app_usage', data={'id': 'u-other', 'project_id': 'other', 'user_name': 'other-user',
+                                                        'started_at': '2026-11-14T11:30:05+09:00', 'foreground_sec': 60})
+        body = self.client.get('/portal/neurobreeze?tab=usage').get_data(as_text=True)
+        self.assertIn('own-user', body)
+        self.assertIn('총 10분', body)
+        self.assertNotIn('other-user', body)
+        csv_body = self.client.get('/portal/neurobreeze/export?tab=usage&reason=analysis').get_data(as_text=True)
+        self.assertIn('foreground_sec', csv_body)
+        self.assertIn('own-user', csv_body)
+        self.assertNotIn('other-user', csv_body)
+        self.post('/portal/neurobreeze/usage/delete', {'ids': 'u-other'})
+        self.assertTrue(portal.sb('GET', 'neurobreeze_app_usage', params='?id=eq.u-other'))
+        self.post('/portal/neurobreeze/usage/delete', {'ids': 'u-own'})
+        self.assertFalse(portal.sb('GET', 'neurobreeze_app_usage', params='?id=eq.u-own'))
+
     def test_wardy_dashboard_separates_diagnostics_and_hides_stack_traces(self):
         portal.sb('POST', 'wardy_events', data={'id': 'g1', 'project_id': 'own', 'user_name': 'own-user',
                                                  'state': '게임 시작', 'game_level': 'Module1Level1'})

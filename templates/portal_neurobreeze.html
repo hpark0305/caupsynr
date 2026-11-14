@@ -101,6 +101,10 @@ input[type=checkbox]{cursor:pointer;width:15px;height:15px;}
          class="nb-tab {% if tab == 'meditation' %}active{% endif %}">
         🧘 명상 세션 ({{ med_groups|length }}명 · {{ med_total }}건)
       </a>
+      <a href="?tab=usage&project_id={{ project_id }}&user_name={{ user_name }}"
+         class="nb-tab {% if tab == 'usage' %}active{% endif %}">
+        📱 접속 ({{ usage_groups|length }}명 · {{ usage_total }}건)
+      </a>
     </div>
 
     <!-- ══ 뇌파검사 탭 ══ -->
@@ -177,7 +181,7 @@ input[type=checkbox]{cursor:pointer;width:15px;height:15px;}
       {% endif %}
 
     <!-- ══ 명상 세션 탭 ══ -->
-    {% else %}
+    {% elif tab == 'meditation' %}
       {% if med_groups %}
       <form method="post" action="{{ url_for('portal_neurobreeze_meditation_delete') }}" id="deleteForm">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -262,12 +266,79 @@ input[type=checkbox]{cursor:pointer;width:15px;height:15px;}
         <div style="font-size:.83rem;margin-top:6px;"><code>POST /api/neurobreeze/meditation</code>로 데이터를 전송하세요.</div>
       </div>
       {% endif %}
+
+    <!-- ══ 접속 탭 ══ -->
+    {% else %}
+      {% if usage_groups %}
+      <form method="post" action="{{ url_for('portal_neurobreeze_usage_delete') }}" id="deleteForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="delete-bar" id="deleteBar">
+          <span id="selectedCount" style="font-size:.85rem;font-weight:600;color:#991b1b;">0건 선택됨</span>
+          <button type="submit" class="btn" style="background:#dc2626;color:#fff;padding:6px 16px;font-size:.82rem;"
+            onclick="return confirm('선택한 항목을 삭제할까요?')">삭제</button>
+          <button type="button" class="btn btn-outline" style="padding:6px 14px;font-size:.82rem;" onclick="clearSelection()">취소</button>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          {% for grp in usage_groups %}{% set gi = loop.index %}
+          {% set total_sec = grp.records|map(attribute='foreground_sec')|select('number')|sum %}
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+            <div onclick="toggleParticipant('use{{ gi }}')"
+                 style="display:flex;align-items:center;gap:12px;padding:14px 18px;cursor:pointer;user-select:none;transition:background .12s;"
+                 onmouseenter="this.style.background='var(--accent-light)'" onmouseleave="this.style.background=''">
+              <span style="font-size:.72rem;color:var(--fg-4);width:16px;text-align:center;transition:transform .2s;" id="arrow-use{{ gi }}">▶</span>
+              <span style="font-weight:700;font-size:.95rem;color:var(--fg-1);min-width:80px;">{{ grp.user_name }}</span>
+              <span style="background:var(--accent-light);color:var(--accent);font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:100px;">{{ grp.count }}회 접속</span>
+              <span style="font-size:.78rem;color:var(--muted);">총 {{ '%.0f'|format(total_sec / 60) }}분</span>
+              <span style="font-size:.78rem;color:var(--muted);margin-left:4px;">최근: {{ grp.last_time }}</span>
+            </div>
+            <div id="detail-use{{ gi }}" style="display:none;border-top:1px solid var(--border);">
+              <div style="overflow-x:auto;">
+                <table class="data-table" style="font-size:.81rem;">
+                  <thead>
+                    <tr>
+                      <th style="width:36px;"><input type="checkbox" class="group-check" onchange="toggleGroup(this,'use{{ gi }}')"></th>
+                      <th>시작</th>
+                      <th>종료</th>
+                      <th>사용(분)</th>
+                      <th>앱 버전</th>
+                      <th>기기</th>
+                      <th>설치 ID</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for r in grp.records %}
+                    <tr>
+                      <td><input type="checkbox" name="ids" value="{{ r.get('id','') }}" class="row-check group-use{{ gi }}" onchange="updateBar()"></td>
+                      <td style="font-size:.76rem;color:var(--muted);">{{ (r.get('started_at','') or '')[:16].replace('T',' ') }}</td>
+                      <td style="font-size:.76rem;color:var(--muted);">{{ (r.get('ended_at','') or '')[:16].replace('T',' ') }}</td>
+                      <td style="text-align:center;">{{ '%.1f'|format(r.get('foreground_sec') / 60) if r.get('foreground_sec') is not none else '—' }}</td>
+                      <td style="font-size:.8rem;">{{ r.get('app_version') or '—' }}</td>
+                      <td style="font-size:.8rem;">{{ {'IPhonePlayer':'iOS','Android':'Android'}.get(r.get('platform'), r.get('platform')) or '—' }}</td>
+                      <td style="font-size:.76rem;color:var(--muted);">{{ (r.get('install_id') or '')[:8] or '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </form>
+      {% else %}
+      <div style="text-align:center;padding:60px 20px;color:var(--muted);">
+        <div style="font-size:2.5rem;margin-bottom:12px;">📭</div>
+        <div>접속 기록이 없습니다.</div>
+        <div style="font-size:.83rem;margin-top:6px;">앱 1.0.2(빌드 11) 이상에서 데이터 공유에 동의한 사용자만 기록됩니다.</div>
+      </div>
+      {% endif %}
     {% endif %}
 
     <!-- API 안내 -->
     <div style="margin-top:32px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px 24px;">
       <h3 style="margin:0 0 12px;font-size:1rem;">🔌 연동 엔드포인트</h3>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
         <div>
           <p style="font-size:.78rem;color:var(--muted);margin:0 0 6px;font-weight:600;">뇌파검사</p>
           <code style="display:block;background:var(--bg);padding:10px 12px;border-radius:6px;font-size:.78rem;line-height:1.6;">
@@ -280,6 +351,14 @@ input[type=checkbox]{cursor:pointer;width:15px;height:15px;}
           <p style="font-size:.78rem;color:var(--muted);margin:0 0 6px;font-weight:600;">명상 세션</p>
           <code style="display:block;background:var(--bg);padding:10px 12px;border-radius:6px;font-size:.78rem;line-height:1.6;">
             POST /api/neurobreeze/meditation<br>
+            X-API-Key: {{ api_key }}<br>
+            Content-Type: application/json
+          </code>
+        </div>
+        <div>
+          <p style="font-size:.78rem;color:var(--muted);margin:0 0 6px;font-weight:600;">접속 기록</p>
+          <code style="display:block;background:var(--bg);padding:10px 12px;border-radius:6px;font-size:.78rem;line-height:1.6;">
+            POST /api/neurobreeze/usage<br>
             X-API-Key: {{ api_key }}<br>
             Content-Type: application/json
           </code>

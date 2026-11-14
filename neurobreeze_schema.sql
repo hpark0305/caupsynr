@@ -75,3 +75,24 @@ ALTER TABLE neurobreeze_eeg ENABLE ROW LEVEL SECURITY;
 ALTER TABLE neurobreeze_meditation ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON neurobreeze_eeg, neurobreeze_meditation FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON neurobreeze_eeg, neurobreeze_meditation TO service_role;
+
+-- 접속 기록 (2026-11-14, supabase_migration_neurobreeze_usage.sql)
+CREATE TABLE IF NOT EXISTS neurobreeze_app_usage (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id      UUID,
+    user_name       TEXT NOT NULL,
+    install_id      TEXT,
+    started_at      TIMESTAMPTZ,
+    ended_at        TIMESTAMPTZ,
+    foreground_sec  INTEGER,
+    event_name      TEXT,
+    app_version     TEXT,
+    platform        TEXT,
+    received_at     TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_nb_usage_project  ON neurobreeze_app_usage(project_id);
+CREATE INDEX IF NOT EXISTS idx_nb_usage_user     ON neurobreeze_app_usage(user_name);
+CREATE INDEX IF NOT EXISTS idx_nb_usage_received ON neurobreeze_app_usage(received_at DESC);
+ALTER TABLE neurobreeze_app_usage ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON neurobreeze_app_usage FROM PUBLIC, anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON neurobreeze_app_usage TO service_role;
