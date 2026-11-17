@@ -208,6 +208,8 @@ body {
    ═══════════════════════════════════════════════════════════════ */
 .portal-mobile-nav { display: none; }
 .lin-wrap { display: flex; height: calc(100vh - var(--nav-h)); overflow: hidden; background: var(--bg); }
+/* Main pane scrolls inside the fixed-height shell. Pages may override inline (e.g. analytics). */
+.lin-main { flex: 1; min-width: 0; overflow-y: auto; }
 .lin-sidebar { width: 232px; min-width: 232px; height: 100%; display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; border-right: 1px solid var(--border); background: var(--surface); }
 .lin-sidebar-top { padding: 14px 10px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .lin-workspace { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 9px; }
