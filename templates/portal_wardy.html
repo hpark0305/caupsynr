@@ -141,7 +141,7 @@
           <div class="wd-people">
             <div class="wd-people-head" aria-hidden="true"><span>참여자</span><span class="num">시작</span><span class="num">성공</span><span>최고 성공 레벨</span><span>성공률</span><span>마지막 활동</span></div>
             {% for g in groups %}{% set p = g.summary %}{% set gi = loop.index %}
-            <details class="wd-person">
+            <details class="wd-person" data-user="{{ p.user_name }}" data-group="u{{ gi }}">
               <summary>
                 <span class="wd-person-name">{% if p.active_week %}<span class="wd-dot tone-good" title="최근 7일 활동"></span>{% endif %}{{ p.user_name }}<span class="wd-count">{{ p.events }}</span></span>
                 <span class="num" data-label="시작">{{ p.starts }}</span>
@@ -154,17 +154,7 @@
                 <table class="wd-table wd-events">
                   <thead><tr><th scope="col"><input type="checkbox" aria-label="{{ p.user_name }} 이벤트 전체 선택" onchange="toggleGroup(this,'u{{ gi }}')"></th><th scope="col">#</th><th scope="col">이벤트</th><th scope="col">레벨</th><th scope="col">앱 시각</th><th scope="col">수신 시각</th><th scope="col">데이터</th></tr></thead>
                   <tbody>
-                    {% for ev in g.events %}
-                    <tr>
-                      <td><input type="checkbox" name="ids" value="{{ ev.get('id','') }}" class="row-check group-u{{ gi }}" onchange="updateBar()" aria-label="이벤트 선택"></td>
-                      <td class="wd-muted">{{ ev.get('seq','') if ev.get('seq') is not none else '' }}</td>
-                      <td>{{ tone_badge(ev.get('state','')) }}</td>
-                      <td>{{ ev.get('game_level') or '' }}</td>
-                      <td class="wd-time">{{ (ev.get('event_time') or '')[:19].replace('T',' ') }}</td>
-                      <td class="wd-time">{{ (ev.get('received_at') or '')[:19].replace('T',' ') }}</td>
-                      <td>{% set d = ev.get('data') %}{% if d %}<span class="wd-json" title="{{ d | tojson }}">{{ d | tojson }}</span>{% else %}<span class="wd-muted">—</span>{% endif %}</td>
-                    </tr>
-                    {% endfor %}
+                    <tr class="wd-lazy"><td colspan="7" class="wd-muted">이벤트 {{ p.events }}건을 불러오는 중…</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -196,6 +186,22 @@
 <script src="{{ url_for('static', filename='vendor/chart-4.4.1.umd.min.js') }}"></script>
 <script>
 function toggleNav(key){var btn=document.getElementById('nav-'+key),group=document.getElementById('sub-'+key);if(!btn||!group)return;var open=group.classList.contains('open');group.classList.toggle('open',!open);btn.classList.toggle('expanded',!open);}
+// Event rows are loaded when a participant is opened: rendering every event
+// up front made this page several MB for ~6,000 Wardy rows.
+document.querySelectorAll('details.wd-person[data-user]').forEach(function (d) {
+  d.addEventListener('toggle', function () {
+    if (!d.open || d.dataset.loaded) return;
+    d.dataset.loaded = '1';
+    var params = new URLSearchParams(location.search);
+    params.set('user', d.dataset.user);
+    params.set('group', d.dataset.group);
+    var body = d.querySelector('tbody');
+    fetch('{{ url_for("portal_wardy_events") }}?' + params.toString(), {credentials: 'same-origin'})
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then(function (html) { body.innerHTML = html; })
+      .catch(function () { delete d.dataset.loaded; body.innerHTML = '<tr><td colspan="7" class="wd-muted">불러오지 못했습니다. 다시 열어 주세요.</td></tr>'; });
+  });
+});
 function toggleGroup(cb, groupId){document.querySelectorAll('.group-'+groupId).forEach(function(c){c.checked=cb.checked;});updateBar();}
 function updateBar(){var n=document.querySelectorAll('.row-check:checked').length;var c=document.getElementById('selectedCount');if(!c)return;c.textContent=n+'건 선택됨';document.getElementById('deleteBar').classList.toggle('show',n>0);}
 function clearSelection(){document.querySelectorAll('.wd-events input[type=checkbox]').forEach(function(c){c.checked=false;});updateBar();}

@@ -1,0 +1,16 @@
+{# Rows for one Wardy participant, fetched when the participant is opened. #}
+{% macro tone_badge(state) -%}
+<span class="wd-badge tone-{{ state_tone.get(state, 'neutral') }}">{{ state }}</span>
+{%- endmacro %}
+{% for ev in g.events %}
+                    <tr>
+                      <td><input type="checkbox" name="ids" value="{{ ev.get('id','') }}" class="row-check group-{{ group }}" onchange="updateBar()" aria-label="이벤트 선택"></td>
+                      <td class="wd-muted">{{ ev.get('seq','') if ev.get('seq') is not none else '' }}</td>
+                      <td>{{ tone_badge(ev.get('state','')) }}</td>
+                      <td>{{ ev.get('game_level') or '' }}</td>
+                      <td class="wd-time">{{ (ev.get('event_time') or '')[:19].replace('T',' ') }}</td>
+                      <td class="wd-time">{{ (ev.get('received_at') or '')[:19].replace('T',' ') }}</td>
+                      <td>{% set d = ev.get('data') %}{% if d %}<span class="wd-json" title="{{ d | tojson }}">{{ d | tojson }}</span>{% else %}<span class="wd-muted">—</span>{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+{% if not g.events %}<tr><td colspan="7" class="wd-muted">이벤트가 없습니다.</td></tr>{% endif %}
