@@ -16,7 +16,7 @@
       <p class="hero-sub fade-up-3">Advancing mental health through research in disaster trauma, neurofeedback, simulation education, and digital health — since 2015.</p>
       <div class="hero-actions fade-up-3">
         <a href="{{ url_for('research') }}" class="btn btn-primary btn-lg">Explore research</a>
-        <a href="{{ url_for('apps') }}" class="hero-link">Discover our apps&nbsp;›</a>
+        <a href="{{ url_for('participate') }}" class="hero-link">Participate in a study&nbsp;›</a>
       </div>
     </div>
   </div>
@@ -29,7 +29,7 @@
     <div class="stat-item"><span class="stat-num">2015</span><span class="stat-lbl">Founded</span></div>
     <div class="stat-item"><span class="stat-num">80+</span><span class="stat-lbl">Publications</span></div>
     <div class="stat-item"><span class="stat-num">6</span><span class="stat-lbl">Apps Developed</span></div>
-    <div class="stat-item"><span class="stat-num">4</span><span class="stat-lbl">Research Areas</span></div>
+    <div class="stat-item"><span class="stat-num">{{ themes|length }}</span><span class="stat-lbl">Research Themes</span></div>
   </div>
 </div>
 
@@ -65,77 +65,17 @@
         <a href="{{ url_for('team') }}" class="btn btn-outline">Meet the Team</a>
       </div>
       <div class="about-focus">
-        <h4 class="about-focus-title">Research Focus Areas</h4>
-        {% for r in research_topics %}
-        <div style="display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--border-light);{% if loop.last %}border:none{% endif %}">
-          <div style="width:8px;height:8px;background:var(--accent);border-radius:50%;flex-shrink:0;"></div>
-          <div>
-            <div style="font-weight:600;font-size:.9rem;">{{ r.title }}</div>
-            <div style="font-size:.8rem;color:var(--muted);">{{ r.summary[:70] }}…</div>
-          </div>
-        </div>
+        <h4 class="about-focus-title">Research Themes</h4>
+        {% for r in themes %}
+        <a href="{{ url_for('research') }}#theme-{{ r.key }}" class="about-theme-row">
+          <span class="about-theme-dot" aria-hidden="true"></span>
+          <span>
+            <span class="about-theme-title">{{ r.title }}</span>
+            <span class="about-theme-sum">{{ r.summary|truncate(84) }}</span>
+          </span>
+        </a>
         {% endfor %}
       </div>
-    </div>
-  </div>
-</section>
-
-<!-- ── RESEARCH PREVIEW ── -->
-<section>
-  <div class="container">
-    <div class="section-header">
-      <span class="label">Our Focus</span>
-      <h2>Research Interest</h2>
-      <p>Click on a research area to explore in detail below.</p>
-    </div>
-    <div class="ri-grid">
-      {% for r in research_topics %}
-      <a href="{{ url_for('research') }}?topic={{ r.key }}" class="ri-card">
-        <div class="ri-card-top" style="background:{{ r.gradient }};">
-          {% if r.image %}<img class="ri-card-photo" src="{{ url_for('static', filename=r.image) }}" alt="" loading="lazy">{% endif %}
-          <span class="ri-card-tint" style="background:{{ r.gradient }};"></span>
-          {% if r.key == 'brainwave' %}
-          <svg class="ri-card-icon" viewBox="0 0 64 64" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 32 L12 32 L16 17 L22 47 L28 23 L33 38 L38 21 L43 41 L48 32 L60 32"/>
-            <circle cx="4" cy="32" r="2.5" fill="white" stroke="none"/>
-            <circle cx="60" cy="32" r="2.5" fill="white" stroke="none"/>
-          </svg>
-          {% elif r.key == 'simulation' %}
-          <svg class="ri-card-icon" viewBox="0 0 64 64" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="8" y="16" width="48" height="30" rx="4"/>
-            <line x1="32" y1="46" x2="32" y2="54"/>
-            <line x1="20" y1="54" x2="44" y2="54"/>
-            <circle cx="23" cy="31" r="6"/>
-            <circle cx="41" cy="31" r="6"/>
-            <line x1="29" y1="31" x2="35" y2="31"/>
-          </svg>
-          {% elif r.key == 'binaural' %}
-          <svg class="ri-card-icon" viewBox="0 0 64 64" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M13 36 Q13 13 32 13 Q51 13 51 36"/>
-            <rect x="6" y="33" width="13" height="18" rx="6"/>
-            <rect x="45" y="33" width="13" height="18" rx="6"/>
-            <path d="M19 51 Q19 57 25 57 L32 57"/>
-          </svg>
-          {% elif r.key == 'app' %}
-          <svg class="ri-card-icon" viewBox="0 0 64 64" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="16" y="4" width="32" height="56" rx="7"/>
-            <line x1="26" y1="11" x2="38" y2="11"/>
-            <circle cx="32" cy="52" r="2.5" fill="white" stroke="none"/>
-            <rect x="22" y="21" width="8" height="8" rx="2"/>
-            <rect x="34" y="21" width="8" height="8" rx="2"/>
-            <rect x="22" y="33" width="8" height="8" rx="2"/>
-            <rect x="34" y="33" width="8" height="8" rx="2"/>
-          </svg>
-          {% endif %}
-        </div>
-        <div class="ri-card-body">
-          <span class="label">Research Interest</span>
-          <h3>{{ r.title }}</h3>
-          <p class="ri-card-desc">{{ r.summary }}</p>
-          <span class="ri-read-more">Read More →</span>
-        </div>
-      </a>
-      {% endfor %}
     </div>
   </div>
 </section>
@@ -186,6 +126,22 @@
         </div>
       </a>
       {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- ── NOW RECRUITING ── -->
+{% if open_studies %}
+<section class="recruit-strip">
+  <div class="container">
+    <div class="recruit-strip-inner">
+      <div>
+        <span class="recruit-pill"><span class="recruit-dot" aria-hidden="true"></span>Now recruiting · 참여자 모집 중</span>
+        <h2>{{ open_studies[0].title }}</h2>
+        {% if open_studies|length > 1 %}<p>외 {{ open_studies|length - 1 }}건의 연구가 참여자를 모집하고 있습니다.</p>{% elif open_studies[0].summary %}<p>{{ open_studies[0].summary[:110] }}{% if open_studies[0].summary|length > 110 %}…{% endif %}</p>{% endif %}
+      </div>
+      <a href="{{ url_for('participate') }}" class="btn btn-primary">연구 참여 안내 →</a>
     </div>
   </div>
 </section>
@@ -245,48 +201,27 @@
 </section>
 {% endif %}
 
-<!-- ── RECOGNITION ── -->
-{% if recognition %}
-<section class="recog-sec">
-  <div class="container">
-    <div class="section-header">
-      <span class="label">Recognition</span>
-      <h2>A decade of measurable impact</h2>
-    </div>
-    <div class="recog-grid">
-      {% for r in recognition %}
-      <div class="recog-card mask-reveal">
-        <div class="recog-metric">{{ r.metric }}</div>
-        <div class="recog-label">{{ r.label }}</div>
-        <div class="recog-note">{{ r.note }}</div>
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-</section>
-{% endif %}
-
-{% if lab_events %}
-<!-- ── FROM THE LAB (blog-style cards) ── -->
+<!-- ── NEWS & ACTIVITIES ── -->
+{% if feed %}
 <section class="notes-sec">
   <div class="container">
     <div class="notes-head">
       <div>
         <span class="label" style="display:block;margin-bottom:10px;">From the Lab</span>
-        <h2>Recent activities</h2>
+        <h2>News &amp; activities</h2>
       </div>
-      <a href="{{ url_for('gallery') }}" class="btn btn-outline">View Gallery</a>
+      <a href="{{ url_for('news') }}" class="btn btn-outline">All news</a>
     </div>
     <div class="notes-grid">
-      {% for ev in lab_events %}
-      <a href="{{ url_for('gallery_event', key=ev.key) }}" class="note-card mask-reveal">
-        <div class="note-media">
-          <img src="{{ url_for('static', filename='images/gallery/' + ev.key + '/' + ev.cover_photo) }}" alt="{{ ev.title }}" loading="lazy">
+      {% for item in feed %}
+      {% if item.url %}<a href="{{ item.url }}" class="note-card mask-reveal">{% else %}<a href="{{ url_for('news') }}" class="note-card mask-reveal">{% endif %}
+        <div class="note-media{% if not item.image %} note-media-text{% endif %}">
+          {% if item.image %}<img src="{{ item.image }}" alt="{{ item.title }}" loading="lazy">{% else %}<span>{{ item.title }}</span>{% endif %}
         </div>
         <div class="note-body">
-          {% if ev.date %}<span class="note-date">{{ ev.date }}</span>{% endif %}
-          <h3>{{ ev.title }}</h3>
-          {% if ev.venue %}<span class="note-venue">{{ ev.venue }}</span>{% endif %}
+          <span class="note-date">{{ 'Notice' if item.kind == 'notice' else 'Activity' }}{% if item.date %} · {{ item.date }}{% endif %}</span>
+          <h3>{{ item.title }}</h3>
+          {% if item.content %}<span class="note-venue">{{ item.content[:80] }}{% if item.content|length > 80 %}…{% endif %}</span>{% endif %}
         </div>
       </a>
       {% endfor %}
@@ -295,13 +230,14 @@
 </section>
 {% endif %}
 
+
 <!-- ── PARTNERS LOGO MARQUEE ── -->
 {% if partners %}
 <section class="partners-sec">
   <div class="container">
-    <p class="partners-eyebrow">Published in &amp; partnered with</p>
+    <p class="partners-eyebrow">Selected journals we publish in</p>
   </div>
-  <div class="logo-marquee" aria-label="Partners and publishing venues">
+  <div class="logo-marquee" aria-label="Journals">
     <div class="logo-track">
       {% for p in partners %}<span class="logo-item">{{ p }}</span>{% endfor %}
       {% for p in partners %}<span class="logo-item">{{ p }}</span>{% endfor %}
@@ -333,43 +269,20 @@
   </div>
 </section>
 
-<!-- ── NEWS ── -->
-{% if news %}
-<section style="background:var(--surface);">
-  <div class="container">
-    <div class="section-header">
-      <span class="label">ANNOUNCEMENTS</span>
-      <h2 class="section-title">공지사항</h2>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:12px;max-width:720px;margin:0 auto;">
-      {% for n in news %}
-      <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 24px;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
-        <div>
-          <h3 style="font-family:var(--font-body);font-size:1rem;font-weight:700;color:var(--dark);margin-bottom:6px;">{{ n.title }}</h3>
-          {% if n.content %}
-          <p style="font-size:.88rem;color:var(--muted);line-height:1.6;">{{ n.content[:120] }}{% if n.content|length > 120 %}…{% endif %}</p>
-          {% endif %}
-        </div>
-        <span style="font-size:.75rem;color:var(--muted);white-space:nowrap;flex-shrink:0;margin-top:2px;">{{ n.created_at[:10] }}</span>
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-</section>
-{% endif %}
 
-<!-- ── APPS CTA ── -->
+<!-- ── PARTICIPATE / JOIN CTA ── -->
 <section class="cta-spotlight" style="background:#15132c;position:relative;overflow:hidden;">
   <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 60% 50%,rgba(15,107,107,.4) 0%,transparent 60%);pointer-events:none;"></div>
   <div class="cta-glow" aria-hidden="true"></div>
   <div class="container" style="position:relative;text-align:center;">
-    <span class="label" style="color:var(--accent-mid);display:block;margin-bottom:14px;">Digital Interventions</span>
-    <h2 style="color:#fff;margin-bottom:16px;">Six Apps for Survivors,<br>Nurses & Everyday Care</h2>
-    <p style="color:rgba(255,255,255,.6);max-width:560px;margin:0 auto 32px;font-size:1.05rem;">PLS, TLS, Mind Therapy, Wardy, NeuroBreeze, and Mind Mate — mobile apps developed by our lab for trauma recovery, nursing education, and stress care.</p>
-    <a href="{{ url_for('apps') }}" class="btn btn-primary" style="margin-right:12px;">Explore Apps</a>
-    <a href="{{ url_for('contact') }}" class="btn btn-white">Get in Touch</a>
+    <span class="label" style="color:var(--accent-mid);display:block;margin-bottom:14px;">Get involved</span>
+    <h2 style="color:#fff;margin-bottom:16px;">Take part in our research,<br>or build it with us.</h2>
+    <p style="color:rgba(255,255,255,.66);max-width:560px;margin:0 auto 32px;font-size:1.05rem;">연구 참여자 모집 소식과 대학원·연구원 합류 안내를 확인하세요.</p>
+    <a href="{{ url_for('participate') }}" class="btn btn-primary" style="margin:0 6px 10px;">Participate in a study</a>
+    <a href="{{ url_for('join') }}" class="btn btn-white" style="margin:0 6px 10px;">Join the lab</a>
   </div>
 </section>
+
 
 {% endblock %}
 

@@ -49,7 +49,7 @@
     <div class="grid-3" style="margin-bottom:48px;">
       {% for m in team.phd %}
       <div class="member-card">
-        <img class="member-photo" src="{{ url_for('static', filename=m.image) }}" alt="{{ m.name }}">
+        {% if m.image.endswith('member-placeholder.jpg') %}<div class="member-photo member-initials" role="img" aria-label="{{ m.name }}">{{ m.name.split(' ')|map('first')|join('') }}</div>{% else %}<img class="member-photo" src="{{ url_for('static', filename=m.image) }}" alt="{{ m.name }}">{% endif %}
         <div class="member-degree">Ph.D. Student</div>
         <div class="member-name">{{ m.name }}</div>
         <div class="member-interest">{{ m.interest }}</div>
@@ -61,7 +61,7 @@
     <div class="grid-3">
       {% for m in team.ma %}
       <div class="member-card">
-        <img class="member-photo" src="{{ url_for('static', filename=m.image) }}" alt="{{ m.name }}">
+        {% if m.image.endswith('member-placeholder.jpg') %}<div class="member-photo member-initials" role="img" aria-label="{{ m.name }}">{{ m.name.split(' ')|map('first')|join('') }}</div>{% else %}<img class="member-photo" src="{{ url_for('static', filename=m.image) }}" alt="{{ m.name }}">{% endif %}
         <div class="member-degree">M.A. Student</div>
         <div class="member-name">{{ m.name }}</div>
         <div class="member-interest">{{ m.interest }}</div>
@@ -74,7 +74,7 @@
     <div class="grid-3">
       {% for m in team.intern %}
       <div class="member-card">
-        <img class="member-photo" src="{{ url_for('static', filename=m.image) }}" alt="{{ m.name }}">
+        {% if m.image.endswith('member-placeholder.jpg') %}<div class="member-photo member-initials" role="img" aria-label="{{ m.name }}">{{ m.name.split(' ')|map('first')|join('') }}</div>{% else %}<img class="member-photo" src="{{ url_for('static', filename=m.image) }}" alt="{{ m.name }}">{% endif %}
         <div class="member-degree">Undergraduate Intern</div>
         <div class="member-name">{{ m.name }}</div>
         <div class="member-interest">{{ m.interest }}</div>
@@ -111,7 +111,7 @@
   <div class="container" style="text-align:center;">
     <h2 style="color:#fff;margin-bottom:14px;">Join Our Lab</h2>
     <p style="color:rgba(255,255,255,.75);max-width:480px;margin:0 auto 28px;">We welcome students and researchers interested in trauma, psychiatric mental health nursing, and digital health interventions.</p>
-    <a href="{{ url_for('contact') }}" class="btn btn-white">Get in Touch</a>
+    <a href="{{ url_for('join') }}" class="btn btn-white">How to join</a>
   </div>
 </section>
 

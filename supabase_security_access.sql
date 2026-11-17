@@ -10,7 +10,7 @@ BEGIN
     FOREACH target IN ARRAY ARRAY[
         'accounts', 'projects', 'project_participants', 'measurements',
         'project_variables', 'portal_files', 'news', 'research_topics_extra',
-        'contact_messages', 'sessions', 'audit_log', 'project_collaborators',
+        'contact_messages', 'site_studies', 'site_projects', 'sessions', 'audit_log', 'project_collaborators',
         'reset_tokens', 'project_protocols', 'wardy_events', 'tasks',
         'neurobreeze_eeg', 'neurobreeze_meditation', 'mindmate_followup',
         'mindmate_music_log', 'mindmate_daily_survey', 'mindmate_app_open',
