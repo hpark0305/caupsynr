@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}News · Trauma Stress Lab{% endblock %}
+{% block description %}Notices and recent activities from the Trauma Stress Lab at Chung-Ang University: conferences, workshops, and study announcements.{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+  <div class="container">
+    <span class="label">From the lab</span>
+    <h1>News</h1>
+    <p>Notices, conference presentations, and lab activities. 연구실 공지와 활동 소식입니다.</p>
+  </div>
+</div>
+
+<section>
+  <div class="container">
+    {% if feed %}
+    <div class="news-filter" role="group" aria-label="Filter news">
+      <button type="button" class="year-btn active" data-kind="all">All</button>
+      <button type="button" class="year-btn" data-kind="notice">Notices</button>
+      <button type="button" class="year-btn" data-kind="activity">Activities</button>
+      <a href="{{ url_for('gallery') }}" class="news-gallery-link">Photo gallery →</a>
+    </div>
+    <div class="news-list">
+      {% for item in feed %}
+      <article class="news-row" data-kind="{{ item.kind }}">
+        <div class="news-row-date">
+          <span class="news-kind {{ item.kind }}">{{ 'Notice' if item.kind == 'notice' else 'Activity' }}</span>
+          {% if item.date %}<time>{{ item.date }}</time>{% endif %}
+        </div>
+        <div class="news-row-body">
+          <h2>{% if item.url %}<a href="{{ item.url }}">{{ item.title }}</a>{% else %}{{ item.title }}{% endif %}</h2>
+          {% if item.content %}<p>{{ item.content }}</p>{% endif %}
+        </div>
+        {% if item.image %}
+        <a href="{{ item.url }}" class="news-row-thumb" tabindex="-1" aria-hidden="true"><img src="{{ item.image }}" alt="" loading="lazy"></a>
+        {% endif %}
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="theme-empty">No news yet. 아직 등록된 소식이 없습니다.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.news-filter [data-kind]').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    var kind = btn.dataset.kind;
+    document.querySelectorAll('.news-filter [data-kind]').forEach(function (b) { b.classList.toggle('active', b === btn); });
+    document.querySelectorAll('.news-row').forEach(function (row) {
+      row.hidden = kind !== 'all' && row.dataset.kind !== kind;
+    });
+  });
+});
+</script>
+{% endblock %}

@@ -7,13 +7,59 @@
   <div class="container">
     <span class="label">What we study</span>
     <h1>Research</h1>
-    <p>Our lab advances knowledge in four interconnected areas: brainwave neuroscience, simulation-based education, binaural beat therapy, and digital mental health applications.</p>
+    <p>We study how people and communities live through traumatic stress, and we build and test interventions, from psychological first aid training to mobile and neurofeedback programmes, that help them recover.</p>
+    <nav class="research-jump" aria-label="On this page">
+      <a href="#themes">Themes</a><a href="#methods">Methods &amp; tools</a><a href="#projects">Projects</a>
+    </nav>
   </div>
 </div>
 
-<!-- Research Interest Cards -->
-<section>
+<!-- Research Themes (problem-centred) -->
+<section id="themes" class="themes-sec">
   <div class="container">
+    <div class="section-header" style="text-align:left;margin-left:0;">
+      <span class="label">Research themes</span>
+      <h2>The problems we work on</h2>
+    </div>
+    <div class="theme-list">
+      {% for t in themes %}
+      <article class="theme-row" id="theme-{{ t.key }}">
+        <div class="theme-head">
+          <span class="theme-num">{{ '%02d' % loop.index }}</span>
+          <h3>{{ t.title }}</h3>
+          <p>{{ t.summary }}</p>
+          <div class="theme-tags">{% for m in t.methods %}<span>{{ m }}</span>{% endfor %}</div>
+          {% if t.app_cards %}
+          <div class="theme-apps">
+            <span class="theme-sub">Related apps</span>
+            {% for a in t.app_cards %}<a href="{{ url_for('app_detail', key=a.key) }}">{{ a.name }}</a>{% endfor %}
+          </div>
+          {% endif %}
+        </div>
+        <div class="theme-pubs">
+          <span class="theme-sub">Recent publications{% if t.pub_count %} · {{ t.pub_count }} in total{% endif %}</span>
+          {% for p in t.pubs %}
+          <div class="theme-pub">
+            {% if p.doi %}<a href="{{ p.doi }}" target="_blank" rel="noopener">{{ p.title }}</a>{% else %}<span>{{ p.title }}</span>{% endif %}
+            <small>{{ p.journal.split(',')[0] }} · {{ p.year }}</small>
+          </div>
+          {% else %}
+          <p class="theme-empty">Publications for this theme will be listed here.</p>
+          {% endfor %}
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- Methods & tools (original research-interest cards) -->
+<section id="methods">
+  <div class="container">
+    <div class="section-header" style="text-align:left;margin-left:0;">
+      <span class="label">Methods &amp; tools</span>
+      <h2>How we study and intervene</h2>
+    </div>
 
     <div class="ri-grid">
       {% for r in research_topics %}
@@ -54,7 +100,7 @@
           {% endif %}
         </div>
         <div class="ri-card-body">
-          <span class="label">Research Interest</span>
+          <span class="label">Method</span>
           <h3>{{ r.title }}</h3>
           <p class="ri-card-desc">{{ r.summary }}</p>
           <span class="ri-read-more">Read More →</span>
@@ -232,6 +278,42 @@
       </div>
     </div>
 
+  </div>
+</section>
+
+<!-- Projects (managed in the portal) -->
+<section id="projects" class="projects-sec">
+  <div class="container">
+    <div class="section-header" style="text-align:left;margin-left:0;">
+      <span class="label">Projects</span>
+      <h2>Funded and ongoing projects</h2>
+    </div>
+    {% if projects_ongoing or projects_done %}
+    {% for group, items in [('Ongoing', projects_ongoing), ('Completed', projects_done)] if items %}
+    <h3 class="proj-group">{{ group }}</h3>
+    <div class="proj-list">
+      {% for p in items %}
+      <div class="proj-row">
+        <div class="proj-main">
+          <div class="proj-title">{{ p.title }}</div>
+          {% if p.summary %}<p>{{ p.summary }}</p>{% endif %}
+          <div class="proj-meta">
+            {% if p.funder %}<span>{{ p.funder }}</span>{% endif %}
+            {% if p.role %}<span>{{ p.role }}</span>{% endif %}
+            {% if p.theme_title %}<a href="#theme-{{ p.theme }}">{{ p.theme_title }}</a>{% endif %}
+          </div>
+        </div>
+        <div class="proj-side">
+          <span class="proj-status {{ p.status }}">{{ 'Ongoing' if p.status != 'completed' else 'Completed' }}</span>
+          {% if p.period %}<span class="proj-period">{{ p.period }}</span>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+    {% else %}
+    <p class="theme-empty">The project list is being prepared.{% if is_researcher %} 포털 → 관리 → 공개 페이지 관리에서 과제를 등록하세요.{% endif %}</p>
+    {% endif %}
   </div>
 </section>
 

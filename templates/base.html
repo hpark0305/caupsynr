@@ -8,7 +8,7 @@
   <meta name="keywords" content="mental health lab, mental health research lab, mental health nursing, trauma stress lab, neurofeedback, psychiatric mental health nursing, disaster trauma, digital mental health, Chung-Ang University">
   <meta name="author" content="Trauma Stress Lab, Chung-Ang University">
   <meta name="robots" content="index, follow">
-  <link rel="canonical" href="{{ request.url_root }}{% block canonical %}{% endblock %}">
+  <link rel="canonical" href="{{ request.url_root }}{% block canonical %}{{ request.path.lstrip('/') }}{% endblock %}">
   <!-- Open Graph / social -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Trauma Stress Lab · Chung-Ang University">
@@ -63,12 +63,13 @@
       </span>
     </a>
     <nav class="site-nav" id="site-nav">
-      <a href="{{ url_for('home') }}"         {% if request.endpoint=='home' %}class="active"{% endif %}>Home</a>
       <a href="{{ url_for('research') }}"     {% if request.endpoint=='research' %}class="active"{% endif %}>Research</a>
       <a href="{{ url_for('team') }}"         {% if request.endpoint=='team' %}class="active"{% endif %}>Team</a>
       <a href="{{ url_for('publications') }}" {% if request.endpoint=='publications' %}class="active"{% endif %}>Publications</a>
-      <a href="{{ url_for('apps') }}"         {% if request.endpoint=='apps' %}class="active"{% endif %}>Apps</a>
-      <a href="{{ url_for('gallery') }}"      {% if request.endpoint=='gallery' %}class="active"{% endif %}>Gallery</a>
+      <a href="{{ url_for('apps') }}"         {% if request.endpoint in ('apps','app_detail') %}class="active"{% endif %}>Apps</a>
+      <a href="{{ url_for('news') }}"         {% if request.endpoint in ('news','gallery','gallery_event') %}class="active"{% endif %}>News</a>
+      <a href="{{ url_for('participate') }}"  {% if request.endpoint=='participate' %}class="active"{% endif %}>Participate</a>
+      <a href="{{ url_for('join') }}"         {% if request.endpoint=='join' %}class="active"{% endif %}>Join</a>
       <a href="{{ url_for('contact') }}"      {% if request.endpoint=='contact' %}class="active"{% endif %}>Contact</a>
       <a href="{{ url_for('login') }}"        class="nav-cta {% if request.endpoint=='login' %}active{% endif %}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;vertical-align:-2px;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Researcher Portal</a>
     </nav>
@@ -109,7 +110,10 @@
         <a href="{{ url_for('team') }}">Team</a>
         <a href="{{ url_for('publications') }}">Publications</a>
         <a href="{{ url_for('apps') }}">Apps</a>
+        <a href="{{ url_for('news') }}">News</a>
         <a href="{{ url_for('gallery') }}">Gallery</a>
+        <a href="{{ url_for('participate') }}">Participate</a>
+        <a href="{{ url_for('join') }}">Join the Lab</a>
         <a href="{{ url_for('contact') }}">Contact</a>
       </div>
       <div class="footer-col">
